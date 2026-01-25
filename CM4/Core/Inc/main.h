@@ -66,6 +66,10 @@ void MX_SDMMC1_MMC_Init(void);
 #define ADS_DIN_uC_DOUT_GPIO_Port GPIOE
 #define ADS_DRDY_Pin GPIO_PIN_13
 #define ADS_DRDY_GPIO_Port GPIOC
+#define ADS_CS_Pin GPIO_PIN_6
+#define ADS_CS_GPIO_Port GPIOF
+#define ADS_SYNC_RESET_Pin GPIO_PIN_0
+#define ADS_SYNC_RESET_GPIO_Port GPIOC
 #define LDO_EN_Pin GPIO_PIN_11
 #define LDO_EN_GPIO_Port GPIOF
 #define DCDC_2_EN_Pin GPIO_PIN_14

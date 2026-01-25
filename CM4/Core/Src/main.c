@@ -21,11 +21,17 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "ads131m08.h"
 
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
+void AEMS_Initialize();
+void DAQ_Shutdown();
+void DAQ_Startup();
+void adcMaster_Startup();
+void adcMaster_Shutdown();
 
 /* USER CODE END PTD */
 
@@ -62,6 +68,20 @@ static void MX_SPI4_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+
+/*
+ * ADC
+ */
+// Calibrate
+uint32_t calibration_values[6] = {-3838,-7481,-7500,-491,-4160,4890};
+ADS131M08_HandleTypeDef ads;
+GPIO_TypeDef *SYNC_RESET_GPIO_Port = ADS_SYNC_RESET_GPIO_Port;
+uint16_t SYNC_RESET_Pin = ADS_SYNC_RESET_Pin;
+
+/*
+ * State Machines
+ */
+bool is_adc_armed;
 
 /* USER CODE END 0 */
 
@@ -108,6 +128,7 @@ int main(void)
   MX_GPIO_Init();
   MX_SPI4_Init();
   /* USER CODE BEGIN 2 */
+  AEMS_Initialize();
 
   /* USER CODE END 2 */
 
@@ -116,32 +137,10 @@ int main(void)
   while (1)
   {
     /* USER CODE END WHILE */
-	  HAL_GPIO_WritePin(DCDC_2_EN_GPIO_Port, DCDC_2_EN_Pin, GPIO_PIN_SET);
-	  HAL_Delay(500);
-	  HAL_GPIO_WritePin(DCDC_2_EN_GPIO_Port, DCDC_2_EN_Pin, GPIO_PIN_SET);
-	  HAL_Delay(500);
 
     /* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */
-}
-
-/**
-  * @brief Peripherals Common Clock Configuration
-  * @retval None
-  */
-void PeriphCommonClock_Config(void)
-{
-  RCC_PeriphCLKInitTypeDef PeriphClkInitStruct = {0};
-
-  /** Initializes the peripherals clock
-  */
-  PeriphClkInitStruct.PeriphClockSelection = RCC_PERIPHCLK_CKPER;
-  PeriphClkInitStruct.CkperClockSelection = RCC_CLKPSOURCE_HSI;
-  if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInitStruct) != HAL_OK)
-  {
-    Error_Handler();
-  }
 }
 
 /**
@@ -194,11 +193,11 @@ static void MX_SPI4_Init(void)
   hspi4.Instance = SPI4;
   hspi4.Init.Mode = SPI_MODE_MASTER;
   hspi4.Init.Direction = SPI_DIRECTION_2LINES;
-  hspi4.Init.DataSize = SPI_DATASIZE_4BIT;
+  hspi4.Init.DataSize = SPI_DATASIZE_8BIT;
   hspi4.Init.CLKPolarity = SPI_POLARITY_LOW;
-  hspi4.Init.CLKPhase = SPI_PHASE_1EDGE;
+  hspi4.Init.CLKPhase = SPI_PHASE_2EDGE;
   hspi4.Init.NSS = SPI_NSS_SOFT;
-  hspi4.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_2;
+  hspi4.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_8;
   hspi4.Init.FirstBit = SPI_FIRSTBIT_MSB;
   hspi4.Init.TIMode = SPI_TIMODE_DISABLE;
   hspi4.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
@@ -239,29 +238,51 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOE_CLK_ENABLE();
   __HAL_RCC_GPIOC_CLK_ENABLE();
   __HAL_RCC_GPIOF_CLK_ENABLE();
+  __HAL_RCC_GPIOD_CLK_ENABLE();
+  __HAL_RCC_GPIOB_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(ADS_DRDY_GPIO_Port, ADS_DRDY_Pin, GPIO_PIN_SET);
+  HAL_GPIO_WritePin(ADS_CS_GPIO_Port, ADS_CS_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(LDO_EN_GPIO_Port, LDO_EN_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(ADS_SYNC_RESET_GPIO_Port, ADS_SYNC_RESET_Pin, GPIO_PIN_SET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(DCDC_2_EN_GPIO_Port, DCDC_2_EN_Pin, GPIO_PIN_SET);
+  HAL_GPIO_WritePin(GPIOF, LDO_EN_Pin|DCDC_2_EN_Pin, GPIO_PIN_SET);
 
   /*Configure GPIO pin : ADS_DRDY_Pin */
   GPIO_InitStruct.Pin = ADS_DRDY_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Pull = GPIO_PULLUP;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(ADS_DRDY_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : LDO_EN_Pin DCDC_2_EN_Pin */
-  GPIO_InitStruct.Pin = LDO_EN_Pin|DCDC_2_EN_Pin;
+  /*Configure GPIO pin : ADS_CS_Pin */
+  GPIO_InitStruct.Pin = ADS_CS_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_PULLDOWN;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_MEDIUM;
+  HAL_GPIO_Init(ADS_CS_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : ADS_SYNC_RESET_Pin */
+  GPIO_InitStruct.Pin = ADS_SYNC_RESET_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(ADS_SYNC_RESET_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : LDO_EN_Pin */
+  GPIO_InitStruct.Pin = LDO_EN_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_MEDIUM;
+  HAL_GPIO_Init(LDO_EN_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : DCDC_2_EN_Pin */
+  GPIO_InitStruct.Pin = DCDC_2_EN_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_PULLUP;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(GPIOF, &GPIO_InitStruct);
+  HAL_GPIO_Init(DCDC_2_EN_GPIO_Port, &GPIO_InitStruct);
 
   /* USER CODE BEGIN MX_GPIO_Init_2 */
 
@@ -269,6 +290,65 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
+
+void AEMS_Initialize() {
+
+	/*
+	 * ADC
+	 */
+	HAL_Delay(1000);
+	// ADC SPI Configuration
+	ads.hspi =&hspi4;
+	ads.cs_port = ADS_CS_GPIO_Port;
+	ads.cs_pin = ADS_CS_Pin;
+	// Initialize
+	DAQ_Startup();
+
+	// Do a read for ID. Can be used for error checking
+	uint16_t id = readSingleRegister(ID_ADDRESS);
+
+
+}
+
+void DAQ_Shutdown() {
+	// Stop ADC
+	adcMaster_Shutdown();
+
+	// Set status
+	is_adc_armed = false;
+}
+
+void DAQ_Startup() {
+	// Initialize ADC
+	adcMaster_Startup();
+	// Reset the device
+	adcStartup();
+	// Configuration - Clock
+	writeSingleRegister(CLOCK_ADDRESS, ((CLOCK_DEFAULT & ~(CLOCK_EXTREF_EN_MASK)) | CLOCK_EXTREF_EN_ENABLED));
+	writeSingleRegister(CLOCK_ADDRESS, ((CLOCK_DEFAULT & ~(CLOCK_OSR_MASK)) | CLOCK_OSR_1024));
+	writeSingleRegister(GAIN1_ADDRESS, ((GAIN1_DEFAULT & ~(GAIN1_PGAGAIN0_MASK | GAIN1_PGAGAIN1_MASK | GAIN1_PGAGAIN2_MASK))) | (GAIN1_PGAGAIN0_4 | GAIN1_PGAGAIN1_4 | GAIN1_PGAGAIN2_4));
+
+	// Apply calibration values to 6 channels
+	for (uint8_t channel = 0; channel < 6; channel++) {
+		calibrate(calibration_values[channel], channel);
+	}
+
+	// Set status
+	is_adc_armed = true;
+
+}
+
+/*
+ * ADC - Control
+ */
+void adcMaster_Startup(void) {
+	HAL_RCC_MCOConfig(RCC_MCO1, RCC_MCO1SOURCE_HSI, RCC_MCODIV_8);
+}
+
+
+void adcMaster_Shutdown(void) {
+	HAL_RCC_MCOConfig(RCC_MCO1, RCC_MCO1SOURCE_HSI, RCC_MCODIV_8);
+}
 
 /* USER CODE END 4 */
 

@@ -31,3 +31,4 @@
 "./Drivers/STM32H7xx_HAL_Driver/stm32h7xx_hal_tim_ex.o"
 "./Drivers/STM32H7xx_HAL_Driver/stm32h7xx_ll_delayblock.o"
 "./Drivers/STM32H7xx_HAL_Driver/stm32h7xx_ll_sdmmc.o"
+"./Library/ads131m08/ads131m08.o"

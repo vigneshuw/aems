@@ -1,0 +1,2 @@
+../Library/eth/eth.c:3:6:ETH_ReadPhyReg	4
+../Library/eth/eth.c:24:6:ETH_TestBasic	9

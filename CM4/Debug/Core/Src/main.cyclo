@@ -1,6 +1,10 @@
-../Core/Src/main.c:72:5:main	2
-../Core/Src/main.c:133:6:PeriphCommonClock_Config	2
-../Core/Src/main.c:152:6:MX_SDMMC1_MMC_Init	2
-../Core/Src/main.c:183:13:MX_SPI4_Init	2
-../Core/Src/main.c:231:13:MX_GPIO_Init	1
-../Core/Src/main.c:279:6:Error_Handler	1
+../Core/Src/main.c:92:5:main	2
+../Core/Src/main.c:151:6:MX_SDMMC1_MMC_Init	2
+../Core/Src/main.c:182:13:MX_SPI4_Init	2
+../Core/Src/main.c:230:13:MX_GPIO_Init	1
+../Core/Src/main.c:294:6:AEMS_Initialize	1
+../Core/Src/main.c:313:6:DAQ_Shutdown	1
+../Core/Src/main.c:321:6:DAQ_Startup	2
+../Core/Src/main.c:344:6:adcMaster_Startup	1
+../Core/Src/main.c:349:6:adcMaster_Shutdown	1
+../Core/Src/main.c:359:6:Error_Handler	1
