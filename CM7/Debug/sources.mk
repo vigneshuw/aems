@@ -25,7 +25,11 @@ SUBDIRS := \
 Common/Src \
 Core/Src \
 Core/Startup \
+Drivers/BSP/Components \
 Drivers/STM32H7xx_HAL_Driver \
+LWIP/App \
+LWIP/Target \
 Library/eth \
 Library/led \
+Middlewares/Third_Party/LwIP \
 
