@@ -31,7 +31,7 @@ extern "C" {
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "hsem_lock.h"
 /* USER CODE END Includes */
 
 /* Exported types ------------------------------------------------------------*/
@@ -75,8 +75,11 @@ void Error_Handler(void);
 #define DCDC_2_EN_GPIO_Port GPIOF
 #define ADS_STM32_CLKOUT_Pin GPIO_PIN_8
 #define ADS_STM32_CLKOUT_GPIO_Port GPIOA
+#define eMMC_RSTn_Pin GPIO_PIN_0
+#define eMMC_RSTn_GPIO_Port GPIOE
 
 /* USER CODE BEGIN Private defines */
+
 
 /* USER CODE END Private defines */
 

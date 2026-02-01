@@ -23,6 +23,8 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "ads131m08.h"
+#include "ff_gen_drv.h"
+#include "mmc_diskio.h"
 
 /* USER CODE END Includes */
 
@@ -43,6 +45,8 @@ void adcMaster_Shutdown();
 #define HSEM_ID_0 (0U) /* HW semaphore 0*/
 #endif
 
+#define CM4_FILE   "cm7.log"
+
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -51,6 +55,8 @@ void adcMaster_Shutdown();
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
+
+MMC_HandleTypeDef hmmc1;
 
 SPI_HandleTypeDef hspi4;
 
@@ -61,8 +67,10 @@ SPI_HandleTypeDef hspi4;
 /* Private function prototypes -----------------------------------------------*/
 static void MX_GPIO_Init(void);
 static void MX_SPI4_Init(void);
+static void MX_SDMMC1_MMC_Init(void);
 /* USER CODE BEGIN PFP */
-
+//static void FS_FileOperations(void);
+static uint8_t Buffercmp(uint8_t* pBuffer1, uint8_t* pBuffer2, uint32_t BufferLength);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -82,6 +90,16 @@ uint16_t SYNC_RESET_Pin = ADS_SYNC_RESET_Pin;
  */
 bool is_adc_armed;
 
+// FatFs
+FATFS MMCFatFs;  /* File system object for SD card logical drive */
+FIL daqFile;     /* File object */
+char MMCPath[4]; /* SD card logical drive path */
+
+uint8_t workBuffer[_MAX_SS];
+ALIGN_32BYTES(uint8_t rtext[96]);
+
+uint8_t wtext[] = "This is FatFs running on CM4 core"; /* File write buffer */
+
 /* USER CODE END 0 */
 
 /**
@@ -92,7 +110,7 @@ int main(void)
 {
 
   /* USER CODE BEGIN 1 */
-
+	FRESULT res;
   /* USER CODE END 1 */
 
 /* USER CODE BEGIN Boot_Mode_Sequence_1 */
@@ -126,9 +144,25 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_SPI4_Init();
-  MX_FATFS_Init();
+  MX_SDMMC1_MMC_Init();
   /* USER CODE BEGIN 2 */
   AEMS_Initialize();
+
+  /*
+   * Link the I/O driver
+   */
+  LOCK_HSEM(HSEM_ID_0);
+  if(FATFS_LinkDriver(&MMC_Driver, MMCPath) == 0) {
+	  // Create a FAT volume
+	  res = f_mkfs(MMCPath, FM_ANY, 0, workBuffer, sizeof(workBuffer));
+	  if (res != FR_OK)
+	     {
+	       Error_Handler();
+	     }
+	  /* start the FatFs operations simulaneously with the Core CM4 */
+//	  FS_FileOperations();
+	  UNLOCK_HSEM(HSEM_ID_0);
+  }
 
   /* USER CODE END 2 */
 
@@ -141,6 +175,40 @@ int main(void)
     /* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */
+}
+
+/**
+  * @brief SDMMC1 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_SDMMC1_MMC_Init(void)
+{
+
+  /* USER CODE BEGIN SDMMC1_Init 0 */
+  /* USER CODE END SDMMC1_Init 0 */
+
+  /* USER CODE BEGIN SDMMC1_Init 1 */
+
+  /* USER CODE END SDMMC1_Init 1 */
+  hmmc1.Instance = SDMMC1;
+  hmmc1.Init.ClockEdge = SDMMC_CLOCK_EDGE_RISING;
+  hmmc1.Init.ClockPowerSave = SDMMC_CLOCK_POWER_SAVE_DISABLE;
+  hmmc1.Init.BusWide = SDMMC_BUS_WIDE_8B;
+  hmmc1.Init.HardwareFlowControl = SDMMC_HARDWARE_FLOW_CONTROL_DISABLE;
+  hmmc1.Init.ClockDiv = 2;
+  if (HAL_MMC_Init(&hmmc1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN SDMMC1_Init 2 */
+  HAL_MMC_CardInfoTypeDef cardInfo;
+	if (HAL_MMC_GetCardInfo(&hmmc1, &cardInfo) != HAL_OK)
+	{
+		Error_Handler();
+	}
+  /* USER CODE END SDMMC1_Init 2 */
+
 }
 
 /**
@@ -207,6 +275,8 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOE_CLK_ENABLE();
   __HAL_RCC_GPIOC_CLK_ENABLE();
   __HAL_RCC_GPIOF_CLK_ENABLE();
+  __HAL_RCC_GPIOD_CLK_ENABLE();
+  __HAL_RCC_GPIOB_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(ADS_CS_GPIO_Port, ADS_CS_Pin, GPIO_PIN_RESET);
@@ -216,6 +286,9 @@ static void MX_GPIO_Init(void)
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOF, LDO_EN_Pin|DCDC_2_EN_Pin, GPIO_PIN_SET);
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(eMMC_RSTn_GPIO_Port, eMMC_RSTn_Pin, GPIO_PIN_SET);
 
   /*Configure GPIO pin : ADS_DRDY_Pin */
   GPIO_InitStruct.Pin = ADS_DRDY_Pin;
@@ -250,6 +323,13 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_PULLUP;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(DCDC_2_EN_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : eMMC_RSTn_Pin */
+  GPIO_InitStruct.Pin = eMMC_RSTn_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+  HAL_GPIO_Init(eMMC_RSTn_GPIO_Port, &GPIO_InitStruct);
 
   /* USER CODE BEGIN MX_GPIO_Init_2 */
 
@@ -315,6 +395,21 @@ void adcMaster_Startup(void) {
 
 void adcMaster_Shutdown(void) {
 	HAL_RCC_MCOConfig(RCC_MCO1, RCC_MCO1SOURCE_HSI, RCC_MCODIV_8);
+}
+
+static uint8_t Buffercmp(uint8_t* pBuffer1, uint8_t* pBuffer2, uint32_t BufferLength)
+{
+  while (BufferLength--)
+  {
+    if (*pBuffer1 != *pBuffer2)
+    {
+      return 1;
+    }
+
+    pBuffer1++;
+    pBuffer2++;
+  }
+  return 0;
 }
 
 /* USER CODE END 4 */

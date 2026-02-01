@@ -1,9 +1,10 @@
 #include "ff_gen_drv.h"
 #include "mmc_diskio.h"
+#include "hsem_lock.h"
 #include <stdio.h>
+#include "stm32h7xx_hal_mmc.h"
 
-
-#define MMC_TIMEOUT MMC_DATATIMEOUT
+#define MMC_TIMEOUT SDMMC_DATATIMEOUT
 
 #define MMC_DEFAULT_BLOCK_SIZE				512
 
@@ -23,15 +24,8 @@
 #define ENABLE_DMA_CACHE_MAINTENANCE		0
 
 #define EMMC_HSEM_ID (1U)
-#define LOCK_HSEM(__sem__)    do                                                \
-                              {                                                 \
-                                 while(HAL_HSEM_FastTake(__sem__) != HAL_OK) {} \
-                              } while(0)
 
-#define UNLOCK_HSEM(__sem__)  do                               \
-                              {                                \
-                                 HAL_HSEM_Release(__sem__, 0); \
-                              } while(0)
+#define DISABLE_MMC_INIT
 
 /* Private variables ---------------------------------------------------------*/
 /* Disk status */
@@ -63,22 +57,24 @@ const Diskio_drvTypeDef  MMC_Driver =
 #endif /* _USE_IOCTL == 1 */
 };
 
+// SDMMC1 handle
+extern MMC_HandleTypeDef hmmc1;
+
 /* Private functions ---------------------------------------------------------*/
+/*  Check if card is initialized/ready                          */
 static DSTATUS MMC_CheckStatus(BYTE lun)
 {
-  Stat = STA_NOINIT;
-  while (HAL_HSEM_FastTake(EMMC_HSEM_ID) != HAL_OK)
+  DSTATUS stat = STA_NOINIT;
+
+  LOCK_HSEM(EMMC_HSEM_ID);
+
+  if (HAL_MMC_GetCardState(&hmmc1) == HAL_MMC_CARD_TRANSFER)
   {
+    stat &= ~STA_NOINIT;
   }
 
-  if((HAL_MMC_GetCardState(0) == HAL_MMC_ERROR_NONE))
-  {
-    Stat &= ~STA_NOINIT;
-  }
-
-  HAL_HSEM_Release(EMMC_HSEM_ID, 0);
-
-  return Stat;
+  UNLOCK_HSEM(EMMC_HSEM_ID);
+  return stat;
 }
 
 /**
@@ -89,20 +85,22 @@ static DSTATUS MMC_CheckStatus(BYTE lun)
 DSTATUS MMC_initialize(BYTE lun)
 {
 #if !defined(DISABLE_MMC_INIT)
+  LOCK_HSEM(EMMC_HSEM_ID);
 
-  while (HAL_HSEM_FastTake(EMMC_HSEM_ID) != HAL_OK)
+  if (HAL_MMC_Init(&hmmc1) == HAL_OK)
   {
-  }
-
-  if(HAL_MMC_Init(0) == HAL_MMC_ERROR_NONE)
-  {
-    HAL_HSEM_Release(EMMC_HSEM_ID, 0);
     Stat = MMC_CheckStatus(lun);
   }
+  else
+  {
+    Stat = STA_NOINIT;
+  }
+
+  UNLOCK_HSEM(EMMC_HSEM_ID);
 #else
   Stat = MMC_CheckStatus(lun);
-
 #endif
+
   return Stat;
 }
 
@@ -116,6 +114,7 @@ DSTATUS MMC_status(BYTE lun)
   return MMC_CheckStatus(lun);
 }
 
+
 /**
   * @brief  Reads Sector(s)
   * @param  lun : not used
@@ -124,43 +123,22 @@ DSTATUS MMC_status(BYTE lun)
   * @param  count: Number of sectors to read (1..128)
   * @retval DRESULT: Operation result
   */
-DRESULT MMC_read(BYTE lun, BYTE *buff, DWORD sector, UINT count)
+DRESULT MMC_read(BYTE lun, BYTE* buff, DWORD sector, UINT count)
 {
   DRESULT res = RES_ERROR;
-  ReadStatus = 0;
-#if (ENABLE_MMC_DMA_CACHE_MAINTENANCE == 1)
-  uint32_t alignedAddr;
-#endif
 
+  LOCK_HSEM(EMMC_HSEM_ID);
 
-  while (HAL_HSEM_FastTake(EMMC_HSEM_ID) != HAL_OK)
+  if (HAL_MMC_ReadBlocks(&hmmc1, buff, sector, count, MMC_TIMEOUT) == HAL_OK)
   {
-  }
-
-
-  if(HAL_MMC_ReadBlocks(0, (uint8_t*)buff,
-                        (uint32_t) (sector),
-                        count, HAL_MAX_DELAY) == HAL_MMC_ERROR_NONE)
-  {
-    while(HAL_MMC_GetCardState(0) != HAL_MMC_ERROR_NONE)
+    /* Wait until transfer complete */
+    while (HAL_MMC_GetCardState(&hmmc1) != HAL_MMC_CARD_TRANSFER)
     {
     }
-      res = RES_OK;
-#if (ENABLE_MMC_DMA_CACHE_MAINTENANCE == 1)
-      /*
-      the SCB_InvalidateDCache_by_Addr() requires a 32-Byte aligned address,
-      adjust the address and the D-Cache size to invalidate accordingly.
-      */
-      alignedAddr = (uint32_t)buff & ~0x1F;
-      SCB_InvalidateDCache_by_Addr((uint32_t*)alignedAddr, count*BLOCKSIZE + ((uint32_t)buff - alignedAddr));
-#endif
+    res = RES_OK;
   }
-  else
-  {
-    res = RES_NOTRDY;
-  }
+  UNLOCK_HSEM(EMMC_HSEM_ID);
 
-  HAL_HSEM_Release(EMMC_HSEM_ID, 0);
   return res;
 }
 
@@ -173,30 +151,22 @@ DRESULT MMC_read(BYTE lun, BYTE *buff, DWORD sector, UINT count)
   * @retval DRESULT: Operation result
   */
 #if _USE_WRITE == 1
-DRESULT MMC_write(BYTE lun, const BYTE *buff, DWORD sector, UINT count)
+DRESULT MMC_write(BYTE lun, const BYTE* buff, DWORD sector, UINT count)
 {
   DRESULT res = RES_ERROR;
-  WriteStatus = 0;
- /*
-  * since the MPU is configured as write-through, see main.c file, there isn't any need
-  * to maintain the cache as its content is always coherent with the memory.
-  * If needed, check the file "Middlewares/Third_Party/FatFs/src/drivers/sd_diskio_dma_template.c"
-  * to see how the cache is maintained during the write operations.
-  */
 
-  while (HAL_HSEM_FastTake(EMMC_HSEM_ID) != HAL_OK)
+  LOCK_HSEM(EMMC_HSEM_ID);
+
+  if (HAL_MMC_WriteBlocks(&hmmc1, (uint8_t*)buff, sector, count, MMC_TIMEOUT) == HAL_OK)
   {
-  }
-  if(HAL_MMC_WriteBlocks(0, (uint8_t*)buff,
-                            (uint32_t)(sector),
-                            count, HAL_MAX_DELAY) == HAL_MMC_ERROR_NONE)
-  {
-    while(HAL_MMC_GetCardState(0) != HAL_MMC_ERROR_NONE)
+    /* Wait until transfer complete */
+    while (HAL_MMC_GetCardState(&hmmc1) != HAL_MMC_CARD_TRANSFER)
     {
     }
     res = RES_OK;
   }
-  HAL_HSEM_Release(EMMC_HSEM_ID, 0);
+
+  UNLOCK_HSEM(EMMC_HSEM_ID);
   return res;
 }
 #endif /* _USE_WRITE == 1 */
@@ -209,55 +179,45 @@ DRESULT MMC_write(BYTE lun, const BYTE *buff, DWORD sector, UINT count)
   * @retval DRESULT: Operation result
   */
 #if _USE_IOCTL == 1
-DRESULT MMC_ioctl(BYTE lun, BYTE cmd, void *buff)
+DRESULT MMC_ioctl(BYTE lun, BYTE cmd, void* buff)
 {
   DRESULT res = RES_ERROR;
   HAL_MMC_CardInfoTypeDef CardInfo;
 
   if (Stat & STA_NOINIT) return RES_NOTRDY;
 
-
-  while ( HAL_HSEM_FastTake(EMMC_HSEM_ID) != HAL_OK)
-  {
-  }
+  LOCK_HSEM(EMMC_HSEM_ID);
 
   switch (cmd)
   {
-  /* Make sure that no pending write process */
-  case CTRL_SYNC :
-    res = RES_OK;
-    break;
+    case CTRL_SYNC:
+      res = RES_OK;
+      break;
 
-  /* Get number of sectors on the disk (DWORD) */
-  case GET_SECTOR_COUNT :
-    HAL_MMC_GetCardInfo(0, &CardInfo);
-    *(DWORD*)buff = CardInfo.LogBlockNbr;
-    res = RES_OK;
-    break;
+    case GET_SECTOR_COUNT:
+      HAL_MMC_GetCardInfo(&hmmc1, &CardInfo);
+      *(DWORD*)buff = CardInfo.LogBlockNbr;
+      res = RES_OK;
+      break;
 
-  /* Get R/W sector size (WORD) */
-  case GET_SECTOR_SIZE :
-    HAL_MMC_GetCardInfo(0, &CardInfo);
-    *(WORD*)buff = CardInfo.LogBlockSize;
-    res = RES_OK;
-    break;
+    case GET_SECTOR_SIZE:
+      HAL_MMC_GetCardInfo(&hmmc1, &CardInfo);
+      *(WORD*)buff = CardInfo.LogBlockSize;
+      res = RES_OK;
+      break;
 
-  /* Get erase block size in unit of sector (DWORD) */
-  case GET_BLOCK_SIZE :
-    HAL_MMC_GetCardInfo(0, &CardInfo);
-    *(DWORD*)buff = CardInfo.LogBlockSize / MMC_DEFAULT_BLOCK_SIZE;
-	res = RES_OK;
-    break;
+    case GET_BLOCK_SIZE:
+      HAL_MMC_GetCardInfo(&hmmc1, &CardInfo);
+      *(DWORD*)buff = (CardInfo.LogBlockSize / MMC_DEFAULT_BLOCK_SIZE);
+      res = RES_OK;
+      break;
 
-  default:
-    res = RES_PARERR;
+    default:
+      res = RES_PARERR;
+      break;
   }
 
-  while(HAL_MMC_GetCardState(0) != HAL_MMC_ERROR_NONE)
-  {
-  }
-
-  HAL_HSEM_Release(EMMC_HSEM_ID, 0);
+  UNLOCK_HSEM(EMMC_HSEM_ID);
   return res;
 }
 #endif /* _USE_IOCTL == 1 */

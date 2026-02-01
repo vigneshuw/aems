@@ -24,7 +24,6 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "led.h"
-
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -61,7 +60,6 @@ void SystemClock_Config(void);
 static void MPU_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_TIM1_Init(void);
-static void MX_SDMMC1_MMC_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -147,8 +145,6 @@ Error_Handler();
   MX_GPIO_Init();
   MX_TIM1_Init();
   MX_LWIP_Init();
-  MX_SDMMC1_MMC_Init();
-  MX_FATFS_Init();
   /* USER CODE BEGIN 2 */
 
   /*
@@ -252,7 +248,7 @@ void SystemClock_Config(void)
   * @param None
   * @retval None
   */
-static void MX_SDMMC1_MMC_Init(void)
+void MX_SDMMC1_MMC_Init(void)
 {
 
   /* USER CODE BEGIN SDMMC1_Init 0 */
@@ -267,7 +263,7 @@ static void MX_SDMMC1_MMC_Init(void)
   hmmc1.Init.ClockPowerSave = SDMMC_CLOCK_POWER_SAVE_DISABLE;
   hmmc1.Init.BusWide = SDMMC_BUS_WIDE_8B;
   hmmc1.Init.HardwareFlowControl = SDMMC_HARDWARE_FLOW_CONTROL_DISABLE;
-  hmmc1.Init.ClockDiv = 1;
+  hmmc1.Init.ClockDiv = 2;
   if (HAL_MMC_Init(&hmmc1) != HAL_OK)
   {
     Error_Handler();

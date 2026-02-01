@@ -60,6 +60,7 @@ C:/Users/vigne/STM32CubeIDE/workspace_1.17.0/AEMSv02-Firmware/Middlewares/Third_
 C:/Users/vigne/STM32CubeIDE/workspace_1.17.0/AEMSv02-Firmware/Middlewares/Third_Party/FatFs/src/ff.c:4525:9:f_unlink	656	static
 C:/Users/vigne/STM32CubeIDE/workspace_1.17.0/AEMSv02-Firmware/Middlewares/Third_Party/FatFs/src/ff.c:4620:9:f_mkdir	616	static
 C:/Users/vigne/STM32CubeIDE/workspace_1.17.0/AEMSv02-Firmware/Middlewares/Third_Party/FatFs/src/ff.c:4717:9:f_rename	688	static
+C:/Users/vigne/STM32CubeIDE/workspace_1.17.0/AEMSv02-Firmware/Middlewares/Third_Party/FatFs/src/ff.c:5301:9:f_mkfs	128	static
 C:/Users/vigne/STM32CubeIDE/workspace_1.17.0/AEMSv02-Firmware/Middlewares/Third_Party/FatFs/src/ff.c:5830:8:f_gets	40	static
 C:/Users/vigne/STM32CubeIDE/workspace_1.17.0/AEMSv02-Firmware/Middlewares/Third_Party/FatFs/src/ff.c:5917:6:putc_bfd	24	static
 C:/Users/vigne/STM32CubeIDE/workspace_1.17.0/AEMSv02-Firmware/Middlewares/Third_Party/FatFs/src/ff.c:5973:5:putc_flush	24	static
