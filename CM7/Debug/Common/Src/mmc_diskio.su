@@ -1,0 +1,6 @@
+C:/Users/vigne/STM32CubeIDE/workspace_1.17.0/AEMSv02-Firmware/Common/Src/mmc_diskio.c:67:16:MMC_CheckStatus	16	static
+C:/Users/vigne/STM32CubeIDE/workspace_1.17.0/AEMSv02-Firmware/Common/Src/mmc_diskio.c:89:9:MMC_initialize	16	static
+C:/Users/vigne/STM32CubeIDE/workspace_1.17.0/AEMSv02-Firmware/Common/Src/mmc_diskio.c:114:9:MMC_status	16	static
+C:/Users/vigne/STM32CubeIDE/workspace_1.17.0/AEMSv02-Firmware/Common/Src/mmc_diskio.c:127:9:MMC_read	40	static
+C:/Users/vigne/STM32CubeIDE/workspace_1.17.0/AEMSv02-Firmware/Common/Src/mmc_diskio.c:176:9:MMC_write	40	static
+C:/Users/vigne/STM32CubeIDE/workspace_1.17.0/AEMSv02-Firmware/Common/Src/mmc_diskio.c:212:9:MMC_ioctl	48	static

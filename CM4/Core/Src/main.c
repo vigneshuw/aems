@@ -18,6 +18,7 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "fatfs.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -50,8 +51,6 @@ void adcMaster_Shutdown();
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
-
-MMC_HandleTypeDef hmmc1;
 
 SPI_HandleTypeDef hspi4;
 
@@ -127,6 +126,7 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_SPI4_Init();
+  MX_FATFS_Init();
   /* USER CODE BEGIN 2 */
   AEMS_Initialize();
 
@@ -141,37 +141,6 @@ int main(void)
     /* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */
-}
-
-/**
-  * @brief SDMMC1 Initialization Function
-  * @param None
-  * @retval None
-  */
-void MX_SDMMC1_MMC_Init(void)
-{
-
-  /* USER CODE BEGIN SDMMC1_Init 0 */
-
-  /* USER CODE END SDMMC1_Init 0 */
-
-  /* USER CODE BEGIN SDMMC1_Init 1 */
-
-  /* USER CODE END SDMMC1_Init 1 */
-  hmmc1.Instance = SDMMC1;
-  hmmc1.Init.ClockEdge = SDMMC_CLOCK_EDGE_RISING;
-  hmmc1.Init.ClockPowerSave = SDMMC_CLOCK_POWER_SAVE_DISABLE;
-  hmmc1.Init.BusWide = SDMMC_BUS_WIDE_8B;
-  hmmc1.Init.HardwareFlowControl = SDMMC_HARDWARE_FLOW_CONTROL_DISABLE;
-  hmmc1.Init.ClockDiv = 1;
-  if (HAL_MMC_Init(&hmmc1) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /* USER CODE BEGIN SDMMC1_Init 2 */
-
-  /* USER CODE END SDMMC1_Init 2 */
-
 }
 
 /**
@@ -238,8 +207,6 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOE_CLK_ENABLE();
   __HAL_RCC_GPIOC_CLK_ENABLE();
   __HAL_RCC_GPIOF_CLK_ENABLE();
-  __HAL_RCC_GPIOD_CLK_ENABLE();
-  __HAL_RCC_GPIOB_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(ADS_CS_GPIO_Port, ADS_CS_Pin, GPIO_PIN_RESET);

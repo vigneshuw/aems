@@ -27,9 +27,12 @@ Core/Src \
 Core/Startup \
 Drivers/BSP/Components \
 Drivers/STM32H7xx_HAL_Driver \
+FATFS/App \
+FATFS/Target \
 LWIP/App \
 LWIP/Target \
 Library/eth \
 Library/led \
+Middlewares/Third_Party/FatFs \
 Middlewares/Third_Party/LwIP \
 
