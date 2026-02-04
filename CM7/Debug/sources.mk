@@ -34,5 +34,6 @@ LWIP/Target \
 Library/eth \
 Library/led \
 Middlewares/Third_Party/FatFs \
+Middlewares/Third_Party/FreeRTOS \
 Middlewares/Third_Party/LwIP \
 

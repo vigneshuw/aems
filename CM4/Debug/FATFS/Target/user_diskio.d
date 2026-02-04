@@ -37,7 +37,7 @@ FATFS/Target/user_diskio.o: ../FATFS/Target/user_diskio.c \
  ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_pwr_ex.h \
  ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_spi.h \
  ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_spi_ex.h \
- C:/Users/vigne/STM32CubeIDE/workspace_1.17.0/AEMSv02-Firmware/Common/Inc/hsem_lock.h
+ C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Common/Inc/hsem_lock.h
 ../../Middlewares/Third_Party/FatFs/src/ff_gen_drv.h:
 ../../Middlewares/Third_Party/FatFs/src/diskio.h:
 ../../Middlewares/Third_Party/FatFs/src/integer.h:
@@ -77,4 +77,4 @@ FATFS/Target/user_diskio.o: ../FATFS/Target/user_diskio.c \
 ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_pwr_ex.h:
 ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_spi.h:
 ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_spi_ex.h:
-C:/Users/vigne/STM32CubeIDE/workspace_1.17.0/AEMSv02-Firmware/Common/Inc/hsem_lock.h:
+C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Common/Inc/hsem_lock.h:

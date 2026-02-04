@@ -37,7 +37,18 @@ FATFS/App/fatfs.o: ../FATFS/App/fatfs.c ../FATFS/App/fatfs.h \
  ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_pwr_ex.h \
  ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_tim.h \
  ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_tim_ex.h \
- C:/Users/vigne/STM32CubeIDE/workspace_1.17.0/AEMSv02-Firmware/Common/Inc/hsem_lock.h \
+ C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Common/Inc/hsem_lock.h \
+ ../../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2/cmsis_os.h \
+ ../../Middlewares/Third_Party/FreeRTOS/Source/include/FreeRTOS.h \
+ ../Core/Inc/FreeRTOSConfig.h \
+ ../../Middlewares/Third_Party/FreeRTOS/Source/include/projdefs.h \
+ ../../Middlewares/Third_Party/FreeRTOS/Source/include/portable.h \
+ ../../Middlewares/Third_Party/FreeRTOS/Source/include/deprecated_definitions.h \
+ ../../Middlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM4F/portmacro.h \
+ ../../Middlewares/Third_Party/FreeRTOS/Source/include/mpu_wrappers.h \
+ ../../Middlewares/Third_Party/FreeRTOS/Source/include/task.h \
+ ../../Middlewares/Third_Party/FreeRTOS/Source/include/list.h \
+ ../../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2/cmsis_os2.h \
  ../../Middlewares/Third_Party/FatFs/src/ff_gen_drv.h \
  ../../Middlewares/Third_Party/FatFs/src/diskio.h \
  ../../Middlewares/Third_Party/FatFs/src/ff.h \
@@ -82,7 +93,18 @@ FATFS/App/fatfs.o: ../FATFS/App/fatfs.c ../FATFS/App/fatfs.h \
 ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_pwr_ex.h:
 ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_tim.h:
 ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_tim_ex.h:
-C:/Users/vigne/STM32CubeIDE/workspace_1.17.0/AEMSv02-Firmware/Common/Inc/hsem_lock.h:
+C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Common/Inc/hsem_lock.h:
+../../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2/cmsis_os.h:
+../../Middlewares/Third_Party/FreeRTOS/Source/include/FreeRTOS.h:
+../Core/Inc/FreeRTOSConfig.h:
+../../Middlewares/Third_Party/FreeRTOS/Source/include/projdefs.h:
+../../Middlewares/Third_Party/FreeRTOS/Source/include/portable.h:
+../../Middlewares/Third_Party/FreeRTOS/Source/include/deprecated_definitions.h:
+../../Middlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM4F/portmacro.h:
+../../Middlewares/Third_Party/FreeRTOS/Source/include/mpu_wrappers.h:
+../../Middlewares/Third_Party/FreeRTOS/Source/include/task.h:
+../../Middlewares/Third_Party/FreeRTOS/Source/include/list.h:
+../../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2/cmsis_os2.h:
 ../../Middlewares/Third_Party/FatFs/src/ff_gen_drv.h:
 ../../Middlewares/Third_Party/FatFs/src/diskio.h:
 ../../Middlewares/Third_Party/FatFs/src/ff.h:

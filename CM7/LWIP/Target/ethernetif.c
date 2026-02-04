@@ -21,8 +21,6 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "lwip/opt.h"
-#include "lwip/mem.h"
-#include "lwip/memp.h"
 #include "lwip/timeouts.h"
 #include "netif/ethernet.h"
 #include "netif/etharp.h"
@@ -30,6 +28,8 @@
 #include "ethernetif.h"
 #include "lan8742.h"
 #include <string.h>
+#include "cmsis_os.h"
+#include "lwip/tcpip.h"
 
 /* Within 'USER CODE' section, code will be kept by default at each generation */
 /* USER CODE BEGIN 0 */
@@ -37,7 +37,14 @@
 /* USER CODE END 0 */
 
 /* Private define ------------------------------------------------------------*/
-
+/* The time to block waiting for input. */
+#define TIME_WAITING_FOR_INPUT ( portMAX_DELAY )
+/* Time to block waiting for transmissions to finish */
+#define ETHIF_TX_TIMEOUT (2000U)
+/* USER CODE BEGIN OS_THREAD_STACK_SIZE_WITH_RTOS */
+/* Stack size of the interface thread */
+#define INTERFACE_THREAD_STACK_SIZE ( 350 )
+/* USER CODE END OS_THREAD_STACK_SIZE_WITH_RTOS */
 /* Network interface name */
 #define IFNAME0 's'
 #define IFNAME1 't'
@@ -127,6 +134,9 @@ __attribute__((section(".Rx_PoolSection"))) extern u8_t memp_memory_RX_POOL_base
 
 /* USER CODE END 2 */
 
+osSemaphoreId RxPktSemaphore = NULL;   /* Semaphore to signal incoming packets */
+osSemaphoreId TxPktSemaphore = NULL;   /* Semaphore to signal transmit packet complete */
+
 /* Global Ethernet handle */
 ETH_HandleTypeDef heth;
 
@@ -153,6 +163,37 @@ lan8742_IOCtx_t  LAN8742_IOCtx = {ETH_PHY_IO_Init,
 /* Private functions ---------------------------------------------------------*/
 void pbuf_free_custom(struct pbuf *p);
 
+/**
+  * @brief  Ethernet Rx Transfer completed callback
+  * @param  handlerEth: ETH handler
+  * @retval None
+  */
+void HAL_ETH_RxCpltCallback(ETH_HandleTypeDef *handlerEth)
+{
+  osSemaphoreRelease(RxPktSemaphore);
+}
+/**
+  * @brief  Ethernet Tx Transfer completed callback
+  * @param  handlerEth: ETH handler
+  * @retval None
+  */
+void HAL_ETH_TxCpltCallback(ETH_HandleTypeDef *handlerEth)
+{
+  osSemaphoreRelease(TxPktSemaphore);
+}
+/**
+  * @brief  Ethernet DMA transfer error callback
+  * @param  handlerEth: ETH handler
+  * @retval None
+  */
+void HAL_ETH_ErrorCallback(ETH_HandleTypeDef *handlerEth)
+{
+  if((HAL_ETH_GetDMAError(handlerEth) & ETH_DMACSR_RBU) == ETH_DMACSR_RBU)
+  {
+     osSemaphoreRelease(RxPktSemaphore);
+  }
+}
+
 /* USER CODE BEGIN 4 */
 
 /* USER CODE END 4 */
@@ -170,6 +211,12 @@ void pbuf_free_custom(struct pbuf *p);
 static void low_level_init(struct netif *netif)
 {
   HAL_StatusTypeDef hal_eth_init_status = HAL_OK;
+/* USER CODE BEGIN OS_THREAD_ATTR_CMSIS_RTOS_V2 */
+  osThreadAttr_t attributes;
+/* USER CODE END OS_THREAD_ATTR_CMSIS_RTOS_V2 */
+  uint32_t duplex, speed = 0;
+  int32_t PHYLinkState = 0;
+  ETH_MACConfigTypeDef MACConf = {0};
   /* Start ETH HAL Init */
 
    uint8_t MACAddr[6] ;
@@ -225,6 +272,21 @@ static void low_level_init(struct netif *netif)
     netif->flags |= NETIF_FLAG_BROADCAST;
   #endif /* LWIP_ARP */
 
+  /* create a binary semaphore used for informing ethernetif of frame reception */
+  RxPktSemaphore = osSemaphoreNew(1, 0, NULL);
+
+  /* create a binary semaphore used for informing ethernetif of frame transmission */
+  TxPktSemaphore = osSemaphoreNew(1, 0, NULL);
+
+  /* create the task that handles the ETH_MAC */
+/* USER CODE BEGIN OS_THREAD_NEW_CMSIS_RTOS_V2 */
+  memset(&attributes, 0x0, sizeof(osThreadAttr_t));
+  attributes.name = "EthIf";
+  attributes.stack_size = INTERFACE_THREAD_STACK_SIZE;
+  attributes.priority = osPriorityRealtime;
+  osThreadNew(ethernetif_input, netif, &attributes);
+/* USER CODE END OS_THREAD_NEW_CMSIS_RTOS_V2 */
+
 /* USER CODE BEGIN PHY_PRE_CONFIG */
 
 /* USER CODE END PHY_PRE_CONFIG */
@@ -241,8 +303,54 @@ static void low_level_init(struct netif *netif)
 
   if (hal_eth_init_status == HAL_OK)
   {
+    PHYLinkState = LAN8742_GetLinkState(&LAN8742);
+
     /* Get link state */
-    ethernet_link_check_state(netif);
+    if(PHYLinkState <= LAN8742_STATUS_LINK_DOWN)
+    {
+      netif_set_link_down(netif);
+      netif_set_down(netif);
+    }
+    else
+    {
+      switch (PHYLinkState)
+      {
+      case LAN8742_STATUS_100MBITS_FULLDUPLEX:
+        duplex = ETH_FULLDUPLEX_MODE;
+        speed = ETH_SPEED_100M;
+        break;
+      case LAN8742_STATUS_100MBITS_HALFDUPLEX:
+        duplex = ETH_HALFDUPLEX_MODE;
+        speed = ETH_SPEED_100M;
+        break;
+      case LAN8742_STATUS_10MBITS_FULLDUPLEX:
+        duplex = ETH_FULLDUPLEX_MODE;
+        speed = ETH_SPEED_10M;
+        break;
+      case LAN8742_STATUS_10MBITS_HALFDUPLEX:
+        duplex = ETH_HALFDUPLEX_MODE;
+        speed = ETH_SPEED_10M;
+        break;
+      default:
+        duplex = ETH_FULLDUPLEX_MODE;
+        speed = ETH_SPEED_100M;
+        break;
+      }
+
+    /* Get MAC Config MAC */
+    HAL_ETH_GetMACConfig(&heth, &MACConf);
+    MACConf.DuplexMode = duplex;
+    MACConf.Speed = speed;
+    HAL_ETH_SetMACConfig(&heth, &MACConf);
+
+    HAL_ETH_Start_IT(&heth);
+    netif_set_up(netif);
+    netif_set_link_up(netif);
+/* USER CODE BEGIN PHY_POST_CONFIG */
+
+/* USER CODE END PHY_POST_CONFIG */
+    }
+
   }
   else
   {
@@ -305,7 +413,32 @@ static err_t low_level_output(struct netif *netif, struct pbuf *p)
   TxConfig.TxBuffer = Txbuffer;
   TxConfig.pData = p;
 
-  HAL_ETH_Transmit(&heth, &TxConfig, ETH_DMA_TRANSMIT_TIMEOUT);
+  pbuf_ref(p);
+
+  do
+  {
+    if(HAL_ETH_Transmit_IT(&heth, &TxConfig) == HAL_OK)
+    {
+      errval = ERR_OK;
+    }
+    else
+    {
+
+      if(HAL_ETH_GetError(&heth) & HAL_ETH_ERROR_BUSY)
+      {
+        /* Wait for descriptors to become available */
+        osSemaphoreAcquire(TxPktSemaphore, ETHIF_TX_TIMEOUT);
+        HAL_ETH_ReleaseTxPacket(&heth);
+        errval = ERR_BUF;
+      }
+      else
+      {
+        /* Other error */
+        pbuf_free(p);
+        errval =  ERR_IF;
+      }
+    }
+  }while(errval == ERR_BUF);
 
   return errval;
 }
@@ -339,21 +472,28 @@ static struct pbuf * low_level_input(struct netif *netif)
  *
  * @param netif the lwip network interface structure for this ethernetif
  */
-void ethernetif_input(struct netif *netif)
+void ethernetif_input(void* argument)
 {
   struct pbuf *p = NULL;
+  struct netif *netif = (struct netif *) argument;
 
-  do
+  for( ;; )
   {
-    p = low_level_input( netif );
-    if (p != NULL)
+    if (osSemaphoreAcquire(RxPktSemaphore, TIME_WAITING_FOR_INPUT) == osOK)
     {
-      if (netif->input( p, netif) != ERR_OK )
+      do
       {
-        pbuf_free(p);
-      }
+        p = low_level_input( netif );
+        if (p != NULL)
+        {
+          if (netif->input( p, netif) != ERR_OK )
+          {
+            pbuf_free(p);
+          }
+        }
+      } while(p!=NULL);
     }
-  } while(p!=NULL);
+  }
 }
 
 #if !LWIP_ARP
@@ -451,6 +591,7 @@ void pbuf_free_custom(struct pbuf *p)
   if (RxAllocStatus == RX_ALLOC_ERROR)
   {
     RxAllocStatus = RX_ALLOC_OK;
+    osSemaphoreRelease(RxPktSemaphore);
   }
 }
 
@@ -532,7 +673,7 @@ void HAL_ETH_MspInit(ETH_HandleTypeDef* ethHandle)
     HAL_GPIO_Init(GPIOG, &GPIO_InitStruct);
 
     /* Peripheral interrupt init */
-    HAL_NVIC_SetPriority(ETH_IRQn, 0, 0);
+    HAL_NVIC_SetPriority(ETH_IRQn, 5, 0);
     HAL_NVIC_EnableIRQ(ETH_IRQn);
   /* USER CODE BEGIN ETH_MspInit 1 */
 
@@ -657,12 +798,19 @@ int32_t ETH_PHY_IO_GetTick(void)
   * @brief  Check the ETH link state then update ETH driver and netif link accordingly.
   * @retval None
   */
-void ethernet_link_check_state(struct netif *netif)
+void ethernet_link_thread(void* argument)
 {
   ETH_MACConfigTypeDef MACConf = {0};
   int32_t PHYLinkState = 0;
   uint32_t linkchanged = 0U, speed = 0U, duplex = 0U;
 
+  struct netif *netif = (struct netif *) argument;
+/* USER CODE BEGIN ETH link init */
+
+/* USER CODE END ETH link init */
+
+  for(;;)
+  {
   PHYLinkState = LAN8742_GetLinkState(&LAN8742);
 
   if(netif_is_link_up(netif) && (PHYLinkState <= LAN8742_STATUS_LINK_DOWN))
@@ -712,6 +860,12 @@ void ethernet_link_check_state(struct netif *netif)
     }
   }
 
+/* USER CODE BEGIN ETH link Thread core code for User BSP */
+
+/* USER CODE END ETH link Thread core code for User BSP */
+
+    osDelay(100);
+  }
 }
 
 void HAL_ETH_RxAllocateCallback(uint8_t **buff)
