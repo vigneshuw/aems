@@ -67,7 +67,6 @@ SPI_HandleTypeDef hspi4;
 /* Private function prototypes -----------------------------------------------*/
 static void MX_GPIO_Init(void);
 static void MX_SPI4_Init(void);
-static void MX_SDMMC1_MMC_Init(void);
 /* USER CODE BEGIN PFP */
 //static void FS_FileOperations(void);
 static uint8_t Buffercmp(uint8_t* pBuffer1, uint8_t* pBuffer2, uint32_t BufferLength);
@@ -91,14 +90,14 @@ uint16_t SYNC_RESET_Pin = ADS_SYNC_RESET_Pin;
 bool is_adc_armed;
 
 // FatFs
-FATFS MMCFatFs;  /* File system object for SD card logical drive */
-FIL daqFile;     /* File object */
-char MMCPath[4]; /* SD card logical drive path */
-
-uint8_t workBuffer[_MAX_SS];
-ALIGN_32BYTES(uint8_t rtext[96]);
-
-uint8_t wtext[] = "This is FatFs running on CM4 core"; /* File write buffer */
+//FATFS MMCFatFs;  /* File system object for SD card logical drive */
+//FIL daqFile;     /* File object */
+//char MMCPath[4]; /* SD card logical drive path */
+//
+//uint8_t workBuffer[_MAX_SS];
+//ALIGN_32BYTES(uint8_t rtext[96]);
+//
+//uint8_t wtext[] = "This is FatFs running on CM4 core"; /* File write buffer */
 
 /* USER CODE END 0 */
 
@@ -144,25 +143,26 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_SPI4_Init();
-  MX_SDMMC1_MMC_Init();
   /* USER CODE BEGIN 2 */
   AEMS_Initialize();
 
   /*
    * Link the I/O driver
    */
-  LOCK_HSEM(HSEM_ID_0);
-  if(FATFS_LinkDriver(&MMC_Driver, MMCPath) == 0) {
-	  // Create a FAT volume
-	  res = f_mkfs(MMCPath, FM_ANY, 0, workBuffer, sizeof(workBuffer));
-	  if (res != FR_OK)
-	     {
-	       Error_Handler();
-	     }
-	  /* start the FatFs operations simulaneously with the Core CM4 */
-//	  FS_FileOperations();
-	  UNLOCK_HSEM(HSEM_ID_0);
-  }
+//  LOCK_HSEM(HSEM_ID_0);
+//  if(FATFS_LinkDriver(&MMC_Driver, MMCPath) == 0) {
+//	  // Create a FAT volume
+//	  res = f_mkfs(MMCPath, FM_ANY, 0, workBuffer, sizeof(workBuffer));
+//	  if (res != FR_OK)
+//	     {
+//	       Error_Handler();
+//	     }
+//	  /* start the FatFs operations simulaneously with the Core CM4 */
+////	  FS_FileOperations();
+//	  UNLOCK_HSEM(HSEM_ID_0);
+//  }
+
+
 
   /* USER CODE END 2 */
 
@@ -182,7 +182,7 @@ int main(void)
   * @param None
   * @retval None
   */
-static void MX_SDMMC1_MMC_Init(void)
+void MX_SDMMC1_MMC_Init(void)
 {
 
   /* USER CODE BEGIN SDMMC1_Init 0 */
@@ -196,7 +196,7 @@ static void MX_SDMMC1_MMC_Init(void)
   hmmc1.Init.ClockPowerSave = SDMMC_CLOCK_POWER_SAVE_DISABLE;
   hmmc1.Init.BusWide = SDMMC_BUS_WIDE_8B;
   hmmc1.Init.HardwareFlowControl = SDMMC_HARDWARE_FLOW_CONTROL_DISABLE;
-  hmmc1.Init.ClockDiv = 2;
+  hmmc1.Init.ClockDiv = 3;
   if (HAL_MMC_Init(&hmmc1) != HAL_OK)
   {
     Error_Handler();
@@ -275,8 +275,6 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOE_CLK_ENABLE();
   __HAL_RCC_GPIOC_CLK_ENABLE();
   __HAL_RCC_GPIOF_CLK_ENABLE();
-  __HAL_RCC_GPIOD_CLK_ENABLE();
-  __HAL_RCC_GPIOB_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(ADS_CS_GPIO_Port, ADS_CS_Pin, GPIO_PIN_RESET);

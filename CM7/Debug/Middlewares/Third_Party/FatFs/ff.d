@@ -38,6 +38,7 @@ Middlewares/Third_Party/FatFs/ff.o: \
  ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_pwr_ex.h \
  ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_tim.h \
  ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_tim_ex.h \
+ C:/Users/vigne/STM32CubeIDE/workspace_1.17.0/AEMSv02-Firmware/Common/Inc/hsem_lock.h \
  C:/Users/vigne/STM32CubeIDE/workspace_1.17.0/AEMSv02-Firmware/Middlewares/Third_Party/FatFs/src/diskio.h
 C:/Users/vigne/STM32CubeIDE/workspace_1.17.0/AEMSv02-Firmware/Middlewares/Third_Party/FatFs/src/ff.h:
 C:/Users/vigne/STM32CubeIDE/workspace_1.17.0/AEMSv02-Firmware/Middlewares/Third_Party/FatFs/src/integer.h:
@@ -78,4 +79,5 @@ C:/Users/vigne/STM32CubeIDE/workspace_1.17.0/AEMSv02-Firmware/Middlewares/Third_
 ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_pwr_ex.h:
 ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_tim.h:
 ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_tim_ex.h:
+C:/Users/vigne/STM32CubeIDE/workspace_1.17.0/AEMSv02-Firmware/Common/Inc/hsem_lock.h:
 C:/Users/vigne/STM32CubeIDE/workspace_1.17.0/AEMSv02-Firmware/Middlewares/Third_Party/FatFs/src/diskio.h:

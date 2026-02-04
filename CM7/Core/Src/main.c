@@ -24,6 +24,8 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "led.h"
+#include "ff_gen_drv.h"
+#include "mmc_diskio.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -60,6 +62,7 @@ void SystemClock_Config(void);
 static void MPU_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_TIM1_Init(void);
+static void MX_SDMMC1_MMC_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -71,6 +74,16 @@ uint16_t phyid1, phyid2, bmsr;
 
 extern struct netif gnetif;
 
+
+FATFS MMCFatFs;  /* File system object for SD card logical drive */
+FIL daqFile;     /* File object */
+char MMCPath[4]; /* SD card logical drive path */
+
+uint8_t workBuffer[_MAX_SS];
+ALIGN_32BYTES(uint8_t rtext[96]);
+
+uint8_t wtext[] = "This is FatFs running on CM7 core"; /* File write buffer */
+
 /* USER CODE END 0 */
 
 /**
@@ -81,7 +94,7 @@ int main(void)
 {
 
   /* USER CODE BEGIN 1 */
-
+	FRESULT res;
   /* USER CODE END 1 */
 /* USER CODE BEGIN Boot_Mode_Sequence_0 */
   int32_t timeout;
@@ -145,6 +158,7 @@ Error_Handler();
   MX_GPIO_Init();
   MX_TIM1_Init();
   MX_LWIP_Init();
+  MX_SDMMC1_MMC_Init();
   /* USER CODE BEGIN 2 */
 
   /*
@@ -163,6 +177,20 @@ Error_Handler();
 //  HAL_Delay(100);
 //  HAL_GPIO_WritePin(ETH_NRST_GPIO_Port, ETH_NRST_Pin, GPIO_PIN_SET);
 //  HAL_Delay(1000);
+
+  LOCK_HSEM(HSEM_ID_0);
+    if(FATFS_LinkDriver(&MMC_Driver, MMCPath) == 0) {
+  	  // Create a FAT volume
+  	  res = f_mkfs(MMCPath, FM_ANY, 0, workBuffer, sizeof(workBuffer));
+  	  if (res != FR_OK)
+  	     {
+  		  uint32_t err = HAL_MMC_GetError(&hmmc1);
+  	       Error_Handler();
+  	     }
+  	  /* start the FatFs operations simulaneously with the Core CM4 */
+  //	  FS_FileOperations();
+  	  UNLOCK_HSEM(HSEM_ID_0);
+    }
 
   /* USER CODE END 2 */
 
@@ -248,7 +276,7 @@ void SystemClock_Config(void)
   * @param None
   * @retval None
   */
-void MX_SDMMC1_MMC_Init(void)
+static void MX_SDMMC1_MMC_Init(void)
 {
 
   /* USER CODE BEGIN SDMMC1_Init 0 */
@@ -263,7 +291,7 @@ void MX_SDMMC1_MMC_Init(void)
   hmmc1.Init.ClockPowerSave = SDMMC_CLOCK_POWER_SAVE_DISABLE;
   hmmc1.Init.BusWide = SDMMC_BUS_WIDE_8B;
   hmmc1.Init.HardwareFlowControl = SDMMC_HARDWARE_FLOW_CONTROL_DISABLE;
-  hmmc1.Init.ClockDiv = 2;
+  hmmc1.Init.ClockDiv = 3;
   if (HAL_MMC_Init(&hmmc1) != HAL_OK)
   {
     Error_Handler();
