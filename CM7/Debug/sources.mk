@@ -22,6 +22,7 @@ C_DEPS :=
 
 # Every subdirectory with source files must be described here
 SUBDIRS := \
+BlueNRG-2/Target \
 Common/Src \
 Core/Src \
 Core/Startup \
@@ -31,8 +32,11 @@ FATFS/App \
 FATFS/Target \
 LWIP/App \
 LWIP/Target \
+Library/Bluenrg \
 Library/eth \
 Library/led \
+Middlewares/BlueNRG-2/Wireless/BlueNRG-2/HCI_TL/Basic \
+Middlewares/BlueNRG-2/Wireless/BlueNRG-2/Utils \
 Middlewares/Third_Party/FatFs \
 Middlewares/Third_Party/FreeRTOS \
 Middlewares/Third_Party/LwIP \

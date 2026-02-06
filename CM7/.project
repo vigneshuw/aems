@@ -145,6 +145,16 @@
 			<locationURI>PARENT-1-PROJECT_LOC/Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_sd_ex.c</locationURI>
 		</link>
 		<link>
+			<name>Drivers/STM32H7xx_HAL_Driver/stm32h7xx_hal_spi.c</name>
+			<type>1</type>
+			<locationURI>PARENT-1-PROJECT_LOC/Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_spi.c</locationURI>
+		</link>
+		<link>
+			<name>Drivers/STM32H7xx_HAL_Driver/stm32h7xx_hal_spi_ex.c</name>
+			<type>1</type>
+			<locationURI>PARENT-1-PROJECT_LOC/Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_spi_ex.c</locationURI>
+		</link>
+		<link>
 			<name>Drivers/STM32H7xx_HAL_Driver/stm32h7xx_hal_tim.c</name>
 			<type>1</type>
 			<locationURI>PARENT-1-PROJECT_LOC/Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_tim.c</locationURI>
@@ -648,6 +658,36 @@
 			<name>Middlewares/Third_Party/LwIP/zepif.c</name>
 			<type>1</type>
 			<locationURI>PARENT-1-PROJECT_LOC/Middlewares/Third_Party/LwIP/src/netif/zepif.c</locationURI>
+		</link>
+		<link>
+			<name>Middlewares/BlueNRG-2/Wireless/BlueNRG-2/Utils/ble_list.c</name>
+			<type>1</type>
+			<locationURI>PARENT-1-PROJECT_LOC/Middlewares/ST/BlueNRG-2/utils/ble_list.c</locationURI>
+		</link>
+		<link>
+			<name>Middlewares/BlueNRG-2/Wireless/BlueNRG-2/HCI_TL/Basic/bluenrg1_devConfig.c</name>
+			<type>1</type>
+			<locationURI>PARENT-1-PROJECT_LOC/Middlewares/ST/BlueNRG-2/hci/bluenrg1_devConfig.c</locationURI>
+		</link>
+		<link>
+			<name>Middlewares/BlueNRG-2/Wireless/BlueNRG-2/HCI_TL/Basic/bluenrg1_events.c</name>
+			<type>1</type>
+			<locationURI>PARENT-1-PROJECT_LOC/Middlewares/ST/BlueNRG-2/hci/bluenrg1_events.c</locationURI>
+		</link>
+		<link>
+			<name>Middlewares/BlueNRG-2/Wireless/BlueNRG-2/HCI_TL/Basic/bluenrg1_events_cb.c</name>
+			<type>1</type>
+			<locationURI>PARENT-1-PROJECT_LOC/Middlewares/ST/BlueNRG-2/hci/bluenrg1_events_cb.c</locationURI>
+		</link>
+		<link>
+			<name>Middlewares/BlueNRG-2/Wireless/BlueNRG-2/HCI_TL/Basic/bluenrg1_hci_le.c</name>
+			<type>1</type>
+			<locationURI>PARENT-1-PROJECT_LOC/Middlewares/ST/BlueNRG-2/hci/bluenrg1_hci_le.c</locationURI>
+		</link>
+		<link>
+			<name>Middlewares/BlueNRG-2/Wireless/BlueNRG-2/HCI_TL/Basic/hci_tl.c</name>
+			<type>1</type>
+			<locationURI>PARENT-1-PROJECT_LOC/Middlewares/ST/BlueNRG-2/hci/hci_tl_patterns/Basic/hci_tl.c</locationURI>
 		</link>
 	</linkedResources>
 </projectDescription>

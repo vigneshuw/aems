@@ -1,0 +1,9 @@
+../Core/Src/custom_bus.c:89:9:BSP_SPI5_Init	5
+../Core/Src/custom_bus.c:130:9:BSP_SPI5_DeInit	4
+../Core/Src/custom_bus.c:156:9:BSP_SPI5_Send	2
+../Core/Src/custom_bus.c:173:10:BSP_SPI5_Recv	2
+../Core/Src/custom_bus.c:190:9:BSP_SPI5_SendRecv	2
+../Core/Src/custom_bus.c:259:9:BSP_GetTick	1
+../Core/Src/custom_bus.c:265:26:MX_SPI5_Init	2
+../Core/Src/custom_bus.c:299:13:SPI5_MspInit	1
+../Core/Src/custom_bus.c:334:13:SPI5_MspDeInit	1

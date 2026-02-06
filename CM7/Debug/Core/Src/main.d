@@ -32,8 +32,13 @@ Core/Src/main.o: ../Core/Src/main.c ../Core/Inc/main.h \
  ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_mmc_ex.h \
  ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_pwr.h \
  ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_pwr_ex.h \
+ ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_spi.h \
+ ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_spi_ex.h \
  ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_tim.h \
  ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_tim_ex.h \
+ C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/CM7/BlueNRG-2/Target/hci_tl_interface.h \
+ ../Core/Inc/custom_bus.h ../Core/Inc/custom_conf.h \
+ ../Core/Inc/custom_errno.h \
  C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Common/Inc/hsem_lock.h \
  C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2/cmsis_os.h \
  C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/FreeRTOS/Source/include/FreeRTOS.h \
@@ -87,6 +92,33 @@ Core/Src/main.o: ../Core/Src/main.c ../Core/Inc/main.h \
  ../../Middlewares/Third_Party/LwIP/system/arch/sys_arch.h \
  ../LWIP/Target/ethernetif.h \
  ../../Middlewares/Third_Party/LwIP/src/include/lwip/tcpip.h \
+ C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/CM7/Library/Bluenrg/bluenrg2_intf.h \
+ C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/ST/BlueNRG-2/includes/bluenrg1_types.h \
+ C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/ST/BlueNRG-2/includes/compiler.h \
+ C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/ST/BlueNRG-2/includes/ble_const.h \
+ C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/ST/BlueNRG-2/includes/hci_const.h \
+ C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/ST/BlueNRG-2/includes/link_layer.h \
+ C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/ST/BlueNRG-2/includes/ble_types.h \
+ C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/ST/BlueNRG-2/includes/ble_status.h \
+ C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/ST/BlueNRG-2/hci/hci_tl_patterns/Basic/hci_tl.h \
+ C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/ST/BlueNRG-2/includes/ble_types.h \
+ C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/ST/BlueNRG-2/utils/ble_list.h \
+ C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/CM7/BlueNRG-2/Target/bluenrg_conf.h \
+ C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/ST/BlueNRG-2/includes/ble_status.h \
+ C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/ST/BlueNRG-2/includes/bluenrg1_hal.h \
+ C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/ST/BlueNRG-2/includes/bluenrg1_gap.h \
+ C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/ST/BlueNRG-2/includes/link_layer.h \
+ C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/ST/BlueNRG-2/includes/bluenrg1_gatt_server.h \
+ C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/ST/BlueNRG-2/includes/sm.h \
+ C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/ST/BlueNRG-2/includes/bluenrg1_gap_aci.h \
+ C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/ST/BlueNRG-2/includes/bluenrg1_types.h \
+ C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/ST/BlueNRG-2/includes/bluenrg1_aci.h \
+ C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/ST/BlueNRG-2/includes/bluenrg1_gap_aci.h \
+ C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/ST/BlueNRG-2/includes/bluenrg1_gatt_aci.h \
+ C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/ST/BlueNRG-2/includes/bluenrg1_l2cap_aci.h \
+ C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/ST/BlueNRG-2/includes/bluenrg1_hal_aci.h \
+ C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/ST/BlueNRG-2/includes/bluenrg1_hci_le.h \
+ C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/ST/BlueNRG-2/includes/hci.h \
  C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/CM7/Library/led/led.h \
  ../../Drivers/CMSIS/Device/ST/STM32H7xx/Include/stm32h745xx.h \
  C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Common/Inc/mmc_diskio.h
@@ -124,8 +156,14 @@ Core/Src/main.o: ../Core/Src/main.c ../Core/Inc/main.h \
 ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_mmc_ex.h:
 ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_pwr.h:
 ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_pwr_ex.h:
+../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_spi.h:
+../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_spi_ex.h:
 ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_tim.h:
 ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_tim_ex.h:
+C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/CM7/BlueNRG-2/Target/hci_tl_interface.h:
+../Core/Inc/custom_bus.h:
+../Core/Inc/custom_conf.h:
+../Core/Inc/custom_errno.h:
 C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Common/Inc/hsem_lock.h:
 C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2/cmsis_os.h:
 C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/FreeRTOS/Source/include/FreeRTOS.h:
@@ -181,6 +219,33 @@ C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/F
 ../../Middlewares/Third_Party/LwIP/system/arch/sys_arch.h:
 ../LWIP/Target/ethernetif.h:
 ../../Middlewares/Third_Party/LwIP/src/include/lwip/tcpip.h:
+C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/CM7/Library/Bluenrg/bluenrg2_intf.h:
+C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/ST/BlueNRG-2/includes/bluenrg1_types.h:
+C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/ST/BlueNRG-2/includes/compiler.h:
+C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/ST/BlueNRG-2/includes/ble_const.h:
+C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/ST/BlueNRG-2/includes/hci_const.h:
+C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/ST/BlueNRG-2/includes/link_layer.h:
+C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/ST/BlueNRG-2/includes/ble_types.h:
+C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/ST/BlueNRG-2/includes/ble_status.h:
+C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/ST/BlueNRG-2/hci/hci_tl_patterns/Basic/hci_tl.h:
+C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/ST/BlueNRG-2/includes/ble_types.h:
+C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/ST/BlueNRG-2/utils/ble_list.h:
+C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/CM7/BlueNRG-2/Target/bluenrg_conf.h:
+C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/ST/BlueNRG-2/includes/ble_status.h:
+C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/ST/BlueNRG-2/includes/bluenrg1_hal.h:
+C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/ST/BlueNRG-2/includes/bluenrg1_gap.h:
+C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/ST/BlueNRG-2/includes/link_layer.h:
+C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/ST/BlueNRG-2/includes/bluenrg1_gatt_server.h:
+C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/ST/BlueNRG-2/includes/sm.h:
+C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/ST/BlueNRG-2/includes/bluenrg1_gap_aci.h:
+C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/ST/BlueNRG-2/includes/bluenrg1_types.h:
+C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/ST/BlueNRG-2/includes/bluenrg1_aci.h:
+C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/ST/BlueNRG-2/includes/bluenrg1_gap_aci.h:
+C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/ST/BlueNRG-2/includes/bluenrg1_gatt_aci.h:
+C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/ST/BlueNRG-2/includes/bluenrg1_l2cap_aci.h:
+C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/ST/BlueNRG-2/includes/bluenrg1_hal_aci.h:
+C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/ST/BlueNRG-2/includes/bluenrg1_hci_le.h:
+C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/ST/BlueNRG-2/includes/hci.h:
 C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/CM7/Library/led/led.h:
 ../../Drivers/CMSIS/Device/ST/STM32H7xx/Include/stm32h745xx.h:
 C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Common/Inc/mmc_diskio.h:

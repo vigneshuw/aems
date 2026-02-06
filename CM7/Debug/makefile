@@ -12,8 +12,11 @@ RM := rm -rf
 -include Middlewares/Third_Party/LwIP/subdir.mk
 -include Middlewares/Third_Party/FreeRTOS/subdir.mk
 -include Middlewares/Third_Party/FatFs/subdir.mk
+-include Middlewares/BlueNRG-2/Wireless/BlueNRG-2/Utils/subdir.mk
+-include Middlewares/BlueNRG-2/Wireless/BlueNRG-2/HCI_TL/Basic/subdir.mk
 -include Library/led/subdir.mk
 -include Library/eth/subdir.mk
+-include Library/Bluenrg/subdir.mk
 -include LWIP/Target/subdir.mk
 -include LWIP/App/subdir.mk
 -include FATFS/Target/subdir.mk
@@ -23,6 +26,7 @@ RM := rm -rf
 -include Core/Startup/subdir.mk
 -include Core/Src/subdir.mk
 -include Common/Src/subdir.mk
+-include BlueNRG-2/Target/subdir.mk
 -include objects.mk
 
 ifneq ($(MAKECMDGOALS),clean)

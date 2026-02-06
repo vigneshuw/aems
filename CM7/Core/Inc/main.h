@@ -29,6 +29,7 @@ extern "C" {
 /* Includes ------------------------------------------------------------------*/
 #include "stm32h7xx_hal.h"
 
+#include "hci_tl_interface.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "hsem_lock.h"
@@ -59,6 +60,12 @@ void Error_Handler(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
+#define BLE_TE_Pin GPIO_PIN_3
+#define BLE_TE_GPIO_Port GPIOE
+#define TT_Pin GPIO_PIN_4
+#define TT_GPIO_Port GPIOE
+#define SPI5_CS_Pin GPIO_PIN_10
+#define SPI5_CS_GPIO_Port GPIOF
 #define RMII_MDC_Pin GPIO_PIN_1
 #define RMII_MDC_GPIO_Port GPIOC
 #define RMII_REF_CLK_Pin GPIO_PIN_1
@@ -75,6 +82,8 @@ void Error_Handler(void);
 #define RMII_RXD1_GPIO_Port GPIOC
 #define RMII_TX_EN_Pin GPIO_PIN_11
 #define RMII_TX_EN_GPIO_Port GPIOB
+#define BLE_RST_Pin GPIO_PIN_8
+#define BLE_RST_GPIO_Port GPIOD
 #define ADS_STM32_CLKOUT_Pin GPIO_PIN_8
 #define ADS_STM32_CLKOUT_GPIO_Port GPIOA
 #define RMII_TXD1_Pin GPIO_PIN_12
