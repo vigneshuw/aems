@@ -60,10 +60,9 @@ void Error_Handler(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
-#define BLE_TE_Pin GPIO_PIN_3
-#define BLE_TE_GPIO_Port GPIOE
-#define TT_Pin GPIO_PIN_4
-#define TT_GPIO_Port GPIOE
+#define BLE_INT_Pin GPIO_PIN_3
+#define BLE_INT_GPIO_Port GPIOE
+#define BLE_INT_EXTI_IRQn EXTI3_IRQn
 #define SPI5_CS_Pin GPIO_PIN_10
 #define SPI5_CS_GPIO_Port GPIOF
 #define RMII_MDC_Pin GPIO_PIN_1

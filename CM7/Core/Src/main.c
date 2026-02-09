@@ -18,7 +18,6 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
-#include "cmsis_os.h"
 #include "fatfs.h"
 #include "lwip.h"
 
@@ -55,13 +54,6 @@ MMC_HandleTypeDef hmmc1;
 
 TIM_HandleTypeDef htim1;
 
-/* Definitions for defaultTask */
-osThreadId_t defaultTaskHandle;
-const osThreadAttr_t defaultTask_attributes = {
-  .name = "defaultTask",
-  .stack_size = 512 * 4,
-  .priority = (osPriority_t) osPriorityNormal,
-};
 /* USER CODE BEGIN PV */
 
 /* USER CODE END PV */
@@ -72,8 +64,6 @@ static void MPU_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_TIM1_Init(void);
 static void MX_SDMMC1_MMC_Init(void);
-void StartDefaultTask(void *argument);
-
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -173,8 +163,8 @@ Error_Handler();
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_TIM1_Init();
+  MX_LWIP_Init();
   MX_SDMMC1_MMC_Init();
-  MX_FATFS_Init();
   /* USER CODE BEGIN 2 */
 
   /*
@@ -186,6 +176,10 @@ Error_Handler();
   LED_Init(&rgbLed, &htim1, TIM_CHANNEL_1, TIM_CHANNEL_2, TIM_CHANNEL_3);
   LED_ON(&rgbLed);
   LED_SetBrightness(&rgbLed, 0, 40, 0);
+
+  // Initialize BLE
+  BlueNRG_Init();
+  BlueNRG_StartAdvertising();
 
 //  // Do a reset here
 //  HAL_Delay(100);
@@ -211,42 +205,6 @@ Error_Handler();
 
   /* USER CODE END 2 */
 
-  /* Init scheduler */
-  osKernelInitialize();
-
-  /* USER CODE BEGIN RTOS_MUTEX */
-  /* add mutexes, ... */
-  /* USER CODE END RTOS_MUTEX */
-
-  /* USER CODE BEGIN RTOS_SEMAPHORES */
-  /* add semaphores, ... */
-  /* USER CODE END RTOS_SEMAPHORES */
-
-  /* USER CODE BEGIN RTOS_TIMERS */
-  /* start timers, add new ones, ... */
-  /* USER CODE END RTOS_TIMERS */
-
-  /* USER CODE BEGIN RTOS_QUEUES */
-  /* add queues, ... */
-  /* USER CODE END RTOS_QUEUES */
-
-  /* Create the thread(s) */
-  /* creation of defaultTask */
-  defaultTaskHandle = osThreadNew(StartDefaultTask, NULL, &defaultTask_attributes);
-
-  /* USER CODE BEGIN RTOS_THREADS */
-  /* add threads, ... */
-  /* USER CODE END RTOS_THREADS */
-
-  /* USER CODE BEGIN RTOS_EVENTS */
-  /* add events, ... */
-  /* USER CODE END RTOS_EVENTS */
-
-  /* Start scheduler */
-  osKernelStart();
-
-  /* We should never get here as control is now taken by the scheduler */
-
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
@@ -254,6 +212,9 @@ Error_Handler();
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+	  ethernetif_input(&gnetif);
+	  sys_check_timeouts();
+	  BlueNRG_Process();
 
   }
   /* USER CODE END 3 */
@@ -466,17 +427,14 @@ static void MX_GPIO_Init(void)
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(ETH_NRST_GPIO_Port, ETH_NRST_Pin, GPIO_PIN_SET);
 
-  /*Configure GPIO pin : BLE_TE_Pin */
-  GPIO_InitStruct.Pin = BLE_TE_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(BLE_TE_GPIO_Port, &GPIO_InitStruct);
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(BLE_RST_GPIO_Port, BLE_RST_Pin, GPIO_PIN_SET);
 
-  /*Configure GPIO pin : TT_Pin */
-  GPIO_InitStruct.Pin = TT_Pin;
+  /*Configure GPIO pin : BLE_INT_Pin */
+  GPIO_InitStruct.Pin = BLE_INT_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(TT_GPIO_Port, &GPIO_InitStruct);
+  HAL_GPIO_Init(BLE_INT_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pin : SPI5_CS_Pin */
   GPIO_InitStruct.Pin = SPI5_CS_Pin;
@@ -494,8 +452,9 @@ static void MX_GPIO_Init(void)
 
   /*Configure GPIO pin : BLE_RST_Pin */
   GPIO_InitStruct.Pin = BLE_RST_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
   HAL_GPIO_Init(BLE_RST_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pin : PD0 */
@@ -522,6 +481,10 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Alternate = GPIO_AF5_SPI1;
   HAL_GPIO_Init(GPIOG, &GPIO_InitStruct);
 
+  /* EXTI interrupt init*/
+  HAL_NVIC_SetPriority(BLE_INT_EXTI_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(BLE_INT_EXTI_IRQn);
+
   /* USER CODE BEGIN MX_GPIO_Init_2 */
   HAL_Delay(5000);
   /* USER CODE END MX_GPIO_Init_2 */
@@ -530,28 +493,6 @@ static void MX_GPIO_Init(void)
 /* USER CODE BEGIN 4 */
 
 /* USER CODE END 4 */
-
-/* USER CODE BEGIN Header_StartDefaultTask */
-/**
-  * @brief  Function implementing the defaultTask thread.
-  * @param  argument: Not used
-  * @retval None
-  */
-/* USER CODE END Header_StartDefaultTask */
-void StartDefaultTask(void *argument)
-{
-  /* init code for LWIP */
-  MX_LWIP_Init();
-  /* USER CODE BEGIN 5 */
-  /* Infinite loop */
-  for(;;)
-  {
-	ethernetif_input(&gnetif);
-	sys_check_timeouts();
-	BlueNRG_Process();
-  }
-  /* USER CODE END 5 */
-}
 
  /* MPU Configuration */
 
@@ -580,28 +521,6 @@ void MPU_Config(void)
   /* Enables the MPU */
   HAL_MPU_Enable(MPU_PRIVILEGED_DEFAULT);
 
-}
-
-/**
-  * @brief  Period elapsed callback in non blocking mode
-  * @note   This function is called  when TIM6 interrupt took place, inside
-  * HAL_TIM_IRQHandler(). It makes a direct call to HAL_IncTick() to increment
-  * a global variable "uwTick" used as application time base.
-  * @param  htim : TIM handle
-  * @retval None
-  */
-void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
-{
-  /* USER CODE BEGIN Callback 0 */
-
-  /* USER CODE END Callback 0 */
-  if (htim->Instance == TIM6)
-  {
-    HAL_IncTick();
-  }
-  /* USER CODE BEGIN Callback 1 */
-
-  /* USER CODE END Callback 1 */
 }
 
 /**

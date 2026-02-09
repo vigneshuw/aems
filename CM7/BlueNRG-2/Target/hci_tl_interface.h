@@ -30,21 +30,21 @@
 /* Exported Defines ----------------------------------------------------------*/
 
 #define HCI_TL_SPI_EXTI_PORT  GPIOE
-#define HCI_TL_SPI_EXTI_PIN   GPIO_PIN_4
-#define HCI_TL_SPI_EXTI_IRQn  EXTI4_IRQn
+#define HCI_TL_SPI_EXTI_PIN   GPIO_PIN_3
+#define HCI_TL_SPI_EXTI_IRQn  EXTI3_IRQn
 
 #define HCI_TL_SPI_IRQ_PORT   GPIOE
-#define HCI_TL_SPI_IRQ_PIN    GPIO_PIN_4
+#define HCI_TL_SPI_IRQ_PIN    GPIO_PIN_3
 
 #define HCI_TL_SPI_CS_PORT    GPIOF
 #define HCI_TL_SPI_CS_PIN     GPIO_PIN_10
 
-#define HCI_TL_RST_PORT
-#define HCI_TL_RST_PIN
+#define HCI_TL_RST_PORT       GPIOD
+#define HCI_TL_RST_PIN        GPIO_PIN_8
 
 /* Exported variables --------------------------------------------------------*/
-extern EXTI_HandleTypeDef     hexti4;
-#define H_EXTI_4 hexti4
+extern EXTI_HandleTypeDef     hexti3;
+#define H_EXTI_3 hexti3
 
 /* Exported Functions --------------------------------------------------------*/
 int32_t HCI_TL_SPI_Init    (void* pConf);
