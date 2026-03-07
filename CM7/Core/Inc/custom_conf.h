@@ -49,7 +49,7 @@
 #define USE_COM_LOG                         1U
 
 /* IRQ priorities */
-#define BSP_BUTTON_USER_IT_PRIORITY         15U
+#define BSP_BUTTON_USER_IT_PRIORITY         14U
 
 /* I2C1 Frequency in Hz  */
 #define BUS_I2C1_FREQUENCY                  100000U /* Frequency of I2C1 = 100 KHz*/

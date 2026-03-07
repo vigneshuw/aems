@@ -1,7 +1,10 @@
-../Core/Src/main.c:99:5:main	48	static,ignoring_inline_asm
-../Core/Src/main.c:227:6:SystemClock_Config	120	static
-../Core/Src/main.c:289:13:MX_SDMMC1_MMC_Init	8	static
-../Core/Src/main.c:320:13:MX_TIM1_Init	112	static
-../Core/Src/main.c:408:13:MX_GPIO_Init	56	static
-../Core/Src/main.c:499:6:MPU_Config	24	static
-../Core/Src/main.c:530:6:Error_Handler	4	static,ignoring_inline_asm
+../Core/Src/main.c:123:5:main	48	static,ignoring_inline_asm
+../Core/Src/main.c:285:6:SystemClock_Config	120	static
+../Core/Src/main.c:347:13:MX_SDMMC1_MMC_Init	8	static
+../Core/Src/main.c:378:13:MX_TIM1_Init	112	static
+../Core/Src/main.c:466:13:MX_GPIO_Init	56	static
+../Core/Src/main.c:562:6:StartDefaultTask	16	static
+../Core/Src/main.c:584:6:StartBleProcess	16	static
+../Core/Src/main.c:598:6:MPU_Config	24	static
+../Core/Src/main.c:633:6:HAL_TIM_PeriodElapsedCallback	16	static
+../Core/Src/main.c:651:6:Error_Handler	4	static,ignoring_inline_asm

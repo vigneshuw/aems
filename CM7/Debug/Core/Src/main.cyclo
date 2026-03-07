@@ -1,7 +1,10 @@
-../Core/Src/main.c:99:5:main	14
-../Core/Src/main.c:227:6:SystemClock_Config	4
-../Core/Src/main.c:289:13:MX_SDMMC1_MMC_Init	2
-../Core/Src/main.c:320:13:MX_TIM1_Init	9
-../Core/Src/main.c:408:13:MX_GPIO_Init	1
-../Core/Src/main.c:499:6:MPU_Config	1
-../Core/Src/main.c:530:6:Error_Handler	1
+../Core/Src/main.c:123:5:main	14
+../Core/Src/main.c:285:6:SystemClock_Config	4
+../Core/Src/main.c:347:13:MX_SDMMC1_MMC_Init	2
+../Core/Src/main.c:378:13:MX_TIM1_Init	9
+../Core/Src/main.c:466:13:MX_GPIO_Init	1
+../Core/Src/main.c:562:6:StartDefaultTask	1
+../Core/Src/main.c:584:6:StartBleProcess	1
+../Core/Src/main.c:598:6:MPU_Config	1
+../Core/Src/main.c:633:6:HAL_TIM_PeriodElapsedCallback	2
+../Core/Src/main.c:651:6:Error_Handler	1

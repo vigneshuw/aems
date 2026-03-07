@@ -39,5 +39,6 @@ Middlewares/BlueNRG-2/Wireless/BlueNRG-2/Controller \
 Middlewares/BlueNRG-2/Wireless/BlueNRG-2/HCI_TL/Basic \
 Middlewares/BlueNRG-2/Wireless/BlueNRG-2/Utils \
 Middlewares/Third_Party/FatFs \
+Middlewares/Third_Party/FreeRTOS \
 Middlewares/Third_Party/LwIP \
 

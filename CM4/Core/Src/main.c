@@ -143,6 +143,7 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_SPI4_Init();
+  MX_FATFS_Init();
   /* USER CODE BEGIN 2 */
   AEMS_Initialize();
 
