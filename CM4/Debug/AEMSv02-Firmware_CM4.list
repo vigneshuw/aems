@@ -21,25 +21,25 @@ Idx Name          Size      VMA       LMA       File off  Algn
                   ALLOC
   8 .ARM.attributes 00000030  00000000  00000000  00005044  2**0
                   CONTENTS, READONLY
-  9 .debug_info   0000d1f3  00000000  00000000  00005074  2**0
+  9 .debug_info   0000d1e7  00000000  00000000  00005074  2**0
                   CONTENTS, READONLY, DEBUGGING, OCTETS
- 10 .debug_abbrev 0000236b  00000000  00000000  00012267  2**0
+ 10 .debug_abbrev 0000236b  00000000  00000000  0001225b  2**0
                   CONTENTS, READONLY, DEBUGGING, OCTETS
- 11 .debug_aranges 00000b80  00000000  00000000  000145d8  2**3
+ 11 .debug_aranges 00000b80  00000000  00000000  000145c8  2**3
                   CONTENTS, READONLY, DEBUGGING, OCTETS
- 12 .debug_rnglists 0000088d  00000000  00000000  00015158  2**0
+ 12 .debug_rnglists 0000088d  00000000  00000000  00015148  2**0
                   CONTENTS, READONLY, DEBUGGING, OCTETS
- 13 .debug_macro  00003fcd  00000000  00000000  000159e5  2**0
+ 13 .debug_macro  00003fcd  00000000  00000000  000159d5  2**0
                   CONTENTS, READONLY, DEBUGGING, OCTETS
- 14 .debug_line   0000fcf9  00000000  00000000  000199b2  2**0
+ 14 .debug_line   0000fd02  00000000  00000000  000199a2  2**0
                   CONTENTS, READONLY, DEBUGGING, OCTETS
- 15 .debug_str    00180513  00000000  00000000  000296ab  2**0
+ 15 .debug_str    0018049d  00000000  00000000  000296a4  2**0
                   CONTENTS, READONLY, DEBUGGING, OCTETS
- 16 .comment      00000043  00000000  00000000  001a9bbe  2**0
+ 16 .comment      00000043  00000000  00000000  001a9b41  2**0
                   CONTENTS, READONLY
- 17 .debug_frame  00002da4  00000000  00000000  001a9c04  2**2
+ 17 .debug_frame  00002a88  00000000  00000000  001a9b84  2**2
                   CONTENTS, READONLY, DEBUGGING, OCTETS
- 18 .debug_line_str 00000069  00000000  00000000  001ac9a8  2**0
+ 18 .debug_line_str 00000069  00000000  00000000  001ac60c  2**0
                   CONTENTS, READONLY, DEBUGGING, OCTETS
 
 Disassembly of section .text:
@@ -9856,18 +9856,18 @@ uint8_t FATFS_LinkDriver(const Diskio_drvTypeDef *drv, char *path)
 
 08103e88 <__libc_init_array>:
  8103e88:	b570      	push	{r4, r5, r6, lr}
- 8103e8a:	4d0d      	ldr	r5, [pc, #52]	@ (8103ec0 <__libc_init_array+0x38>)
- 8103e8c:	4c0d      	ldr	r4, [pc, #52]	@ (8103ec4 <__libc_init_array+0x3c>)
- 8103e8e:	1b64      	subs	r4, r4, r5
- 8103e90:	10a4      	asrs	r4, r4, #2
+ 8103e8a:	4b0d      	ldr	r3, [pc, #52]	@ (8103ec0 <__libc_init_array+0x38>)
+ 8103e8c:	4d0d      	ldr	r5, [pc, #52]	@ (8103ec4 <__libc_init_array+0x3c>)
+ 8103e8e:	1b5b      	subs	r3, r3, r5
+ 8103e90:	109c      	asrs	r4, r3, #2
  8103e92:	2600      	movs	r6, #0
  8103e94:	42a6      	cmp	r6, r4
  8103e96:	d109      	bne.n	8103eac <__libc_init_array+0x24>
- 8103e98:	4d0b      	ldr	r5, [pc, #44]	@ (8103ec8 <__libc_init_array+0x40>)
- 8103e9a:	4c0c      	ldr	r4, [pc, #48]	@ (8103ecc <__libc_init_array+0x44>)
- 8103e9c:	f000 f818 	bl	8103ed0 <_init>
- 8103ea0:	1b64      	subs	r4, r4, r5
- 8103ea2:	10a4      	asrs	r4, r4, #2
+ 8103e98:	f000 f81a 	bl	8103ed0 <_init>
+ 8103e9c:	4d0a      	ldr	r5, [pc, #40]	@ (8103ec8 <__libc_init_array+0x40>)
+ 8103e9e:	4b0b      	ldr	r3, [pc, #44]	@ (8103ecc <__libc_init_array+0x44>)
+ 8103ea0:	1b5b      	subs	r3, r3, r5
+ 8103ea2:	109c      	asrs	r4, r3, #2
  8103ea4:	2600      	movs	r6, #0
  8103ea6:	42a6      	cmp	r6, r4
  8103ea8:	d105      	bne.n	8103eb6 <__libc_init_array+0x2e>

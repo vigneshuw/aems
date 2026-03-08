@@ -14,7 +14,7 @@ C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/L
 C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/LwIP/src/api/sockets.c:718:1:lwip_bind	9
 C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/LwIP/src/api/sockets.c:772:1:lwip_close	6
 C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/LwIP/src/api/sockets.c:813:1:lwip_connect	11
-C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/LwIP/src/api/sockets.c:881:1:lwip_listen	8
+C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/LwIP/src/api/sockets.c:881:1:lwip_listen	7
 C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/LwIP/src/api/sockets.c:920:1:lwip_recv_tcp	22
 C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/LwIP/src/api/sockets.c:1023:1:lwip_sock_make_addr	6
 C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/LwIP/src/api/sockets.c:1056:1:lwip_recv_tcp_from	6

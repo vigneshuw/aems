@@ -40,7 +40,7 @@ Core/Src/main.o: ../Core/Src/main.c ../Core/Inc/main.h \
  ../Core/Inc/custom_bus.h ../Core/Inc/custom_conf.h \
  ../Core/Inc/custom_errno.h \
  C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Common/Inc/hsem_lock.h \
- C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2/cmsis_os.h \
+ C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS/cmsis_os.h \
  C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/FreeRTOS/Source/include/FreeRTOS.h \
  ../Core/Inc/FreeRTOSConfig.h \
  C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/FreeRTOS/Source/include/projdefs.h \
@@ -50,7 +50,13 @@ Core/Src/main.o: ../Core/Src/main.c ../Core/Inc/main.h \
  C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/FreeRTOS/Source/include/mpu_wrappers.h \
  C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/FreeRTOS/Source/include/task.h \
  C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/FreeRTOS/Source/include/list.h \
- C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2/cmsis_os2.h \
+ C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/FreeRTOS/Source/include/timers.h \
+ C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/FreeRTOS/Source/include/task.h \
+ C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/FreeRTOS/Source/include/queue.h \
+ C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/FreeRTOS/Source/include/semphr.h \
+ C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/FreeRTOS/Source/include/queue.h \
+ C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/FreeRTOS/Source/include/event_groups.h \
+ C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/FreeRTOS/Source/include/timers.h \
  ../FATFS/App/fatfs.h ../../Middlewares/Third_Party/FatFs/src/ff.h \
  ../../Middlewares/Third_Party/FatFs/src/integer.h \
  ../FATFS/Target/ffconf.h \
@@ -121,7 +127,12 @@ Core/Src/main.o: ../Core/Src/main.c ../Core/Inc/main.h \
  C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/ST/BlueNRG-2/includes/hci.h \
  C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/CM7/Library/led/led.h \
  ../../Drivers/CMSIS/Device/ST/STM32H7xx/Include/stm32h745xx.h \
- C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Common/Inc/mmc_diskio.h
+ C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Common/Inc/mmc_diskio.h \
+ ../../Middlewares/Third_Party/LwIP/src/include/lwip/udp.h \
+ ../../Middlewares/Third_Party/LwIP/src/include/lwip/ip.h \
+ ../../Middlewares/Third_Party/LwIP/src/include/lwip/ip6.h \
+ ../../Middlewares/Third_Party/LwIP/src/include/lwip/prot/ip.h \
+ ../../Middlewares/Third_Party/LwIP/src/include/lwip/prot/udp.h
 ../Core/Inc/main.h:
 ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal.h:
 ../Core/Inc/stm32h7xx_hal_conf.h:
@@ -165,7 +176,7 @@ C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/CM7/BlueNRG-2/Target/hci_
 ../Core/Inc/custom_conf.h:
 ../Core/Inc/custom_errno.h:
 C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Common/Inc/hsem_lock.h:
-C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2/cmsis_os.h:
+C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS/cmsis_os.h:
 C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/FreeRTOS/Source/include/FreeRTOS.h:
 ../Core/Inc/FreeRTOSConfig.h:
 C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/FreeRTOS/Source/include/projdefs.h:
@@ -175,7 +186,13 @@ C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/F
 C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/FreeRTOS/Source/include/mpu_wrappers.h:
 C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/FreeRTOS/Source/include/task.h:
 C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/FreeRTOS/Source/include/list.h:
-C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2/cmsis_os2.h:
+C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/FreeRTOS/Source/include/timers.h:
+C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/FreeRTOS/Source/include/task.h:
+C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/FreeRTOS/Source/include/queue.h:
+C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/FreeRTOS/Source/include/semphr.h:
+C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/FreeRTOS/Source/include/queue.h:
+C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/FreeRTOS/Source/include/event_groups.h:
+C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/FreeRTOS/Source/include/timers.h:
 ../FATFS/App/fatfs.h:
 ../../Middlewares/Third_Party/FatFs/src/ff.h:
 ../../Middlewares/Third_Party/FatFs/src/integer.h:
@@ -249,3 +266,8 @@ C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/ST/BlueNRG-2/
 C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/CM7/Library/led/led.h:
 ../../Drivers/CMSIS/Device/ST/STM32H7xx/Include/stm32h745xx.h:
 C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Common/Inc/mmc_diskio.h:
+../../Middlewares/Third_Party/LwIP/src/include/lwip/udp.h:
+../../Middlewares/Third_Party/LwIP/src/include/lwip/ip.h:
+../../Middlewares/Third_Party/LwIP/src/include/lwip/ip6.h:
+../../Middlewares/Third_Party/LwIP/src/include/lwip/prot/ip.h:
+../../Middlewares/Third_Party/LwIP/src/include/lwip/prot/udp.h:

@@ -55,7 +55,7 @@ Middlewares/Third_Party/LwIP/memp.o: \
  ../../Middlewares/Third_Party/LwIP/src/include/lwip/sys.h \
  ../../Middlewares/Third_Party/LwIP/src/include/lwip/err.h \
  ../../Middlewares/Third_Party/LwIP/system/arch/sys_arch.h \
- C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2/cmsis_os.h \
+ C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS/cmsis_os.h \
  ../../Middlewares/Third_Party/FreeRTOS/Source/include/FreeRTOS.h \
  ../Core/Inc/FreeRTOSConfig.h \
  ../../Middlewares/Third_Party/FreeRTOS/Source/include/projdefs.h \
@@ -65,7 +65,13 @@ Middlewares/Third_Party/LwIP/memp.o: \
  ../../Middlewares/Third_Party/FreeRTOS/Source/include/mpu_wrappers.h \
  ../../Middlewares/Third_Party/FreeRTOS/Source/include/task.h \
  ../../Middlewares/Third_Party/FreeRTOS/Source/include/list.h \
- C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2/cmsis_os2.h \
+ ../../Middlewares/Third_Party/FreeRTOS/Source/include/timers.h \
+ ../../Middlewares/Third_Party/FreeRTOS/Source/include/task.h \
+ ../../Middlewares/Third_Party/FreeRTOS/Source/include/queue.h \
+ ../../Middlewares/Third_Party/FreeRTOS/Source/include/semphr.h \
+ ../../Middlewares/Third_Party/FreeRTOS/Source/include/queue.h \
+ ../../Middlewares/Third_Party/FreeRTOS/Source/include/event_groups.h \
+ ../../Middlewares/Third_Party/FreeRTOS/Source/include/timers.h \
  ../../Middlewares/Third_Party/LwIP/src/include/lwip/pbuf.h \
  ../../Middlewares/Third_Party/LwIP/src/include/lwip/raw.h \
  ../../Middlewares/Third_Party/LwIP/src/include/lwip/udp.h \
@@ -168,7 +174,7 @@ C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Common/Inc/hsem_lock.h:
 ../../Middlewares/Third_Party/LwIP/src/include/lwip/sys.h:
 ../../Middlewares/Third_Party/LwIP/src/include/lwip/err.h:
 ../../Middlewares/Third_Party/LwIP/system/arch/sys_arch.h:
-C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2/cmsis_os.h:
+C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS/cmsis_os.h:
 ../../Middlewares/Third_Party/FreeRTOS/Source/include/FreeRTOS.h:
 ../Core/Inc/FreeRTOSConfig.h:
 ../../Middlewares/Third_Party/FreeRTOS/Source/include/projdefs.h:
@@ -178,7 +184,13 @@ C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/F
 ../../Middlewares/Third_Party/FreeRTOS/Source/include/mpu_wrappers.h:
 ../../Middlewares/Third_Party/FreeRTOS/Source/include/task.h:
 ../../Middlewares/Third_Party/FreeRTOS/Source/include/list.h:
-C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2/cmsis_os2.h:
+../../Middlewares/Third_Party/FreeRTOS/Source/include/timers.h:
+../../Middlewares/Third_Party/FreeRTOS/Source/include/task.h:
+../../Middlewares/Third_Party/FreeRTOS/Source/include/queue.h:
+../../Middlewares/Third_Party/FreeRTOS/Source/include/semphr.h:
+../../Middlewares/Third_Party/FreeRTOS/Source/include/queue.h:
+../../Middlewares/Third_Party/FreeRTOS/Source/include/event_groups.h:
+../../Middlewares/Third_Party/FreeRTOS/Source/include/timers.h:
 ../../Middlewares/Third_Party/LwIP/src/include/lwip/pbuf.h:
 ../../Middlewares/Third_Party/LwIP/src/include/lwip/raw.h:
 ../../Middlewares/Third_Party/LwIP/src/include/lwip/udp.h:
