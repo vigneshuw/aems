@@ -36,6 +36,27 @@ extern "C" {
 
 /* Exported types ------------------------------------------------------------*/
 /* USER CODE BEGIN ET */
+typedef enum
+{
+  DAQ_STATE_IDLE = 0,
+  DAQ_STATE_PREPARING,
+  DAQ_STATE_ACQUIRING,
+  DAQ_STATE_STOPPING,
+  DAQ_STATE_FINALIZING,
+  DAQ_STATE_ERROR
+} DaqState_t;
+
+typedef struct
+{
+  volatile DaqState_t state;
+  volatile uint32_t events;
+  volatile uint32_t last_error;
+  volatile uint32_t samples_captured;
+  volatile uint32_t dropped_buffers;
+  volatile uint64_t bytes_queued;
+  volatile uint64_t bytes_written;
+  volatile uint8_t is_adc_armed;
+} DaqContext_t;
 
 /* USER CODE END ET */
 
@@ -54,6 +75,7 @@ void Error_Handler(void);
 void MX_SDMMC1_MMC_Init(void);
 
 /* USER CODE BEGIN EFP */
+extern volatile DaqContext_t g_daq_ctx;
 
 /* USER CODE END EFP */
 

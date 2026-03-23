@@ -127,7 +127,12 @@ Core/Src/main.o: ../Core/Src/main.c ../Core/Inc/main.h \
  C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/ST/BlueNRG-2/includes/hci.h \
  C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/CM7/Library/led/led.h \
  ../../Drivers/CMSIS/Device/ST/STM32H7xx/Include/stm32h745xx.h \
+ C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Common/Inc/hsem_ids.h \
+ ../Core/Inc/ipc.h \
+ C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Common/Inc/ipc_shared.h \
  C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Common/Inc/mmc_diskio.h \
+ C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Common/Inc/shared_memory.h \
+ C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Common/Inc/ipc_shared.h \
  ../../Middlewares/Third_Party/LwIP/src/include/lwip/udp.h \
  ../../Middlewares/Third_Party/LwIP/src/include/lwip/ip.h \
  ../../Middlewares/Third_Party/LwIP/src/include/lwip/ip6.h \
@@ -265,7 +270,12 @@ C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/ST/BlueNRG-2/
 C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/ST/BlueNRG-2/includes/hci.h:
 C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/CM7/Library/led/led.h:
 ../../Drivers/CMSIS/Device/ST/STM32H7xx/Include/stm32h745xx.h:
+C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Common/Inc/hsem_ids.h:
+../Core/Inc/ipc.h:
+C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Common/Inc/ipc_shared.h:
 C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Common/Inc/mmc_diskio.h:
+C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Common/Inc/shared_memory.h:
+C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Common/Inc/ipc_shared.h:
 ../../Middlewares/Third_Party/LwIP/src/include/lwip/udp.h:
 ../../Middlewares/Third_Party/LwIP/src/include/lwip/ip.h:
 ../../Middlewares/Third_Party/LwIP/src/include/lwip/ip6.h:

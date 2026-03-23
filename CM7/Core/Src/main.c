@@ -27,7 +27,11 @@
 #include "bluenrg2_intf.h"
 #include "led.h"
 #include "ff_gen_drv.h"
+#include "hsem_ids.h"
+#include "ipc.h"
+#include "ipc_shared.h"
 #include "mmc_diskio.h"
+#include "shared_memory.h"
 #include <string.h>
 #include "lwip/udp.h"
 /* USER CODE END Includes */
@@ -71,13 +75,13 @@ static void MX_SDMMC1_MMC_Init(void);
 void StartDefaultTask(void const * argument);
 
 /* USER CODE BEGIN PFP */
-
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 LED rgbLed;
 uint16_t phyid1, phyid2, bmsr;
+static uint32_t ipc_seq = 1U;
 
 extern struct netif gnetif;
 
@@ -193,7 +197,7 @@ Error_Handler();
 //  HAL_GPIO_WritePin(ETH_NRST_GPIO_Port, ETH_NRST_Pin, GPIO_PIN_SET);
 //  HAL_Delay(1000);
 
-  LOCK_HSEM(HSEM_ID_0);
+  LOCK_HSEM(HSEM_FS_GLOBAL_ID);
     if(FATFS_LinkDriver(&MMC_Driver, MMCPath) == 0) {
   	  // Create a FAT volume
   	  res = f_mkfs(MMCPath, FM_ANY, 0, workBuffer, sizeof(workBuffer));
@@ -205,8 +209,10 @@ Error_Handler();
   	     }
   	  /* start the FatFs operations simulaneously with the Core CM4 */
   //	  FS_FileOperations();
-  	  UNLOCK_HSEM(HSEM_ID_0);
+  	  UNLOCK_HSEM(HSEM_FS_GLOBAL_ID);
     }
+
+  IPC_InitSharedRegion();
 
   /* USER CODE END 2 */
 
@@ -522,7 +528,6 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-
 /* USER CODE END 4 */
 
 /* USER CODE BEGIN Header_StartDefaultTask */
@@ -537,6 +542,8 @@ void StartDefaultTask(void const * argument)
   /* init code for LWIP */
   MX_LWIP_Init();
   /* USER CODE BEGIN 5 */
+  IpcResponseBlock_t ipc_rsp;
+  SharedStatusBlock_t ipc_status;
 
   const char* message = "Hello UDP message!\n\r";
 
@@ -553,6 +560,20 @@ void StartDefaultTask(void const * argument)
   for(;;)
   {
 	 osDelay(1000);
+
+    IPC_ReadStatus(&ipc_status);
+
+    if (IPC_PostSimpleCommand(ipc_seq, IPC_CMD_GET_STATUS) != 0U)
+    {
+      if (IPC_WaitForResponse(ipc_seq, &ipc_rsp, 100U) != 0U)
+      {
+        if (ipc_rsp.result == IPC_CMD_RES_OK)
+        {
+          ipc_seq++;
+        }
+      }
+    }
+
 	/* !! PBUF_RAM is critical for correct operation !! */
 	udp_buffer = pbuf_alloc(PBUF_TRANSPORT, strlen(message), PBUF_RAM);
 
@@ -594,18 +615,25 @@ void MPU_Config(void)
   /** Initializes and configures the Region and the memory to be protected
   */
   MPU_InitStruct.Number = MPU_REGION_NUMBER1;
-  MPU_InitStruct.BaseAddress = 0x30020000;
+  MPU_InitStruct.BaseAddress = 0x30000000;
   MPU_InitStruct.Size = MPU_REGION_SIZE_128KB;
   MPU_InitStruct.SubRegionDisable = 0x0;
   MPU_InitStruct.TypeExtField = MPU_TEX_LEVEL1;
   MPU_InitStruct.AccessPermission = MPU_REGION_FULL_ACCESS;
-  MPU_InitStruct.IsShareable = MPU_ACCESS_NOT_SHAREABLE;
 
   HAL_MPU_ConfigRegion(&MPU_InitStruct);
 
   /** Initializes and configures the Region and the memory to be protected
   */
   MPU_InitStruct.Number = MPU_REGION_NUMBER2;
+  MPU_InitStruct.BaseAddress = 0x30020000;
+  MPU_InitStruct.IsShareable = MPU_ACCESS_NOT_SHAREABLE;
+
+  HAL_MPU_ConfigRegion(&MPU_InitStruct);
+
+  /** Initializes and configures the Region and the memory to be protected
+  */
+  MPU_InitStruct.Number = MPU_REGION_NUMBER3;
   MPU_InitStruct.BaseAddress = 0x30040000;
   MPU_InitStruct.Size = MPU_REGION_SIZE_512B;
   MPU_InitStruct.TypeExtField = MPU_TEX_LEVEL0;

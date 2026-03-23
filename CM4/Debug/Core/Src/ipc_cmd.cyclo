@@ -1,0 +1,9 @@
+../Core/Src/ipc_cmd.c:13:16:IPC_CanStart	1
+../Core/Src/ipc_cmd.c:18:16:IPC_CanStop	4
+../Core/Src/ipc_cmd.c:25:13:IPC_PublishStatus	2
+../Core/Src/ipc_cmd.c:45:13:IPC_WriteResponse	2
+../Core/Src/ipc_cmd.c:60:16:IPC_ReadPendingCommand	3
+../Core/Src/ipc_cmd.c:76:16:IPC_CopyStartConfig	3
+../Core/Src/ipc_cmd.c:93:6:IPC_CmdInit	2
+../Core/Src/ipc_cmd.c:109:6:IPC_CmdService	12
+../Core/Src/ipc_cmd.c:178:27:IPC_CmdGetLastResponse	1

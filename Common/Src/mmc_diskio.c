@@ -1,5 +1,6 @@
 #include "ff_gen_drv.h"
 #include "mmc_diskio.h"
+#include "hsem_ids.h"
 #include "hsem_lock.h"
 #include <stdio.h>
 #include "stm32h7xx_hal_mmc.h"
@@ -23,7 +24,7 @@
  */
 #define ENABLE_DMA_CACHE_MAINTENANCE		0
 
-#define EMMC_HSEM_ID (1U)
+#define EMMC_HSEM_ID (HSEM_FS_GLOBAL_ID)
 
 #define DISABLE_MMC_INIT
 

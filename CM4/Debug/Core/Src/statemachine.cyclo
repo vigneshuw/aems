@@ -1,0 +1,3 @@
+../Core/Src/statemachine.c:4:13:DAQ_SetError	1
+../Core/Src/statemachine.c:11:6:DAQ_ContextInit	1
+../Core/Src/statemachine.c:23:6:DAQ_StateMachine_Run	14

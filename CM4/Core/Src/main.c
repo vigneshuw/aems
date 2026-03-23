@@ -25,16 +25,15 @@
 #include "ads131m08.h"
 #include "ff_gen_drv.h"
 #include "mmc_diskio.h"
+#include "daq_engine.h"
+#include "ipc_cmd.h"
+#include "statemachine.h"
 
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
 void AEMS_Initialize();
-void DAQ_Shutdown();
-void DAQ_Startup();
-void adcMaster_Startup();
-void adcMaster_Shutdown();
 
 /* USER CODE END PTD */
 
@@ -61,6 +60,7 @@ MMC_HandleTypeDef hmmc1;
 SPI_HandleTypeDef hspi4;
 
 /* USER CODE BEGIN PV */
+volatile DaqContext_t g_daq_ctx;
 
 /* USER CODE END PV */
 
@@ -78,8 +78,6 @@ static uint8_t Buffercmp(uint8_t* pBuffer1, uint8_t* pBuffer2, uint32_t BufferLe
 /*
  * ADC
  */
-// Calibrate
-uint32_t calibration_values[6] = {-3838,-7481,-7500,-491,-4160,4890};
 ADS131M08_HandleTypeDef ads;
 GPIO_TypeDef *SYNC_RESET_GPIO_Port = ADS_SYNC_RESET_GPIO_Port;
 uint16_t SYNC_RESET_Pin = ADS_SYNC_RESET_Pin;
@@ -87,7 +85,6 @@ uint16_t SYNC_RESET_Pin = ADS_SYNC_RESET_Pin;
 /*
  * State Machines
  */
-bool is_adc_armed;
 
 // FatFs
 //FATFS MMCFatFs;  /* File system object for SD card logical drive */
@@ -110,6 +107,7 @@ int main(void)
 
   /* USER CODE BEGIN 1 */
 	FRESULT res;
+	(void)res;
   /* USER CODE END 1 */
 
 /* USER CODE BEGIN Boot_Mode_Sequence_1 */
@@ -145,6 +143,8 @@ int main(void)
   MX_SPI4_Init();
   MX_FATFS_Init();
   /* USER CODE BEGIN 2 */
+  DAQ_ContextInit();
+  IPC_CmdInit();
   AEMS_Initialize();
 
   /*
@@ -174,6 +174,8 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+    IPC_CmdService();
+    DAQ_StateMachine_Run();
   }
   /* USER CODE END 3 */
 }
@@ -347,53 +349,23 @@ void AEMS_Initialize() {
 	ads.hspi =&hspi4;
 	ads.cs_port = ADS_CS_GPIO_Port;
 	ads.cs_pin = ADS_CS_Pin;
-	// Initialize
-	DAQ_Startup();
+	// Keep DAQ idle at boot. State machine handles explicit start.
+	DAQ_EngineInit();
 
 	// Do a read for ID. Can be used for error checking
 	uint16_t id = readSingleRegister(ID_ADDRESS);
+	(void)id;
 
 
 }
 
-void DAQ_Shutdown() {
-	// Stop ADC
-	adcMaster_Shutdown();
-
-	// Set status
-	is_adc_armed = false;
-}
-
-void DAQ_Startup() {
-	// Initialize ADC
-	adcMaster_Startup();
-	// Reset the device
-	adcStartup();
-	// Configuration - Clock
-	writeSingleRegister(CLOCK_ADDRESS, ((CLOCK_DEFAULT & ~(CLOCK_EXTREF_EN_MASK)) | CLOCK_EXTREF_EN_ENABLED));
-	writeSingleRegister(CLOCK_ADDRESS, ((CLOCK_DEFAULT & ~(CLOCK_OSR_MASK)) | CLOCK_OSR_1024));
-	writeSingleRegister(GAIN1_ADDRESS, ((GAIN1_DEFAULT & ~(GAIN1_PGAGAIN0_MASK | GAIN1_PGAGAIN1_MASK | GAIN1_PGAGAIN2_MASK))) | (GAIN1_PGAGAIN0_4 | GAIN1_PGAGAIN1_4 | GAIN1_PGAGAIN2_4));
-
-	// Apply calibration values to 6 channels
-	for (uint8_t channel = 0; channel < 6; channel++) {
-		calibrate(calibration_values[channel], channel);
-	}
-
-	// Set status
-	is_adc_armed = true;
-
-}
-
-/*
- * ADC - Control
- */
-void adcMaster_Startup(void) {
-	HAL_RCC_MCOConfig(RCC_MCO1, RCC_MCO1SOURCE_HSI, RCC_MCODIV_8);
-}
-
-
-void adcMaster_Shutdown(void) {
-	HAL_RCC_MCOConfig(RCC_MCO1, RCC_MCO1SOURCE_HSI, RCC_MCODIV_8);
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
+{
+  if (GPIO_Pin == ADS_DRDY_Pin)
+  {
+    /* ISR must only signal work; DAQ processing is done in the state machine. */
+    g_daq_ctx.events |= DAQ_EVT_ADC_READY;
+  }
 }
 
 static uint8_t Buffercmp(uint8_t* pBuffer1, uint8_t* pBuffer2, uint32_t BufferLength)
@@ -410,6 +382,15 @@ static uint8_t Buffercmp(uint8_t* pBuffer1, uint8_t* pBuffer2, uint32_t BufferLe
   }
   return 0;
 }
+
+/*
+ * Helper Functions
+ */
+/*
+ * Callback
+ */
+
+
 
 /* USER CODE END 4 */
 

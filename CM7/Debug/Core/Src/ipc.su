@@ -1,0 +1,6 @@
+../Core/Src/ipc.c:9:17:IPC_PostCommand	24	static
+../Core/Src/ipc.c:26:6:IPC_InitSharedRegion	8	static
+../Core/Src/ipc.c:42:10:IPC_PostStartAcq	144	static
+../Core/Src/ipc.c:64:10:IPC_PostSimpleCommand	136	static
+../Core/Src/ipc.c:78:10:IPC_WaitForResponse	64	static
+../Core/Src/ipc.c:102:6:IPC_ReadStatus	16	static
