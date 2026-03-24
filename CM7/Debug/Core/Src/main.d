@@ -133,11 +133,7 @@ Core/Src/main.o: ../Core/Src/main.c ../Core/Inc/main.h \
  C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Common/Inc/mmc_diskio.h \
  C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Common/Inc/shared_memory.h \
  C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Common/Inc/ipc_shared.h \
- ../../Middlewares/Third_Party/LwIP/src/include/lwip/udp.h \
- ../../Middlewares/Third_Party/LwIP/src/include/lwip/ip.h \
- ../../Middlewares/Third_Party/LwIP/src/include/lwip/ip6.h \
- ../../Middlewares/Third_Party/LwIP/src/include/lwip/prot/ip.h \
- ../../Middlewares/Third_Party/LwIP/src/include/lwip/prot/udp.h
+ C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/CM7/Library/eth/tcpclient.h
 ../Core/Inc/main.h:
 ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal.h:
 ../Core/Inc/stm32h7xx_hal_conf.h:
@@ -276,8 +272,4 @@ C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Common/Inc/ipc_shared.h:
 C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Common/Inc/mmc_diskio.h:
 C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Common/Inc/shared_memory.h:
 C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Common/Inc/ipc_shared.h:
-../../Middlewares/Third_Party/LwIP/src/include/lwip/udp.h:
-../../Middlewares/Third_Party/LwIP/src/include/lwip/ip.h:
-../../Middlewares/Third_Party/LwIP/src/include/lwip/ip6.h:
-../../Middlewares/Third_Party/LwIP/src/include/lwip/prot/ip.h:
-../../Middlewares/Third_Party/LwIP/src/include/lwip/prot/udp.h:
+C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/CM7/Library/eth/tcpclient.h:

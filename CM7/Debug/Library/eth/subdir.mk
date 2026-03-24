@@ -5,13 +5,16 @@
 
 # Add inputs and outputs from these tool invocations to the build variables 
 C_SRCS += \
-../Library/eth/eth.c 
+../Library/eth/eth.c \
+../Library/eth/tcpclient.c 
 
 OBJS += \
-./Library/eth/eth.o 
+./Library/eth/eth.o \
+./Library/eth/tcpclient.o 
 
 C_DEPS += \
-./Library/eth/eth.d 
+./Library/eth/eth.d \
+./Library/eth/tcpclient.d 
 
 
 # Each subdirectory must supply rules for building sources it contributes
@@ -21,7 +24,7 @@ Library/eth/%.o Library/eth/%.su Library/eth/%.cyclo: ../Library/eth/%.c Library
 clean: clean-Library-2f-eth
 
 clean-Library-2f-eth:
-	-$(RM) ./Library/eth/eth.cyclo ./Library/eth/eth.d ./Library/eth/eth.o ./Library/eth/eth.su
+	-$(RM) ./Library/eth/eth.cyclo ./Library/eth/eth.d ./Library/eth/eth.o ./Library/eth/eth.su ./Library/eth/tcpclient.cyclo ./Library/eth/tcpclient.d ./Library/eth/tcpclient.o ./Library/eth/tcpclient.su
 
 .PHONY: clean-Library-2f-eth
 

@@ -33,7 +33,7 @@
 #include "mmc_diskio.h"
 #include "shared_memory.h"
 #include <string.h>
-#include "lwip/udp.h"
+#include "tcpclient.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -542,46 +542,31 @@ void StartDefaultTask(void const * argument)
   /* init code for LWIP */
   MX_LWIP_Init();
   /* USER CODE BEGIN 5 */
-  IpcResponseBlock_t ipc_rsp;
-  SharedStatusBlock_t ipc_status;
+//  IpcResponseBlock_t ipc_rsp;
+//  SharedStatusBlock_t ipc_status;
 
-  const char* message = "Hello UDP message!\n\r";
-
-  osDelay(1000);
-
-  ip_addr_t PC_IPADDR;
-  IP_ADDR4(&PC_IPADDR, 192, 168, 0, 1);
-
-  struct udp_pcb* my_udp = udp_new();
-  udp_connect(my_udp, &PC_IPADDR, 55151);
-  struct pbuf* udp_buffer = NULL;
+  tcpclient_init();
 
   /* Infinite loop */
   for(;;)
   {
 	 osDelay(1000);
 
-    IPC_ReadStatus(&ipc_status);
+//    IPC_ReadStatus(&ipc_status);
+//
+//    if (IPC_PostSimpleCommand(ipc_seq, IPC_CMD_GET_STATUS) != 0U)
+//    {
+//      if (IPC_WaitForResponse(ipc_seq, &ipc_rsp, 100U) != 0U)
+//      {
+//        if (ipc_rsp.result == IPC_CMD_RES_OK)
+//        {
+//          ipc_seq++;
+//        }
+//      }
+//    }
 
-    if (IPC_PostSimpleCommand(ipc_seq, IPC_CMD_GET_STATUS) != 0U)
-    {
-      if (IPC_WaitForResponse(ipc_seq, &ipc_rsp, 100U) != 0U)
-      {
-        if (ipc_rsp.result == IPC_CMD_RES_OK)
-        {
-          ipc_seq++;
-        }
-      }
-    }
 
-	/* !! PBUF_RAM is critical for correct operation !! */
-	udp_buffer = pbuf_alloc(PBUF_TRANSPORT, strlen(message), PBUF_RAM);
 
-	if (udp_buffer != NULL) {
-	  memcpy(udp_buffer->payload, message, strlen(message));
-	  udp_send(my_udp, udp_buffer);
-	  pbuf_free(udp_buffer);
-	}
 
   }
   /* USER CODE END 5 */

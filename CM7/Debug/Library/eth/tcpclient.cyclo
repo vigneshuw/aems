@@ -1,0 +1,4 @@
+../Library/eth/tcpclient.c:22:13:tcpinit_thread	6
+../Library/eth/tcpclient.c:96:6:tcpsend	1
+../Library/eth/tcpclient.c:105:13:tcpsend_thread	1
+../Library/eth/tcpclient.c:121:6:tcpclient_init	1

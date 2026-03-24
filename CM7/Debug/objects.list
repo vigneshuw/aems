@@ -46,6 +46,7 @@
 "./LWIP/Target/ethernetif.o"
 "./Library/Bluenrg/bluenrg2_intf.o"
 "./Library/eth/eth.o"
+"./Library/eth/tcpclient.o"
 "./Library/led/led.o"
 "./Middlewares/BlueNRG-2/Wireless/BlueNRG-2/Controller/bluenrg1_gap_aci.o"
 "./Middlewares/BlueNRG-2/Wireless/BlueNRG-2/Controller/bluenrg1_gatt_aci.o"
