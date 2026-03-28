@@ -542,10 +542,14 @@ void StartDefaultTask(void const * argument)
   /* init code for LWIP */
   MX_LWIP_Init();
   /* USER CODE BEGIN 5 */
+  TcpClientConfig_t tcpCfg;
+  ip_addr_t tcpServerIp;
 //  IpcResponseBlock_t ipc_rsp;
 //  SharedStatusBlock_t ipc_status;
 
-  tcpclient_init();
+  IP4_ADDR(&tcpServerIp, 192, 168, 0, 20);
+  TcpClient_BuildConfig(&tcpCfg, &tcpServerIp, 10U, &gnetif);
+  (void)TcpClient_Init(&tcpCfg);
 
   /* Infinite loop */
   for(;;)

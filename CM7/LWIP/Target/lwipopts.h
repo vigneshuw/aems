@@ -114,6 +114,9 @@
 /*-----------------------------------------------------------------------------*/
 /* USER CODE BEGIN 1 */
 
+/* Enable netconn receive timeouts used by the TCP client. */
+#define LWIP_SO_RCVTIMEO 1
+
 /* USER CODE END 1 */
 
 #ifdef __cplusplus

@@ -45,9 +45,9 @@ C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/L
 C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/LwIP/src/api/sockets.c:2753:1:lwip_getsockname	24	static
 C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/LwIP/src/api/sockets.c:2759:1:lwip_getsockopt	48	static
 C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/LwIP/src/api/sockets.c:2859:1:lwip_sockopt_to_ipopt	16	static
-C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/LwIP/src/api/sockets.c:2882:1:lwip_getsockopt_impl	32	static
+C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/LwIP/src/api/sockets.c:2882:1:lwip_getsockopt_impl	48	static
 C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/LwIP/src/api/sockets.c:3205:1:lwip_setsockopt	48	static
-C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/LwIP/src/api/sockets.c:3303:1:lwip_setsockopt_impl	40	static
+C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/LwIP/src/api/sockets.c:3303:1:lwip_setsockopt_impl	48	static
 C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/LwIP/src/api/sockets.c:3743:1:lwip_ioctl	40	static
 C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/LwIP/src/api/sockets.c:3836:1:lwip_fcntl	56	static
 C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/LwIP/src/api/sockets.c:3919:1:lwip_inet_ntop	32	static

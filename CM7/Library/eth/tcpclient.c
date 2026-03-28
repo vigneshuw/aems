@@ -1,126 +1,276 @@
 #include "lwip/opt.h"
-
 #include "lwip/api.h"
 #include "lwip/sys.h"
+#include "lwip/netbuf.h"
+#include "lwip/mem.h"
 
 #include "tcpclient.h"
-#include "string.h"
-static struct netconn *conn;
-static struct netbuf *buf;
-static ip_addr_t *addr, dest_addr;
-static unsigned short port, dest_port;
-char msgc[100];
-char smsgc[200];
-int indx = 0;
 
-// Function to send the data to the server
-void tcpsend (char *data);
+#include <string.h>
+#include <stdio.h>
 
-// tcpsem is the binary semaphore to prevent the access to tcpsend
-sys_sem_t tcpsem;
+static struct netconn *gConn = NULL;
+static volatile uint8_t gTcpConnected = 0U;
+static volatile uint8_t gReconnectRequested = 0U;
+static TcpClientConfig_t gCfg;
+static uint8_t gInitDone = 0U;
+static sys_mbox_t gTxMbox;
 
-static void tcpinit_thread(void *arg)
+static void TcpClient_Cleanup(struct netconn **conn, struct netbuf **buf)
 {
-	err_t err, connect_error;
+    if ((buf != NULL) && (*buf != NULL))
+    {
+        netbuf_delete(*buf);
+        *buf = NULL;
+    }
 
-	/* Create a new connection identifier. */
-	conn = netconn_new(NETCONN_TCP);
+    if ((conn != NULL) && (*conn != NULL))
+    {
+        netconn_close(*conn);
+        netconn_delete(*conn);
+        *conn = NULL;
+    }
 
-	if (conn!=NULL)
-	{
-		/* Bind connection to the port number 7 (port of the Client). */
-		err = netconn_bind(conn, IP_ADDR_ANY, 7);
-
-		if (err == ERR_OK)
-		{
-			/* The desination IP adress of the computer */
-			IP_ADDR4(&dest_addr, 192, 168, 0, 1);
-			dest_port = 10;  // server port
-
-			/* Connect to the TCP Server */
-			connect_error = netconn_connect(conn, &dest_addr, dest_port);
-
-			// If the connection to the server is established, the following will continue, else delete the connection
-			if (connect_error == ERR_OK)
-			{
-				// Release the semaphore once the connection is successful
-				sys_sem_signal(&tcpsem);
-				while (1)
-				{
-					/* wait until the data is sent by the server */
-					if (netconn_recv(conn, &buf) == ERR_OK)
-					{
-						/* Extract the address and port in case they are required */
-						addr = netbuf_fromaddr(buf);  // get the address of the client
-						port = netbuf_fromport(buf);  // get the Port of the client
-
-						/* If there is some data remaining to be sent, the following process will continue */
-						do
-						{
-
-							strncpy (msgc, buf->p->payload, buf->p->len);   // get the message from the server
-
-							// Or modify the message received, so that we can send it back to the server
-							sprintf (smsgc, "\"%s\" was sent by the Server\n", msgc);
-
-							// semaphore must be taken before accessing the tcpsend function
-							sys_arch_sem_wait(&tcpsem, 500);
-
-							// send the data to the TCP Server
-							tcpsend (smsgc);
-
-							memset (msgc, '\0', 100);  // clear the buffer
-						}
-						while (netbuf_next(buf) >0);
-
-						netbuf_delete(buf);
-					}
-				}
-			}
-
-			else
-			{
-				/* Close connection and discard connection identifier. */
-				netconn_close(conn);
-				netconn_delete(conn);
-			}
-		}
-		else
-		{
-			// if the binding wasn't successful, delete the netconn connection
-			netconn_delete(conn);
-		}
-	}
+    gTcpConnected = 0U;
 }
 
-void tcpsend (char *data)
+static void TcpClient_ProcessRx(struct netconn *conn, struct netbuf *buf)
 {
-	// send the data to the connected connection
-	netconn_write(conn, data, strlen(data), NETCONN_COPY);
-	// relaese the semaphore
-	sys_sem_signal(&tcpsem);
+    void *data;
+    u16_t len;
+    char msg[100];
+    char reply[200];
+
+    netbuf_first(buf);
+
+    do
+    {
+        if (netbuf_data(buf, &data, &len) != ERR_OK)
+        {
+            continue;
+        }
+
+        if (len >= sizeof(msg))
+        {
+            len = sizeof(msg) - 1U;
+        }
+
+        memset(msg, 0, sizeof(msg));
+        memcpy(msg, data, len);
+
+        snprintf(reply, sizeof(reply), "\"%s\" was sent by the Server\n", msg);
+
+        if (netconn_write(conn, reply, strlen(reply), NETCONN_COPY) != ERR_OK)
+        {
+            gTcpConnected = 0U;
+            return;
+        }
+    }
+    while (netbuf_next(buf) >= 0);
 }
 
-
-static void tcpsend_thread (void *arg)
+static void TcpClient_SendQueued(struct netconn *conn)
 {
-	for (;;)
-	{
-		sprintf (smsgc, "index value = %d\n", indx++);
-		// semaphore must be taken before accessing the tcpsend function
-		sys_arch_sem_wait(&tcpsem, 500);
-		// send the data to the server
-		tcpsend(smsgc);
-		osDelay(500);
-	}
+    void *msgPtr = NULL;
+
+    while (sys_arch_mbox_tryfetch(&gTxMbox, &msgPtr) != SYS_MBOX_EMPTY)
+    {
+        char *tx = (char *)msgPtr;
+
+        if (tx != NULL)
+        {
+            if (netconn_write(conn, tx, strlen(tx), NETCONN_COPY) != ERR_OK)
+            {
+                gTcpConnected = 0U;
+                mem_free(tx);
+                return;
+            }
+
+            mem_free(tx);
+        }
+    }
 }
 
-
-
-
-void tcpclient_init (void)
+static void tcpclient_thread(void *arg)
 {
-	sys_sem_new(&tcpsem, 0);  // the semaphore would prevent simultaneous access to tcpsend
-	sys_thread_new("tcpinit_thread", tcpinit_thread, NULL, DEFAULT_THREAD_STACKSIZE,osPriorityNormal);
-	sys_thread_new("tcpsend_thread", tcpsend_thread, NULL, DEFAULT_THREAD_STACKSIZE,osPriorityNormal);
+    struct netbuf *buf = NULL;
+    err_t err;
+
+    LWIP_UNUSED_ARG(arg);
+
+    for (;;)
+    {
+        while ((gCfg.Netif == NULL) ||
+               (!netif_is_up(gCfg.Netif)) ||
+               (!netif_is_link_up(gCfg.Netif)))
+        {
+            gTcpConnected = 0U;
+            sys_msleep(TCPCLIENT_LINK_WAIT_MS);
+        }
+
+        gConn = netconn_new(NETCONN_TCP);
+        if (gConn == NULL)
+        {
+            sys_msleep(TCPCLIENT_RECONNECT_DELAY_MS);
+            continue;
+        }
+
+        netconn_set_recvtimeout(gConn, TCPCLIENT_RX_TIMEOUT_MS);
+
+        err = netconn_bind(gConn, IP_ADDR_ANY, 0);
+        if (err != ERR_OK)
+        {
+            TcpClient_Cleanup(&gConn, &buf);
+            sys_msleep(TCPCLIENT_RECONNECT_DELAY_MS);
+            continue;
+        }
+
+        err = netconn_connect(gConn, &gCfg.ServerIp, gCfg.ServerPort);
+        if (err != ERR_OK)
+        {
+            TcpClient_Cleanup(&gConn, &buf);
+            sys_msleep(TCPCLIENT_RECONNECT_DELAY_MS);
+            continue;
+        }
+
+        gTcpConnected = 1U;
+        gReconnectRequested = 0U;
+
+        for (;;)
+        {
+            if ((gCfg.Netif == NULL) ||
+                (!netif_is_up(gCfg.Netif)) ||
+                (!netif_is_link_up(gCfg.Netif)) ||
+                (gReconnectRequested != 0U))
+            {
+                gTcpConnected = 0U;
+                break;
+            }
+
+            TcpClient_SendQueued(gConn);
+            if (gTcpConnected == 0U)
+            {
+                break;
+            }
+
+            err = netconn_recv(gConn, &buf);
+
+            if (err == ERR_TIMEOUT)
+            {
+                continue;
+            }
+
+            if (err != ERR_OK)
+            {
+                gTcpConnected = 0U;
+                break;
+            }
+
+            TcpClient_ProcessRx(gConn, buf);
+
+            netbuf_delete(buf);
+            buf = NULL;
+
+            if (gTcpConnected == 0U)
+            {
+                break;
+            }
+        }
+
+        TcpClient_Cleanup(&gConn, &buf);
+        sys_msleep(TCPCLIENT_RECONNECT_DELAY_MS);
+    }
+}
+
+void TcpClient_BuildConfig(TcpClientConfig_t *config,
+                           const ip_addr_t *serverIp,
+                           uint16_t serverPort,
+                           struct netif *netif)
+{
+    if ((config == NULL) || (serverIp == NULL))
+    {
+        return;
+    }
+
+    memset(config, 0, sizeof(*config));
+    config->ServerIp = *serverIp;
+    config->ServerPort = serverPort;
+    config->Netif = netif;
+}
+
+int32_t TcpClient_Init(const TcpClientConfig_t *config)
+{
+    if ((config == NULL) || (config->Netif == NULL))
+    {
+        return -1;
+    }
+
+    if (gInitDone != 0U)
+    {
+        return 0;
+    }
+
+    gCfg = *config;
+
+    if (sys_mbox_new(&gTxMbox, TCPCLIENT_TX_MBOX_SIZE) != ERR_OK)
+    {
+        return -2;
+    }
+
+    if (sys_thread_new("tcpclient_thread",
+                       tcpclient_thread,
+                       NULL,
+                       DEFAULT_THREAD_STACKSIZE,
+                       osPriorityNormal) == NULL)
+    {
+        sys_mbox_free(&gTxMbox);
+        return -3;
+    }
+
+    gInitDone = 1U;
+    return 0;
+}
+
+int32_t TcpClient_Send(const char *text)
+{
+    size_t len;
+    char *copy;
+
+    if ((gInitDone == 0U) || (text == NULL))
+    {
+        return -1;
+    }
+
+    len = strlen(text);
+    if (len >= TCPCLIENT_TX_MSG_MAX_LEN)
+    {
+        len = TCPCLIENT_TX_MSG_MAX_LEN - 1U;
+    }
+
+    copy = (char *)mem_malloc(TCPCLIENT_TX_MSG_MAX_LEN);
+    if (copy == NULL)
+    {
+        return -2;
+    }
+
+    memset(copy, 0, TCPCLIENT_TX_MSG_MAX_LEN);
+    memcpy(copy, text, len);
+
+    if (sys_mbox_trypost(&gTxMbox, copy) != ERR_OK)
+    {
+        mem_free(copy);
+        return -3;
+    }
+
+    return 0;
+}
+
+uint8_t TcpClient_IsConnected(void)
+{
+    return gTcpConnected;
+}
+
+void TcpClient_RequestReconnect(void)
+{
+    gReconnectRequested = 1U;
 }

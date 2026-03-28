@@ -1,4 +1,9 @@
-../Library/eth/tcpclient.c:22:13:tcpinit_thread	24	static
-../Library/eth/tcpclient.c:96:6:tcpsend	32	static
-../Library/eth/tcpclient.c:105:13:tcpsend_thread	16	static
-../Library/eth/tcpclient.c:121:6:tcpclient_init	16	static
+../Library/eth/tcpclient.c:19:13:TcpClient_Cleanup	16	static
+../Library/eth/tcpclient.c:37:13:TcpClient_ProcessRx	336	static
+../Library/eth/tcpclient.c:72:13:TcpClient_SendQueued	32	static
+../Library/eth/tcpclient.c:94:13:tcpclient_thread	24	static
+../Library/eth/tcpclient.c:185:6:TcpClient_BuildConfig	24	static
+../Library/eth/tcpclient.c:201:9:TcpClient_Init	24	static
+../Library/eth/tcpclient.c:234:9:TcpClient_Send	24	static
+../Library/eth/tcpclient.c:268:9:TcpClient_IsConnected	4	static
+../Library/eth/tcpclient.c:273:6:TcpClient_RequestReconnect	4	static

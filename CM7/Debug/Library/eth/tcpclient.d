@@ -73,7 +73,14 @@ Library/eth/tcpclient.o: ../Library/eth/tcpclient.c \
  ../../Middlewares/Third_Party/FreeRTOS/Source/include/queue.h \
  ../../Middlewares/Third_Party/FreeRTOS/Source/include/event_groups.h \
  ../../Middlewares/Third_Party/FreeRTOS/Source/include/timers.h \
- ../Library/eth/tcpclient.h
+ ../../Middlewares/Third_Party/LwIP/src/include/lwip/mem.h \
+ ../Library/eth/tcpclient.h \
+ ../../Middlewares/Third_Party/LwIP/src/include/lwip/netif.h \
+ ../../Middlewares/Third_Party/LwIP/src/include/lwip/stats.h \
+ ../../Middlewares/Third_Party/LwIP/src/include/lwip/memp.h \
+ ../../Middlewares/Third_Party/LwIP/src/include/lwip/priv/memp_std.h \
+ ../../Middlewares/Third_Party/LwIP/src/include/lwip/priv/memp_priv.h \
+ ../../Middlewares/Third_Party/LwIP/src/include/lwip/priv/mem_priv.h
 ../../Middlewares/Third_Party/LwIP/src/include/lwip/opt.h:
 ../LWIP/Target/lwipopts.h:
 ../Core/Inc/main.h:
@@ -151,4 +158,11 @@ C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/F
 ../../Middlewares/Third_Party/FreeRTOS/Source/include/queue.h:
 ../../Middlewares/Third_Party/FreeRTOS/Source/include/event_groups.h:
 ../../Middlewares/Third_Party/FreeRTOS/Source/include/timers.h:
+../../Middlewares/Third_Party/LwIP/src/include/lwip/mem.h:
 ../Library/eth/tcpclient.h:
+../../Middlewares/Third_Party/LwIP/src/include/lwip/netif.h:
+../../Middlewares/Third_Party/LwIP/src/include/lwip/stats.h:
+../../Middlewares/Third_Party/LwIP/src/include/lwip/memp.h:
+../../Middlewares/Third_Party/LwIP/src/include/lwip/priv/memp_std.h:
+../../Middlewares/Third_Party/LwIP/src/include/lwip/priv/memp_priv.h:
+../../Middlewares/Third_Party/LwIP/src/include/lwip/priv/mem_priv.h:
