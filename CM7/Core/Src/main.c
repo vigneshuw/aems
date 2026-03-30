@@ -554,7 +554,7 @@ void StartDefaultTask(void const * argument)
   /* Infinite loop */
   for(;;)
   {
-	 osDelay(1000);
+	 osDelay(1);
 
 //    IPC_ReadStatus(&ipc_status);
 //

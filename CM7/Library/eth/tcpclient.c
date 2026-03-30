@@ -1,88 +1,204 @@
 #include "lwip/opt.h"
-#include "lwip/api.h"
-#include "lwip/sys.h"
-#include "lwip/netbuf.h"
+#include "lwip/errno.h"
+#include "lwip/inet.h"
+#include "lwip/ip_addr.h"
 #include "lwip/mem.h"
+#include "lwip/netif.h"
+#include "lwip/sockets.h"
+#include "lwip/sys.h"
 
 #include "tcpclient.h"
 
-#include <string.h>
 #include <stdio.h>
+#include <string.h>
 
-static struct netconn *gConn = NULL;
-static volatile uint8_t gTcpConnected = 0U;
-static volatile uint8_t gReconnectRequested = 0U;
-static TcpClientConfig_t gCfg;
-static uint8_t gInitDone = 0U;
-static sys_mbox_t gTxMbox;
+#define TCPCLIENT_CONNECT_TIMEOUT_MS   1000U
+#define TCPCLIENT_RX_BUFFER_LEN        100U
+#define TCPCLIENT_TX_BUFFER_LEN        200U
 
-static void TcpClient_Cleanup(struct netconn **conn, struct netbuf **buf)
+typedef struct
 {
-    if ((buf != NULL) && (*buf != NULL))
+    int sock;
+    volatile uint8_t connected;
+    volatile uint8_t reconnect_requested;
+    uint8_t initialized;
+    TcpClientConfig_t cfg;
+    sys_mbox_t tx_mbox;
+} TcpClientState_t;
+
+static TcpClientState_t gTcpClient;
+
+static void TcpClient_CloseSocket(void)
+{
+    if (gTcpClient.sock >= 0)
     {
-        netbuf_delete(*buf);
-        *buf = NULL;
+        lwip_close(gTcpClient.sock);
+        gTcpClient.sock = -1;
     }
 
-    if ((conn != NULL) && (*conn != NULL))
-    {
-        netconn_close(*conn);
-        netconn_delete(*conn);
-        *conn = NULL;
-    }
+    gTcpClient.connected = 0U;
 
-    gTcpConnected = 0U;
 }
 
-static void TcpClient_ProcessRx(struct netconn *conn, struct netbuf *buf)
+static int32_t TcpClient_SetNonBlocking(int sock)
 {
-    void *data;
-    u16_t len;
-    char msg[100];
-    char reply[200];
+    int flags;
 
-    netbuf_first(buf);
-
-    do
+    flags = lwip_fcntl(sock, F_GETFL, 0);
+    if (flags < 0)
     {
-        if (netbuf_data(buf, &data, &len) != ERR_OK)
-        {
-            continue;
-        }
-
-        if (len >= sizeof(msg))
-        {
-            len = sizeof(msg) - 1U;
-        }
-
-        memset(msg, 0, sizeof(msg));
-        memcpy(msg, data, len);
-
-        snprintf(reply, sizeof(reply), "\"%s\" was sent by the Server\n", msg);
-
-        if (netconn_write(conn, reply, strlen(reply), NETCONN_COPY) != ERR_OK)
-        {
-            gTcpConnected = 0U;
-            return;
-        }
+        return -1;
     }
-    while (netbuf_next(buf) >= 0);
+
+    if (lwip_fcntl(sock, F_SETFL, flags | O_NONBLOCK) < 0)
+    {
+        return -2;
+    }
+
+    return 0;
 }
 
-static void TcpClient_SendQueued(struct netconn *conn)
+/*
+ * @brief Make a connect to the server once in a non-blocking fashion
+ */
+static int32_t TcpClient_ConnectOnce(void)
 {
-    void *msgPtr = NULL;
+    struct sockaddr_in server_addr;
+    fd_set write_set;
+    struct timeval timeout;
+    int result;
+    int so_error;
+    socklen_t so_error_len;
 
-    while (sys_arch_mbox_tryfetch(&gTxMbox, &msgPtr) != SYS_MBOX_EMPTY)
+    /*
+     * Check for the network to be ready. Basically if the link is up.
+     * If network link is not ready, return -1
+     */
+    if ((gTcpClient.cfg.Netif == NULL) ||
+        (!netif_is_up(gTcpClient.cfg.Netif)) ||
+        (!netif_is_link_up(gTcpClient.cfg.Netif)))
     {
-        char *tx = (char *)msgPtr;
+        return -1;
+    }
+
+    /*
+     * Create a socket Ipv4, fails we get a return code of -2
+     */
+    gTcpClient.sock = lwip_socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+    if (gTcpClient.sock < 0)
+    {
+        return -2;
+    }
+
+    /*
+     * Make the socket non-blocking.
+     */
+    if (TcpClient_SetNonBlocking(gTcpClient.sock) != 0)
+    {
+        TcpClient_CloseSocket();
+        return -3;
+    }
+
+    memset(&server_addr, 0, sizeof(server_addr));
+    server_addr.sin_family = AF_INET;
+    server_addr.sin_port = htons(gTcpClient.cfg.ServerPort);
+    server_addr.sin_addr.s_addr = ip4_addr_get_u32(ip_2_ip4(&gTcpClient.cfg.ServerIp));
+
+    /*
+     * Initiate a connection and set connected to 1 when success
+     */
+    result = lwip_connect(gTcpClient.sock, (struct sockaddr *)&server_addr, sizeof(server_addr));
+    if (result == 0)
+    {
+        gTcpClient.connected = 1U;
+        return 0;
+    }
+
+    /*
+     * Connect failed immediately for the below reasons
+     */
+    if ((errno != EINPROGRESS) && (errno != EALREADY) && (errno != EWOULDBLOCK))
+    {
+        TcpClient_CloseSocket();
+        return -4;
+    }
+
+    // Make the socket writable
+    FD_ZERO(&write_set);
+    FD_SET(gTcpClient.sock, &write_set);
+
+    // Wait for the connect to finish, if not timeout
+    timeout.tv_sec = (long)(TCPCLIENT_CONNECT_TIMEOUT_MS / 1000U);
+    timeout.tv_usec = (long)((TCPCLIENT_CONNECT_TIMEOUT_MS % 1000U) * 1000U);
+
+    result = lwip_select(gTcpClient.sock + 1, NULL, &write_set, NULL, &timeout);
+    if ((result <= 0) || (!FD_ISSET(gTcpClient.sock, &write_set)))
+    {
+        TcpClient_CloseSocket();
+        return -5;
+    }
+
+    /*
+     * After non-blocking connect and select says socket is writable. SO_ERROR gives
+     * any pending errors on the socket. If there are any errors close socket and wait for
+     * new connection.
+     */
+    so_error = 0;
+    so_error_len = (socklen_t)sizeof(so_error);
+    if (lwip_getsockopt(gTcpClient.sock, SOL_SOCKET, SO_ERROR, &so_error, &so_error_len) < 0)
+    {
+        TcpClient_CloseSocket();
+        return -6;
+    }
+
+    if (so_error != 0)
+    {
+        TcpClient_CloseSocket();
+        return -7;
+    }
+
+    gTcpClient.connected = 1U;
+    return 0;
+}
+
+// Process the Rx from the Server
+static void TcpClient_ProcessRx(const char *rx_data, int32_t rx_len)
+{
+    char msg[TCPCLIENT_RX_BUFFER_LEN];
+    char reply[TCPCLIENT_TX_BUFFER_LEN];
+    size_t copy_len;
+
+    if (rx_len <= 0)
+    {
+        return;
+    }
+
+    copy_len = ((size_t)rx_len < (sizeof(msg) - 1U)) ? (size_t)rx_len : (sizeof(msg) - 1U);
+    memset(msg, 0, sizeof(msg));
+    memcpy(msg, rx_data, copy_len);
+
+    (void)snprintf(reply, sizeof(reply), "\"%s\" was sent by the Server\n", msg);
+
+    if (lwip_send(gTcpClient.sock, reply, strlen(reply), 0) < 0)
+    {
+        gTcpClient.reconnect_requested = 1U;
+    }
+}
+
+static void TcpClient_SendQueued(void)
+{
+    void *msg_ptr = NULL;
+
+    while (sys_arch_mbox_tryfetch(&gTcpClient.tx_mbox, &msg_ptr) != SYS_MBOX_EMPTY)
+    {
+        char *tx = (char *)msg_ptr;
 
         if (tx != NULL)
         {
-            if (netconn_write(conn, tx, strlen(tx), NETCONN_COPY) != ERR_OK)
+            if (lwip_send(gTcpClient.sock, tx, strlen(tx), 0) < 0)
             {
-                gTcpConnected = 0U;
                 mem_free(tx);
+                gTcpClient.reconnect_requested = 1U;
                 return;
             }
 
@@ -91,94 +207,71 @@ static void TcpClient_SendQueued(struct netconn *conn)
     }
 }
 
-static void tcpclient_thread(void *arg)
+static void TcpClient_Task(void *arg)
 {
-    struct netbuf *buf = NULL;
-    err_t err;
+    char rx_buffer[TCPCLIENT_RX_BUFFER_LEN];
+    fd_set read_set;
+    struct timeval timeout;
+    int32_t rx_len;
 
     LWIP_UNUSED_ARG(arg);
 
     for (;;)
     {
-        while ((gCfg.Netif == NULL) ||
-               (!netif_is_up(gCfg.Netif)) ||
-               (!netif_is_link_up(gCfg.Netif)))
+        if (gTcpClient.connected == 0U)
         {
-            gTcpConnected = 0U;
-            sys_msleep(TCPCLIENT_LINK_WAIT_MS);
-        }
-
-        gConn = netconn_new(NETCONN_TCP);
-        if (gConn == NULL)
-        {
-            sys_msleep(TCPCLIENT_RECONNECT_DELAY_MS);
-            continue;
-        }
-
-        netconn_set_recvtimeout(gConn, TCPCLIENT_RX_TIMEOUT_MS);
-
-        err = netconn_bind(gConn, IP_ADDR_ANY, 0);
-        if (err != ERR_OK)
-        {
-            TcpClient_Cleanup(&gConn, &buf);
-            sys_msleep(TCPCLIENT_RECONNECT_DELAY_MS);
-            continue;
-        }
-
-        err = netconn_connect(gConn, &gCfg.ServerIp, gCfg.ServerPort);
-        if (err != ERR_OK)
-        {
-            TcpClient_Cleanup(&gConn, &buf);
-            sys_msleep(TCPCLIENT_RECONNECT_DELAY_MS);
-            continue;
-        }
-
-        gTcpConnected = 1U;
-        gReconnectRequested = 0U;
-
-        for (;;)
-        {
-            if ((gCfg.Netif == NULL) ||
-                (!netif_is_up(gCfg.Netif)) ||
-                (!netif_is_link_up(gCfg.Netif)) ||
-                (gReconnectRequested != 0U))
+            (void)TcpClient_ConnectOnce();
+            if (gTcpClient.connected == 0U)
             {
-                gTcpConnected = 0U;
-                break;
+                sys_msleep(TCPCLIENT_RECONNECT_DELAY_MS);
+                continue;
             }
+        }
 
-            TcpClient_SendQueued(gConn);
-            if (gTcpConnected == 0U)
+        if (gTcpClient.reconnect_requested != 0U)
+        {
+            gTcpClient.reconnect_requested = 0U;
+            TcpClient_CloseSocket();
+            sys_msleep(TCPCLIENT_RECONNECT_DELAY_MS);
+            continue;
+        }
+
+        TcpClient_SendQueued();
+        if (gTcpClient.reconnect_requested != 0U)
+        {
+            continue;
+        }
+
+        FD_ZERO(&read_set);
+        FD_SET(gTcpClient.sock, &read_set);
+        timeout.tv_sec = 0;
+        timeout.tv_usec = (long)(TCPCLIENT_RX_TIMEOUT_MS * 1000U);
+
+        rx_len = lwip_select(gTcpClient.sock + 1, &read_set, NULL, NULL, &timeout);
+        if (rx_len < 0)
+        {
+            TcpClient_CloseSocket();
+            sys_msleep(TCPCLIENT_RECONNECT_DELAY_MS);
+            continue;
+        }
+
+        if (rx_len == 0)
+        {
+            continue;
+        }
+
+        if (FD_ISSET(gTcpClient.sock, &read_set))
+        {
+            rx_len = lwip_recv(gTcpClient.sock, rx_buffer, sizeof(rx_buffer), 0);
+            if (rx_len <= 0)
             {
-                break;
-            }
-
-            err = netconn_recv(gConn, &buf);
-
-            if (err == ERR_TIMEOUT)
-            {
+                TcpClient_CloseSocket();
+                sys_msleep(TCPCLIENT_RECONNECT_DELAY_MS);
                 continue;
             }
 
-            if (err != ERR_OK)
-            {
-                gTcpConnected = 0U;
-                break;
-            }
-
-            TcpClient_ProcessRx(gConn, buf);
-
-            netbuf_delete(buf);
-            buf = NULL;
-
-            if (gTcpConnected == 0U)
-            {
-                break;
-            }
+            TcpClient_ProcessRx(rx_buffer, rx_len);
         }
-
-        TcpClient_Cleanup(&gConn, &buf);
-        sys_msleep(TCPCLIENT_RECONNECT_DELAY_MS);
     }
 }
 
@@ -205,29 +298,31 @@ int32_t TcpClient_Init(const TcpClientConfig_t *config)
         return -1;
     }
 
-    if (gInitDone != 0U)
+    if (gTcpClient.initialized != 0U)
     {
         return 0;
     }
 
-    gCfg = *config;
+    memset(&gTcpClient, 0, sizeof(gTcpClient));
+    gTcpClient.sock = -1;
+    gTcpClient.cfg = *config;
 
-    if (sys_mbox_new(&gTxMbox, TCPCLIENT_TX_MBOX_SIZE) != ERR_OK)
+    if (sys_mbox_new(&gTcpClient.tx_mbox, TCPCLIENT_TX_MBOX_SIZE) != ERR_OK)
     {
         return -2;
     }
 
-    if (sys_thread_new("tcpclient_thread",
-                       tcpclient_thread,
+    if (sys_thread_new("tcpclient_socket",
+                       TcpClient_Task,
                        NULL,
                        DEFAULT_THREAD_STACKSIZE,
                        osPriorityNormal) == NULL)
     {
-        sys_mbox_free(&gTxMbox);
+        sys_mbox_free(&gTcpClient.tx_mbox);
         return -3;
     }
 
-    gInitDone = 1U;
+    gTcpClient.initialized = 1U;
     return 0;
 }
 
@@ -236,7 +331,7 @@ int32_t TcpClient_Send(const char *text)
     size_t len;
     char *copy;
 
-    if ((gInitDone == 0U) || (text == NULL))
+    if ((gTcpClient.initialized == 0U) || (text == NULL))
     {
         return -1;
     }
@@ -256,7 +351,7 @@ int32_t TcpClient_Send(const char *text)
     memset(copy, 0, TCPCLIENT_TX_MSG_MAX_LEN);
     memcpy(copy, text, len);
 
-    if (sys_mbox_trypost(&gTxMbox, copy) != ERR_OK)
+    if (sys_mbox_trypost(&gTcpClient.tx_mbox, copy) != ERR_OK)
     {
         mem_free(copy);
         return -3;
@@ -267,10 +362,10 @@ int32_t TcpClient_Send(const char *text)
 
 uint8_t TcpClient_IsConnected(void)
 {
-    return gTcpConnected;
+    return gTcpClient.connected;
 }
 
 void TcpClient_RequestReconnect(void)
 {
-    gReconnectRequested = 1U;
+    gTcpClient.reconnect_requested = 1U;
 }
