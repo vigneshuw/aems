@@ -64,6 +64,7 @@ TIM_HandleTypeDef htim1;
 osThreadId defaultTaskHandle;
 osThreadId controllerTaskHandle;
 osThreadId telemetryTaskHandle;
+osThreadId fileTaskHandle;
 /* USER CODE BEGIN PV */
 
 /* USER CODE END PV */
@@ -77,6 +78,7 @@ static void MX_SDMMC1_MMC_Init(void);
 void StartDefaultTask(void const * argument);
 void ControllerTask(void const * argument);
 void TelemetryTask(void const * argument);
+void FileTask(void const * argument);
 
 /* USER CODE BEGIN PFP */
 /* USER CODE END PFP */
@@ -248,6 +250,10 @@ Error_Handler();
   /* definition and creation of telemetryTask */
   osThreadDef(telemetryTask, TelemetryTask, osPriorityLow, 0, 128);
   telemetryTaskHandle = osThreadCreate(osThread(telemetryTask), NULL);
+
+  /* definition and creation of fileTask */
+  osThreadDef(fileTask, FileTask, osPriorityHigh, 0, 512);
+  fileTaskHandle = osThreadCreate(osThread(fileTask), NULL);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
@@ -622,6 +628,24 @@ void TelemetryTask(void const * argument)
     osDelay(1);
   }
   /* USER CODE END TelemetryTask */
+}
+
+/* USER CODE BEGIN Header_FileTask */
+/**
+* @brief Function implementing the fileTask thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_FileTask */
+void FileTask(void const * argument)
+{
+  /* USER CODE BEGIN FileTask */
+  /* Infinite loop */
+  for(;;)
+  {
+    osDelay(1);
+  }
+  /* USER CODE END FileTask */
 }
 
  /* MPU Configuration */
