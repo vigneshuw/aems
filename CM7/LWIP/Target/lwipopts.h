@@ -117,6 +117,12 @@
 /* Enable netconn receive timeouts used by the TCP client. */
 #define LWIP_SO_RCVTIMEO 1
 
+/* Reduce the size for RECV_BUFSIZE_DEFAULT */
+#ifdef RECV_BUFSIZE_DEFAULT
+#undef RECV_BUFSIZE_DEFAULT
+#endif
+#define RECV_BUFSIZE_DEFAULT 2048
+
 /* USER CODE END 1 */
 
 #ifdef __cplusplus

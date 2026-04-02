@@ -62,6 +62,8 @@ MMC_HandleTypeDef hmmc1;
 TIM_HandleTypeDef htim1;
 
 osThreadId defaultTaskHandle;
+osThreadId controllerTaskHandle;
+osThreadId telemetryTaskHandle;
 /* USER CODE BEGIN PV */
 
 /* USER CODE END PV */
@@ -73,6 +75,8 @@ static void MX_GPIO_Init(void);
 static void MX_TIM1_Init(void);
 static void MX_SDMMC1_MMC_Init(void);
 void StartDefaultTask(void const * argument);
+void ControllerTask(void const * argument);
+void TelemetryTask(void const * argument);
 
 /* USER CODE BEGIN PFP */
 /* USER CODE END PFP */
@@ -234,8 +238,16 @@ Error_Handler();
 
   /* Create the thread(s) */
   /* definition and creation of defaultTask */
-  osThreadDef(defaultTask, StartDefaultTask, osPriorityNormal, 0, 256);
+  osThreadDef(defaultTask, StartDefaultTask, osPriorityHigh, 0, 256);
   defaultTaskHandle = osThreadCreate(osThread(defaultTask), NULL);
+
+  /* definition and creation of controllerTask */
+  osThreadDef(controllerTask, ControllerTask, osPriorityNormal, 0, 128);
+  controllerTaskHandle = osThreadCreate(osThread(controllerTask), NULL);
+
+  /* definition and creation of telemetryTask */
+  osThreadDef(telemetryTask, TelemetryTask, osPriorityLow, 0, 128);
+  telemetryTaskHandle = osThreadCreate(osThread(telemetryTask), NULL);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
@@ -576,6 +588,42 @@ void StartDefaultTask(void const * argument)
   /* USER CODE END 5 */
 }
 
+/* USER CODE BEGIN Header_ControllerTask */
+/**
+* @brief Function implementing the controllerTask thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_ControllerTask */
+void ControllerTask(void const * argument)
+{
+  /* USER CODE BEGIN ControllerTask */
+  /* Infinite loop */
+  for(;;)
+  {
+    osDelay(1);
+  }
+  /* USER CODE END ControllerTask */
+}
+
+/* USER CODE BEGIN Header_TelemetryTask */
+/**
+* @brief Function implementing the telemetryTask thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_TelemetryTask */
+void TelemetryTask(void const * argument)
+{
+  /* USER CODE BEGIN TelemetryTask */
+  /* Infinite loop */
+  for(;;)
+  {
+    osDelay(1);
+  }
+  /* USER CODE END TelemetryTask */
+}
+
  /* MPU Configuration */
 
 void MPU_Config(void)
@@ -604,30 +652,33 @@ void MPU_Config(void)
   /** Initializes and configures the Region and the memory to be protected
   */
   MPU_InitStruct.Number = MPU_REGION_NUMBER1;
-  MPU_InitStruct.BaseAddress = 0x30000000;
+  MPU_InitStruct.BaseAddress = 0x30020000;
   MPU_InitStruct.Size = MPU_REGION_SIZE_128KB;
   MPU_InitStruct.SubRegionDisable = 0x0;
   MPU_InitStruct.TypeExtField = MPU_TEX_LEVEL1;
   MPU_InitStruct.AccessPermission = MPU_REGION_FULL_ACCESS;
-
-  HAL_MPU_ConfigRegion(&MPU_InitStruct);
-
-  /** Initializes and configures the Region and the memory to be protected
-  */
-  MPU_InitStruct.Number = MPU_REGION_NUMBER2;
-  MPU_InitStruct.BaseAddress = 0x30020000;
   MPU_InitStruct.IsShareable = MPU_ACCESS_NOT_SHAREABLE;
 
   HAL_MPU_ConfigRegion(&MPU_InitStruct);
 
   /** Initializes and configures the Region and the memory to be protected
   */
-  MPU_InitStruct.Number = MPU_REGION_NUMBER3;
+  MPU_InitStruct.Number = MPU_REGION_NUMBER2;
   MPU_InitStruct.BaseAddress = 0x30040000;
   MPU_InitStruct.Size = MPU_REGION_SIZE_512B;
   MPU_InitStruct.TypeExtField = MPU_TEX_LEVEL0;
   MPU_InitStruct.IsShareable = MPU_ACCESS_SHAREABLE;
   MPU_InitStruct.IsBufferable = MPU_ACCESS_BUFFERABLE;
+
+  HAL_MPU_ConfigRegion(&MPU_InitStruct);
+
+  /** Initializes and configures the Region and the memory to be protected
+  */
+  MPU_InitStruct.Number = MPU_REGION_NUMBER3;
+  MPU_InitStruct.BaseAddress = 0x30000000;
+  MPU_InitStruct.Size = MPU_REGION_SIZE_4KB;
+  MPU_InitStruct.TypeExtField = MPU_TEX_LEVEL1;
+  MPU_InitStruct.IsBufferable = MPU_ACCESS_NOT_BUFFERABLE;
 
   HAL_MPU_ConfigRegion(&MPU_InitStruct);
   /* Enables the MPU */
