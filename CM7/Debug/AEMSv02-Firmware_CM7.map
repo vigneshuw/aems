@@ -35340,7 +35340,8 @@ Name             Origin             Length             Attributes
 RAM_D1           0x24000000         0x00080000         xrw
 FLASH            0x08000000         0x00100000         xr
 DTCMRAM          0x20000000         0x00020000         xrw
-RAM_D2           0x30000000         0x00048000         xrw
+RAM_D2           0x30000000         0x00040000         xrw
+RAM_D2_ETH       0x30040000         0x00008000         xrw
 RAM_D3           0x38000000         0x00010000         xrw
 ITCMRAM          0x00000000         0x00010000         xrw
 *default*        0x00000000         0xffffffff
@@ -38796,24 +38797,20 @@ LOAD C:/ST/STM32CubeIDE_2.0.0/STM32CubeIDE/plugins/com.st.stm32cube.ide.mcu.exte
  *fill*         0x2400bf18      0x400 
                 0x2400c318                        . = ALIGN (0x8)
 
-.lwip_sec       0x30000000    0x43303
-                0x30040000                        . = ABSOLUTE (0x30040000)
- *fill*         0x30000000    0x40000 
+.lwip_sec       0x30040000     0x31c3
  *(.RxDecripSection)
  .RxDecripSection
                 0x30040000       0x60 ./LWIP/Target/ethernetif.o
                 0x30040000                DMARxDscrTab
-                0x30040060                        . = ABSOLUTE (0x30040060)
  *(.TxDecripSection)
  .TxDecripSection
                 0x30040060       0x60 ./LWIP/Target/ethernetif.o
                 0x30040060                DMATxDscrTab
-                0x30040200                        . = ABSOLUTE (0x30040200)
- *fill*         0x300400c0      0x140 
+                0x300400c0                        . = ALIGN (0x20)
  *(.Rx_PoolSection)
  .Rx_PoolSection
-                0x30040200     0x3103 ./LWIP/Target/ethernetif.o
-                0x30040200                memp_memory_RX_POOL_base
+                0x300400c0     0x3103 ./LWIP/Target/ethernetif.o
+                0x300400c0                memp_memory_RX_POOL_base
 
 /DISCARD/
  libc.a(*)
