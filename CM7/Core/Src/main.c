@@ -32,12 +32,22 @@
 #include "ipc_shared.h"
 #include "mmc_diskio.h"
 #include "shared_memory.h"
+#include "queue.h"
+#include <stdio.h>
 #include <string.h>
 #include "tcpclient.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
+typedef struct
+{
+  uint8_t command;
+  uint32_t server_id;
+  uint64_t epoch_time;
+  uint16_t payload_len;
+  uint8_t payload[87];
+} ControlMessage_t;
 
 /* USER CODE END PTD */
 
@@ -66,6 +76,7 @@ osThreadId controllerTaskHandle;
 osThreadId telemetryTaskHandle;
 osThreadId fileTaskHandle;
 /* USER CODE BEGIN PV */
+static QueueHandle_t gControlQueue;
 
 /* USER CODE END PV */
 
@@ -81,6 +92,9 @@ void TelemetryTask(void const * argument);
 void FileTask(void const * argument);
 
 /* USER CODE BEGIN PFP */
+static uint32_t ReadU32Be(const uint8_t *data);
+static uint64_t ReadU64Be(const uint8_t *data);
+static void ProcessTcpData(const char *data, uint16_t length);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -104,6 +118,56 @@ uint8_t wtext[] = "This is FatFs running on CM7 core"; /* File write buffer */
 /*
  * BLE
  */
+
+static uint32_t ReadU32Be(const uint8_t *data)
+{
+  return ((uint32_t)data[0] << 24) |
+         ((uint32_t)data[1] << 16) |
+         ((uint32_t)data[2] << 8) |
+         (uint32_t)data[3];
+}
+
+static uint64_t ReadU64Be(const uint8_t *data)
+{
+  return ((uint64_t)data[0] << 56) |
+         ((uint64_t)data[1] << 48) |
+         ((uint64_t)data[2] << 40) |
+         ((uint64_t)data[3] << 32) |
+         ((uint64_t)data[4] << 24) |
+         ((uint64_t)data[5] << 16) |
+         ((uint64_t)data[6] << 8) |
+         (uint64_t)data[7];
+}
+
+static void ProcessTcpData(const char *data, uint16_t length)
+{
+  ControlMessage_t msg;
+  uint16_t payload_len;
+
+  if ((data == NULL) || (length < 13U) || (gControlQueue == NULL))
+  {
+    return;
+  }
+
+  memset(&msg, 0, sizeof(msg));
+  msg.command = (uint8_t)data[0];
+  msg.server_id = ReadU32Be((const uint8_t *)&data[1]);
+  msg.epoch_time = ReadU64Be((const uint8_t *)&data[5]);
+
+  payload_len = (uint16_t)(length - 13U);
+  if (payload_len > sizeof(msg.payload))
+  {
+    payload_len = sizeof(msg.payload);
+  }
+
+  msg.payload_len = payload_len;
+  if (payload_len > 0U)
+  {
+    memcpy(msg.payload, &data[13], payload_len);
+  }
+
+  (void)xQueueSend(gControlQueue, &msg, 0U);
+}
 
 
 /* USER CODE END 0 */
@@ -235,7 +299,7 @@ Error_Handler();
   /* USER CODE END RTOS_TIMERS */
 
   /* USER CODE BEGIN RTOS_QUEUES */
-  /* add queues, ... */
+  gControlQueue = xQueueCreate(8U, sizeof(ControlMessage_t));
   /* USER CODE END RTOS_QUEUES */
 
   /* Create the thread(s) */
@@ -562,11 +626,11 @@ void StartDefaultTask(void const * argument)
   /* USER CODE BEGIN 5 */
   TcpClientConfig_t tcpCfg;
   ip_addr_t tcpServerIp;
-//  IpcResponseBlock_t ipc_rsp;
-//  SharedStatusBlock_t ipc_status;
+  //  IpcResponseBlock_t ipc_rsp;
+  //  SharedStatusBlock_t ipc_status;
 
   IP4_ADDR(&tcpServerIp, 192, 168, 0, 20);
-  TcpClient_BuildConfig(&tcpCfg, &tcpServerIp, 10U, &gnetif);
+  TcpClient_BuildConfig(&tcpCfg, &tcpServerIp, 10U, &gnetif, ProcessTcpData);
   (void)TcpClient_Init(&tcpCfg);
 
   /* Infinite loop */
@@ -604,10 +668,37 @@ void StartDefaultTask(void const * argument)
 void ControllerTask(void const * argument)
 {
   /* USER CODE BEGIN ControllerTask */
+  ControlMessage_t msg;
+
   /* Infinite loop */
   for(;;)
   {
-    osDelay(1);
+    if ((gControlQueue != NULL) &&
+        (xQueueReceive(gControlQueue, &msg, portMAX_DELAY) == pdPASS))
+    {
+      switch (msg.command)
+      {
+      case 0U:
+      {
+        char tx[128];
+
+        (void)snprintf(tx,
+                       sizeof(tx),
+                       "HB,cmd=%u,id=%lu,time=%llu,status=OK,tcp=%u\r\n",
+                       (unsigned int)msg.command,
+                       (unsigned long)msg.server_id,
+                       (unsigned long long)msg.epoch_time,
+                       (unsigned int)TcpClient_IsConnected());
+
+        (void)TcpClient_Send(tx);
+        break;
+      }
+
+      default:
+        /* TODO: Dispatch command to board features. */
+        break;
+      }
+    }
   }
   /* USER CODE END ControllerTask */
 }

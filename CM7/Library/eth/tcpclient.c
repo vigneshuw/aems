@@ -9,12 +9,10 @@
 
 #include "tcpclient.h"
 
-#include <stdio.h>
 #include <string.h>
 
 #define TCPCLIENT_CONNECT_TIMEOUT_MS   1000U
 #define TCPCLIENT_RX_BUFFER_LEN        100U
-#define TCPCLIENT_TX_BUFFER_LEN        200U
 
 typedef struct
 {
@@ -165,7 +163,7 @@ static int32_t TcpClient_ConnectOnce(void)
 static void TcpClient_ProcessRx(const char *rx_data, int32_t rx_len)
 {
     char msg[TCPCLIENT_RX_BUFFER_LEN];
-    char reply[TCPCLIENT_TX_BUFFER_LEN];
+    static const char reply[] = "ACK\n";
     size_t copy_len;
 
     if (rx_len <= 0)
@@ -177,11 +175,15 @@ static void TcpClient_ProcessRx(const char *rx_data, int32_t rx_len)
     memset(msg, 0, sizeof(msg));
     memcpy(msg, rx_data, copy_len);
 
-    (void)snprintf(reply, sizeof(reply), "\"%s\" was sent by the Server\n", msg);
-
-    if (lwip_send(gTcpClient.sock, reply, strlen(reply), 0) < 0)
+    if (lwip_send(gTcpClient.sock, reply, sizeof(reply) - 1U, 0) < 0)
     {
         gTcpClient.reconnect_requested = 1U;
+        return;
+    }
+
+    if (gTcpClient.cfg.RxHandler != NULL)
+    {
+        gTcpClient.cfg.RxHandler(msg, (uint16_t)copy_len);
     }
 }
 
@@ -278,7 +280,8 @@ static void TcpClient_Task(void *arg)
 void TcpClient_BuildConfig(TcpClientConfig_t *config,
                            const ip_addr_t *serverIp,
                            uint16_t serverPort,
-                           struct netif *netif)
+                           struct netif *netif,
+                           TcpClientRxHandler_t rxHandler)
 {
     if ((config == NULL) || (serverIp == NULL))
     {
@@ -289,6 +292,7 @@ void TcpClient_BuildConfig(TcpClientConfig_t *config,
     config->ServerIp = *serverIp;
     config->ServerPort = serverPort;
     config->Netif = netif;
+    config->RxHandler = rxHandler;
 }
 
 int32_t TcpClient_Init(const TcpClientConfig_t *config)

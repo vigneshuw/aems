@@ -29,11 +29,14 @@ extern "C" {
 #define TCPCLIENT_LINK_WAIT_MS          250U
 #endif
 
+typedef void (*TcpClientRxHandler_t)(const char *data, uint16_t length);
+
 typedef struct
 {
     ip_addr_t ServerIp;
     uint16_t ServerPort;
     struct netif *Netif;
+    TcpClientRxHandler_t RxHandler;
 } TcpClientConfig_t;
 
 /**
@@ -42,12 +45,14 @@ typedef struct
  * @param serverIp Pointer to the IPv4/IPv6 server address.
  * @param serverPort Remote TCP server port number.
  * @param netif Pointer to the LwIP network interface used by the client.
+ * @param rxHandler Callback invoked after a TCP packet is acknowledged.
  * @return None.
  */
 void TcpClient_BuildConfig(TcpClientConfig_t *config,
                            const ip_addr_t *serverIp,
                            uint16_t serverPort,
-                           struct netif *netif);
+                           struct netif *netif,
+                           TcpClientRxHandler_t rxHandler);
 
 /**
  * @brief Initialize the TCP client task and internal resources.
