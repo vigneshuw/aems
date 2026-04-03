@@ -15,7 +15,26 @@ def build_packet(command, server_id, epoch_time):
     payload[0] = command & 0xFF
     payload[1:5] = struct.pack(">I", server_id)
     payload[5:13] = struct.pack(">Q", epoch_time)
+    for index in range(13, PACKET_LEN):
+        payload[index] = (index - 13) & 0xFF
     return bytes(payload)
+
+
+def parse_config_write(packet):
+    command = packet[0]
+    server_id = struct.unpack(">I", packet[1:5])[0]
+    epoch_time = struct.unpack(">Q", packet[5:13])[0]
+    system_status = packet[13]
+    tcp_connected = packet[14]
+
+    print(
+        "RX config-write: "
+        f"cmd={command}, "
+        f"id={server_id}, "
+        f"time={epoch_time}, "
+        f"status={system_status}, "
+        f"tcp={tcp_connected}"
+    )
 
 
 def parse_heartbeat(packet):
@@ -59,6 +78,8 @@ def parse_packet(packet):
 
     if command == 0:
         parse_heartbeat(packet)
+    elif command == 1:
+        parse_config_write(packet)
     elif command == 2:
         parse_file_count(packet)
     else:
@@ -103,7 +124,7 @@ def main():
 
             while True:
                 try:
-                    user_input = input("Enter command (0=heartbeat, 2=file count, q=quit): ").strip()
+                    user_input = input("Enter command (0=heartbeat, 1=write config, 2=file count, q=quit): ").strip()
                 except (EOFError, KeyboardInterrupt):
                     print("\nExiting.")
                     break
@@ -111,8 +132,8 @@ def main():
                 if user_input.lower() == "q":
                     break
 
-                if user_input not in {"0", "2"}:
-                    print("Only commands 0 and 2 are implemented in this test.")
+                if user_input not in {"0", "1", "2"}:
+                    print("Only commands 0, 1, and 2 are implemented in this test.")
                     continue
 
                 command = int(user_input)

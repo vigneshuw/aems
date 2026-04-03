@@ -721,6 +721,13 @@ void ControllerTask(void const * argument)
         }
         break;
 
+      case 1U:
+        if (gFileQueue != NULL)
+        {
+          (void)xQueueSend(gFileQueue, &msg, 0U);
+        }
+        break;
+
       default:
         /* TODO: Dispatch command to board features. */
         break;
@@ -768,6 +775,27 @@ void FileTask(void const * argument)
     {
       switch (msg.command)
       {
+      case 1U:
+      {
+        uint8_t tx[100];
+        EmmcFsStatus_t fs_status;
+
+        memset(tx, 0, sizeof(tx));
+        tx[0] = msg.command;
+        WriteU32Be(&tx[1], msg.server_id);
+        WriteU64Be(&tx[5], msg.epoch_time);
+        tx[14] = TcpClient_IsConnected();
+
+        fs_status = EmmcFs_WriteConfigMain(msg.server_id,
+                                           msg.epoch_time,
+                                           msg.payload,
+                                           msg.payload_len);
+        tx[13] = (uint8_t)((fs_status == EMMC_FS_OK) ? 0U : 1U);
+
+        (void)TcpClient_SendBuffer(tx, sizeof(tx));
+        break;
+      }
+
       case 2U:
       {
         uint8_t tx[100];

@@ -41,6 +41,24 @@ EmmcFsStatus_t EmmcFs_Init(void);
 EmmcFsStatus_t EmmcFs_MountOrFormat(void);
 
 /**
+ * @brief Rewrite `config_main.conf` with server ID, epoch time, and payload bytes.
+ * @param server_id Server ID value to write in big-endian order.
+ * @param epoch_time Epoch time value to write in big-endian order.
+ * @param payload Pointer to the payload bytes to append after the header.
+ * @param payload_len Number of payload bytes to write.
+ * @return `EMMC_FS_OK` on success.
+ * @return `EMMC_FS_ERR_LINK` if the FatFs driver link fails.
+ * @return `EMMC_FS_ERR_MOUNT` if the filesystem cannot be mounted.
+ * @return `EMMC_FS_ERR_PARAM` if `payload` is `NULL` while `payload_len` is non-zero.
+ * @return `EMMC_FS_ERR_OPEN_DIR` if the config file cannot be opened for write.
+ * @return `EMMC_FS_ERR_READ_DIR` if a write operation fails.
+ */
+EmmcFsStatus_t EmmcFs_WriteConfigMain(uint32_t server_id,
+                                      uint64_t epoch_time,
+                                      const uint8_t *payload,
+                                      uint16_t payload_len);
+
+/**
  * @brief Count files ending with `.dat` in the eMMC root directory.
  * @param summary Pointer to the output summary structure.
  * @return `EMMC_FS_OK` on success.
