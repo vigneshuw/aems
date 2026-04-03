@@ -16,7 +16,9 @@ typedef enum
     EMMC_FS_ERR_NO_FS = -4,
     EMMC_FS_ERR_MKFS = -5,
     EMMC_FS_ERR_OPEN_DIR = -6,
-    EMMC_FS_ERR_READ_DIR = -7
+    EMMC_FS_ERR_READ_DIR = -7,
+    EMMC_FS_ERR_OPEN_FILE = -8,
+    EMMC_FS_ERR_READ_FILE = -9
 } EmmcFsStatus_t;
 
 typedef struct
@@ -70,6 +72,26 @@ EmmcFsStatus_t EmmcFs_WriteConfigMain(uint32_t server_id,
  * @return `EMMC_FS_ERR_READ_DIR` if directory enumeration fails.
  */
 EmmcFsStatus_t EmmcFs_CountAllFiles(uint32_t *file_count);
+
+/**
+ * @brief Read a chunk from `config_main.conf`.
+ * @param offset Byte offset in the file to read from.
+ * @param buffer Destination buffer for file data.
+ * @param buffer_size Maximum number of bytes to place into `buffer`.
+ * @param bytes_read Pointer to the number of bytes read.
+ * @param total_size Pointer to the total file size in bytes.
+ * @return `EMMC_FS_OK` on success.
+ * @return `EMMC_FS_ERR_PARAM` if output pointers are invalid.
+ * @return `EMMC_FS_ERR_LINK` if the FatFs driver link fails.
+ * @return `EMMC_FS_ERR_MOUNT` if the filesystem cannot be mounted.
+ * @return `EMMC_FS_ERR_OPEN_FILE` if `config_main.conf` cannot be opened.
+ * @return `EMMC_FS_ERR_READ_FILE` if seek or read fails.
+ */
+EmmcFsStatus_t EmmcFs_ReadConfigMainChunk(uint32_t offset,
+                                          uint8_t *buffer,
+                                          uint16_t buffer_size,
+                                          uint16_t *bytes_read,
+                                          uint32_t *total_size);
 
 /**
  * @brief Count files ending with `.dat` in the eMMC root directory.

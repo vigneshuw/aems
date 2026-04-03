@@ -261,6 +261,70 @@ EmmcFsStatus_t EmmcFs_WriteConfigMain(uint32_t server_id,
     return EMMC_FS_OK;
 }
 
+EmmcFsStatus_t EmmcFs_ReadConfigMainChunk(uint32_t offset,
+                                          uint8_t *buffer,
+                                          uint16_t buffer_size,
+                                          uint16_t *bytes_read,
+                                          uint32_t *total_size)
+{
+    FIL file;
+    FRESULT result;
+    UINT fatfs_bytes_read;
+    EmmcFsStatus_t status;
+
+    if ((buffer == NULL) || (bytes_read == NULL) || (total_size == NULL) || (buffer_size == 0U))
+    {
+        return EMMC_FS_ERR_PARAM;
+    }
+
+    *bytes_read = 0U;
+    *total_size = 0U;
+
+    EmmcFs_Lock();
+
+    status = EmmcFs_EnsureMounted();
+    if (status != EMMC_FS_OK)
+    {
+        EmmcFs_Unlock();
+        return status;
+    }
+
+    result = f_open(&file, EMMC_FS_CONFIG_MAIN_PATH, FA_READ);
+    if (result != FR_OK)
+    {
+        EmmcFs_Unlock();
+        return EMMC_FS_ERR_OPEN_FILE;
+    }
+
+    *total_size = (uint32_t)f_size(&file);
+    if (offset >= *total_size)
+    {
+        (void)f_close(&file);
+        EmmcFs_Unlock();
+        return EMMC_FS_OK;
+    }
+
+    result = f_lseek(&file, offset);
+    if (result != FR_OK)
+    {
+        (void)f_close(&file);
+        EmmcFs_Unlock();
+        return EMMC_FS_ERR_READ_FILE;
+    }
+
+    result = f_read(&file, buffer, buffer_size, &fatfs_bytes_read);
+    (void)f_close(&file);
+    EmmcFs_Unlock();
+
+    if (result != FR_OK)
+    {
+        return EMMC_FS_ERR_READ_FILE;
+    }
+
+    *bytes_read = (uint16_t)fatfs_bytes_read;
+    return EMMC_FS_OK;
+}
+
 EmmcFsStatus_t EmmcFs_CountDatFiles(EmmcFsDatSummary_t *summary)
 {
     DIR dir;

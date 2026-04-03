@@ -59,6 +59,10 @@ typedef struct
 #define HSEM_ID_0 (0U) /* HW semaphore 0*/
 #endif
 
+#define TCP_FIXED_RESPONSE_LEN         100U
+#define TCP_CONFIG_READ_HEADER_LEN     24U
+#define TCP_CONFIG_READ_CHUNK_LEN      1024U
+
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -96,6 +100,7 @@ void FileTask(void const * argument);
 /* USER CODE BEGIN PFP */
 static uint32_t ReadU32Be(const uint8_t *data);
 static uint64_t ReadU64Be(const uint8_t *data);
+static void WriteU16Be(uint8_t *data, uint16_t value);
 static void WriteU32Be(uint8_t *data, uint32_t value);
 static void WriteU64Be(uint8_t *data, uint64_t value);
 static void ProcessTcpData(const char *data, uint16_t length);
@@ -149,6 +154,12 @@ static void WriteU32Be(uint8_t *data, uint32_t value)
   data[1] = (uint8_t)(value >> 16);
   data[2] = (uint8_t)(value >> 8);
   data[3] = (uint8_t)value;
+}
+
+static void WriteU16Be(uint8_t *data, uint16_t value)
+{
+  data[0] = (uint8_t)(value >> 8);
+  data[1] = (uint8_t)value;
 }
 
 static void WriteU64Be(uint8_t *data, uint64_t value)
@@ -699,9 +710,9 @@ void ControllerTask(void const * argument)
     {
       switch (msg.command)
       {
-      case 0U:
-      {
-        uint8_t tx[100];
+        case 0U:
+        {
+          uint8_t tx[TCP_FIXED_RESPONSE_LEN];
 
         memset(tx, 0, sizeof(tx));
         tx[0] = msg.command;
@@ -729,6 +740,13 @@ void ControllerTask(void const * argument)
           break;
 
         case 3U:
+          if (gFileQueue != NULL)
+          {
+            (void)xQueueSend(gFileQueue, &msg, 0U);
+          }
+          break;
+
+        case 4U:
           if (gFileQueue != NULL)
           {
             (void)xQueueSend(gFileQueue, &msg, 0U);
@@ -782,9 +800,9 @@ void FileTask(void const * argument)
     {
       switch (msg.command)
       {
-      case 1U:
-      {
-        uint8_t tx[100];
+        case 1U:
+        {
+          uint8_t tx[TCP_FIXED_RESPONSE_LEN];
         EmmcFsStatus_t fs_status;
 
         memset(tx, 0, sizeof(tx));
@@ -805,7 +823,7 @@ void FileTask(void const * argument)
 
         case 2U:
         {
-          uint8_t tx[100];
+          uint8_t tx[TCP_FIXED_RESPONSE_LEN];
           EmmcFsDatSummary_t summary;
           EmmcFsStatus_t fs_status;
 
@@ -829,7 +847,7 @@ void FileTask(void const * argument)
 
         case 3U:
         {
-          uint8_t tx[100];
+          uint8_t tx[TCP_FIXED_RESPONSE_LEN];
           uint32_t total_file_count = 0U;
           EmmcFsStatus_t fs_status;
 
@@ -848,6 +866,48 @@ void FileTask(void const * argument)
           }
 
           (void)TcpClient_SendBuffer(tx, sizeof(tx));
+          break;
+        }
+
+        case 4U:
+        {
+          static uint8_t tx[TCP_CONFIG_READ_HEADER_LEN + TCP_CONFIG_READ_CHUNK_LEN];
+          uint16_t tx_len;
+          uint32_t offset = 0U;
+          uint32_t total_size = 0U;
+          uint16_t chunk_len = 0U;
+          EmmcFsStatus_t fs_status;
+
+          do
+          {
+            memset(tx, 0, sizeof(tx));
+            tx[0] = msg.command;
+            tx[1] = 0U;
+            WriteU32Be(&tx[2], msg.server_id);
+            WriteU64Be(&tx[6], msg.epoch_time);
+
+            fs_status = EmmcFs_ReadConfigMainChunk(offset,
+                                                   &tx[TCP_CONFIG_READ_HEADER_LEN],
+                                                   TCP_CONFIG_READ_CHUNK_LEN,
+                                                   &chunk_len,
+                                                   &total_size);
+            tx[1] = (uint8_t)((fs_status == EMMC_FS_OK) ? 0U : 1U);
+            WriteU32Be(&tx[14], total_size);
+            WriteU32Be(&tx[18], offset);
+            WriteU16Be(&tx[22], chunk_len);
+
+            tx_len = (uint16_t)(TCP_CONFIG_READ_HEADER_LEN + chunk_len);
+            (void)TcpClient_SendBuffer(tx, tx_len);
+
+            if ((fs_status != EMMC_FS_OK) || (chunk_len == 0U))
+            {
+              break;
+            }
+
+            offset += chunk_len;
+            osDelay(2);
+          } while (offset < total_size);
+
           break;
         }
 

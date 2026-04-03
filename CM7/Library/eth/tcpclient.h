@@ -10,7 +10,7 @@ extern "C" {
 #include "lwip/netif.h"
 
 #ifndef TCPCLIENT_TX_MSG_MAX_LEN
-#define TCPCLIENT_TX_MSG_MAX_LEN        128U
+#define TCPCLIENT_TX_MSG_MAX_LEN        1100U
 #endif
 
 #ifndef TCPCLIENT_TX_MBOX_SIZE

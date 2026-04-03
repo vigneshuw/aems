@@ -7,7 +7,11 @@ import time
 HOST = "0.0.0.0"
 PORT = 10
 PACKET_LEN = 100
+CONFIG_READ_HEADER_LEN = 24
 SERVER_ID = 1
+CONFIG_TEST_PAYLOAD = bytes(((index * 3) + 1) & 0xFF for index in range(13, PACKET_LEN))
+config_rx_state = {}
+expected_config_file = None
 
 
 def build_packet(command, server_id, epoch_time):
@@ -15,8 +19,13 @@ def build_packet(command, server_id, epoch_time):
     payload[0] = command & 0xFF
     payload[1:5] = struct.pack(">I", server_id)
     payload[5:13] = struct.pack(">Q", epoch_time)
-    for index in range(13, PACKET_LEN):
-        payload[index] = (index - 13) & 0xFF
+
+    if command == 1:
+        payload[13:PACKET_LEN] = CONFIG_TEST_PAYLOAD
+    else:
+        for index in range(13, PACKET_LEN):
+            payload[index] = (index - 13) & 0xFF
+
     return bytes(payload)
 
 
@@ -92,6 +101,57 @@ def parse_total_file_count(packet):
     )
 
 
+def parse_config_read(packet):
+    global expected_config_file
+
+    command = packet[0]
+    system_status = packet[1]
+    server_id = struct.unpack(">I", packet[2:6])[0]
+    epoch_time = struct.unpack(">Q", packet[6:14])[0]
+    total_size = struct.unpack(">I", packet[14:18])[0]
+    offset = struct.unpack(">I", packet[18:22])[0]
+    chunk_len = struct.unpack(">H", packet[22:24])[0]
+    chunk = packet[24:24 + chunk_len]
+
+    state = config_rx_state.setdefault(
+        server_id,
+        {"total_size": total_size, "buffer": bytearray(total_size)}
+    )
+
+    if state["total_size"] != total_size:
+        state["total_size"] = total_size
+        state["buffer"] = bytearray(total_size)
+
+    if chunk_len > 0 and (offset + chunk_len) <= len(state["buffer"]):
+        state["buffer"][offset:offset + chunk_len] = chunk
+
+    print(
+        "RX config-read: "
+        f"cmd={command}, "
+        f"id={server_id}, "
+        f"time={epoch_time}, "
+        f"status={system_status}, "
+        f"total_size={total_size}, "
+        f"offset={offset}, "
+        f"chunk_len={chunk_len}"
+    )
+
+    if (system_status == 0) and (total_size == 0):
+        print("Config file is empty.")
+        config_rx_state.pop(server_id, None)
+    elif (system_status == 0) and ((offset + chunk_len) >= total_size) and (total_size > 0):
+        full_data = bytes(state["buffer"])
+        print(f"Config read complete: {full_data.hex()}")
+
+        if expected_config_file is not None:
+            if full_data == expected_config_file:
+                print("Config verification passed.")
+            else:
+                print("Config verification FAILED.")
+
+        config_rx_state.pop(server_id, None)
+
+
 def parse_packet(packet):
     command = packet[0]
 
@@ -103,6 +163,8 @@ def parse_packet(packet):
         parse_file_count(packet)
     elif command == 3:
         parse_total_file_count(packet)
+    elif command == 4:
+        parse_config_read(packet)
     else:
         print(f"RX unknown packet: cmd={command}, raw={packet.hex()}")
 
@@ -119,15 +181,35 @@ def recv_loop(conn):
 
             rx_buffer.extend(data)
 
-            while len(rx_buffer) >= PACKET_LEN:
-                packet = bytes(rx_buffer[:PACKET_LEN])
-                del rx_buffer[:PACKET_LEN]
-                parse_packet(packet)
+            while rx_buffer:
+                command = rx_buffer[0]
+
+                if command == 4:
+                    if len(rx_buffer) < CONFIG_READ_HEADER_LEN:
+                        break
+
+                    chunk_len = struct.unpack(">H", rx_buffer[22:24])[0]
+                    frame_len = CONFIG_READ_HEADER_LEN + chunk_len
+                    if len(rx_buffer) < frame_len:
+                        break
+
+                    packet = bytes(rx_buffer[:frame_len])
+                    del rx_buffer[:frame_len]
+                    parse_packet(packet)
+                else:
+                    if len(rx_buffer) < PACKET_LEN:
+                        break
+
+                    packet = bytes(rx_buffer[:PACKET_LEN])
+                    del rx_buffer[:PACKET_LEN]
+                    parse_packet(packet)
     except OSError as exc:
         print(f"Receive loop stopped: {exc}")
 
 
 def main():
+    global expected_config_file
+
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server:
         server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         server.bind((HOST, PORT))
@@ -145,7 +227,7 @@ def main():
 
             while True:
                 try:
-                    user_input = input("Enter command (0=heartbeat, 1=write config, 2=dat count, 3=all file count, q=quit): ").strip()
+                    user_input = input("Enter command (0=heartbeat, 1=write config, 2=dat count, 3=all file count, 4=read config, q=quit): ").strip()
                 except (EOFError, KeyboardInterrupt):
                     print("\nExiting.")
                     break
@@ -153,12 +235,22 @@ def main():
                 if user_input.lower() == "q":
                     break
 
-                if user_input not in {"0", "1", "2", "3"}:
-                    print("Only commands 0, 1, 2, and 3 are implemented in this test.")
+                if user_input not in {"0", "1", "2", "3", "4"}:
+                    print("Only commands 0, 1, 2, 3, and 4 are implemented in this test.")
                     continue
 
                 command = int(user_input)
-                packet = build_packet(command, SERVER_ID, int(time.time()))
+                epoch_time = int(time.time())
+                packet = build_packet(command, SERVER_ID, epoch_time)
+
+                if command == 1:
+                    expected_config_file = (
+                        struct.pack(">I", SERVER_ID) +
+                        struct.pack(">Q", epoch_time) +
+                        CONFIG_TEST_PAYLOAD
+                    )
+                    print(f"TX config payload: {CONFIG_TEST_PAYLOAD.hex()}")
+
                 conn.sendall(packet)
                 print(f"TX: sent {len(packet)} bytes for command {command}")
 

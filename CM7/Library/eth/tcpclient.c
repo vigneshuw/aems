@@ -168,7 +168,7 @@ static int32_t TcpClient_ConnectOnce(void)
 // Process the Rx from the Server
 static void TcpClient_ProcessRx(const char *rx_data, int32_t rx_len)
 {
-    char msg[TCPCLIENT_RX_BUFFER_LEN];
+    uint8_t msg[TCPCLIENT_RX_BUFFER_LEN];
     size_t copy_len;
 
     if (rx_len <= 0)
@@ -176,13 +176,12 @@ static void TcpClient_ProcessRx(const char *rx_data, int32_t rx_len)
         return;
     }
 
-    copy_len = ((size_t)rx_len < (sizeof(msg) - 1U)) ? (size_t)rx_len : (sizeof(msg) - 1U);
-    memset(msg, 0, sizeof(msg));
+    copy_len = ((size_t)rx_len < sizeof(msg)) ? (size_t)rx_len : sizeof(msg);
     memcpy(msg, rx_data, copy_len);
 
     if (gTcpClient.cfg.RxHandler != NULL)
     {
-        gTcpClient.cfg.RxHandler(msg, (uint16_t)copy_len);
+        gTcpClient.cfg.RxHandler((const char *)msg, (uint16_t)copy_len);
     }
 }
 
