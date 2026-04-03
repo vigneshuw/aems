@@ -9,3 +9,4 @@ C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Common/Src/emmc_fs.c:137:
 C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Common/Src/emmc_fs.c:148:16:EmmcFs_MountOrFormat	24	static
 C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Common/Src/emmc_fs.c:198:16:EmmcFs_WriteConfigMain	600	static
 C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Common/Src/emmc_fs.c:264:16:EmmcFs_CountDatFiles	376	static
+C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Common/Src/emmc_fs.c:328:16:EmmcFs_CountAllFiles	376	static

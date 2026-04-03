@@ -721,16 +721,23 @@ void ControllerTask(void const * argument)
         }
         break;
 
-      case 1U:
-        if (gFileQueue != NULL)
-        {
-          (void)xQueueSend(gFileQueue, &msg, 0U);
-        }
-        break;
+        case 1U:
+          if (gFileQueue != NULL)
+          {
+            (void)xQueueSend(gFileQueue, &msg, 0U);
+          }
+          break;
 
-      default:
-        /* TODO: Dispatch command to board features. */
-        break;
+        case 3U:
+          if (gFileQueue != NULL)
+          {
+            (void)xQueueSend(gFileQueue, &msg, 0U);
+          }
+          break;
+
+        default:
+          /* TODO: Dispatch command to board features. */
+          break;
       }
     }
   }
@@ -796,11 +803,11 @@ void FileTask(void const * argument)
         break;
       }
 
-      case 2U:
-      {
-        uint8_t tx[100];
-        EmmcFsDatSummary_t summary;
-        EmmcFsStatus_t fs_status;
+        case 2U:
+        {
+          uint8_t tx[100];
+          EmmcFsDatSummary_t summary;
+          EmmcFsStatus_t fs_status;
 
         memset(tx, 0, sizeof(tx));
         tx[0] = msg.command;
@@ -816,13 +823,37 @@ void FileTask(void const * argument)
           WriteU32Be(&tx[15], summary.dat_file_count);
         }
 
-        (void)TcpClient_SendBuffer(tx, sizeof(tx));
-        break;
-      }
+          (void)TcpClient_SendBuffer(tx, sizeof(tx));
+          break;
+        }
 
-      default:
-        break;
-      }
+        case 3U:
+        {
+          uint8_t tx[100];
+          uint32_t total_file_count = 0U;
+          EmmcFsStatus_t fs_status;
+
+          memset(tx, 0, sizeof(tx));
+          tx[0] = msg.command;
+          WriteU32Be(&tx[1], msg.server_id);
+          WriteU64Be(&tx[5], msg.epoch_time);
+          tx[14] = TcpClient_IsConnected();
+
+          fs_status = EmmcFs_CountAllFiles(&total_file_count);
+          tx[13] = (uint8_t)((fs_status == EMMC_FS_OK) ? 0U : 1U);
+
+          if (fs_status == EMMC_FS_OK)
+          {
+            WriteU32Be(&tx[15], total_file_count);
+          }
+
+          (void)TcpClient_SendBuffer(tx, sizeof(tx));
+          break;
+        }
+
+        default:
+          break;
+        }
     }
   }
   /* USER CODE END FileTask */

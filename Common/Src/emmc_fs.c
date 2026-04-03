@@ -311,10 +311,71 @@ EmmcFsStatus_t EmmcFs_CountDatFiles(EmmcFsDatSummary_t *summary)
 
         if ((info.fattrib & AM_DIR) == 0U)
         {
+            summary->total_file_count++;
+
             if (EmmcFs_IsDatFile(info.fname) != 0U)
             {
                 summary->dat_file_count++;
             }
+        }
+    }
+
+    (void)f_closedir(&dir);
+    EmmcFs_Unlock();
+    return EMMC_FS_OK;
+}
+
+EmmcFsStatus_t EmmcFs_CountAllFiles(uint32_t *file_count)
+{
+    DIR dir;
+    FILINFO info;
+    FRESULT result;
+    EmmcFsStatus_t status;
+    char root_path[EMMC_FS_PATH_LEN + 1U];
+
+    if (file_count == NULL)
+    {
+        return EMMC_FS_ERR_PARAM;
+    }
+
+    *file_count = 0U;
+
+    EmmcFs_Lock();
+
+    status = EmmcFs_EnsureMounted();
+    if (status != EMMC_FS_OK)
+    {
+        EmmcFs_Unlock();
+        return status;
+    }
+
+    (void)snprintf(root_path, sizeof(root_path), "%s%s", s_emmc_path, EMMC_FS_ROOT_SUFFIX);
+
+    result = f_opendir(&dir, root_path);
+    if (result != FR_OK)
+    {
+        EmmcFs_Unlock();
+        return EMMC_FS_ERR_OPEN_DIR;
+    }
+
+    for (;;)
+    {
+        result = f_readdir(&dir, &info);
+        if (result != FR_OK)
+        {
+            (void)f_closedir(&dir);
+            EmmcFs_Unlock();
+            return EMMC_FS_ERR_READ_DIR;
+        }
+
+        if (info.fname[0] == '\0')
+        {
+            break;
+        }
+
+        if ((info.fattrib & AM_DIR) == 0U)
+        {
+            (*file_count)++;
         }
     }
 

@@ -21,6 +21,7 @@ typedef enum
 
 typedef struct
 {
+    uint32_t total_file_count;
     uint32_t dat_file_count;
 } EmmcFsDatSummary_t;
 
@@ -57,6 +58,18 @@ EmmcFsStatus_t EmmcFs_WriteConfigMain(uint32_t server_id,
                                       uint64_t epoch_time,
                                       const uint8_t *payload,
                                       uint16_t payload_len);
+
+/**
+ * @brief Count all files in the eMMC root directory.
+ * @param file_count Pointer to the output file count.
+ * @return `EMMC_FS_OK` on success.
+ * @return `EMMC_FS_ERR_PARAM` if `file_count` is `NULL`.
+ * @return `EMMC_FS_ERR_LINK` if the FatFs driver link fails.
+ * @return `EMMC_FS_ERR_MOUNT` if the filesystem cannot be mounted.
+ * @return `EMMC_FS_ERR_OPEN_DIR` if the root directory cannot be opened.
+ * @return `EMMC_FS_ERR_READ_DIR` if directory enumeration fails.
+ */
+EmmcFsStatus_t EmmcFs_CountAllFiles(uint32_t *file_count);
 
 /**
  * @brief Count files ending with `.dat` in the eMMC root directory.

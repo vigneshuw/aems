@@ -73,6 +73,25 @@ def parse_file_count(packet):
     )
 
 
+def parse_total_file_count(packet):
+    command = packet[0]
+    server_id = struct.unpack(">I", packet[1:5])[0]
+    epoch_time = struct.unpack(">Q", packet[5:13])[0]
+    system_status = packet[13]
+    tcp_connected = packet[14]
+    total_file_count = struct.unpack(">I", packet[15:19])[0]
+
+    print(
+        "RX total-file-count: "
+        f"cmd={command}, "
+        f"id={server_id}, "
+        f"time={epoch_time}, "
+        f"status={system_status}, "
+        f"tcp={tcp_connected}, "
+        f"total_count={total_file_count}"
+    )
+
+
 def parse_packet(packet):
     command = packet[0]
 
@@ -82,6 +101,8 @@ def parse_packet(packet):
         parse_config_write(packet)
     elif command == 2:
         parse_file_count(packet)
+    elif command == 3:
+        parse_total_file_count(packet)
     else:
         print(f"RX unknown packet: cmd={command}, raw={packet.hex()}")
 
@@ -124,7 +145,7 @@ def main():
 
             while True:
                 try:
-                    user_input = input("Enter command (0=heartbeat, 1=write config, 2=file count, q=quit): ").strip()
+                    user_input = input("Enter command (0=heartbeat, 1=write config, 2=dat count, 3=all file count, q=quit): ").strip()
                 except (EOFError, KeyboardInterrupt):
                     print("\nExiting.")
                     break
@@ -132,8 +153,8 @@ def main():
                 if user_input.lower() == "q":
                     break
 
-                if user_input not in {"0", "1", "2"}:
-                    print("Only commands 0, 1, and 2 are implemented in this test.")
+                if user_input not in {"0", "1", "2", "3"}:
+                    print("Only commands 0, 1, 2, and 3 are implemented in this test.")
                     continue
 
                 command = int(user_input)
