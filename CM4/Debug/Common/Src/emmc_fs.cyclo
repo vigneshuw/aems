@@ -1,0 +1,7 @@
+C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Common/Src/emmc_fs.c:23:13:EmmcFs_Lock	2
+C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Common/Src/emmc_fs.c:28:13:EmmcFs_Unlock	1
+C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Common/Src/emmc_fs.c:33:23:EmmcFs_EnsureLinked	3
+C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Common/Src/emmc_fs.c:48:16:EmmcFs_IsDatFile	10
+C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Common/Src/emmc_fs.c:91:16:EmmcFs_Init	1
+C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Common/Src/emmc_fs.c:102:16:EmmcFs_MountOrFormat	6
+C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Common/Src/emmc_fs.c:152:16:EmmcFs_CountDatFiles	10

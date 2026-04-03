@@ -27,6 +27,7 @@
 #include "bluenrg2_intf.h"
 #include "led.h"
 #include "ff_gen_drv.h"
+#include "emmc_fs.h"
 #include "hsem_ids.h"
 #include "ipc.h"
 #include "ipc_shared.h"
@@ -202,7 +203,6 @@ int main(void)
 {
 
   /* USER CODE BEGIN 1 */
-	FRESULT res;
   /* USER CODE END 1 */
 /* USER CODE BEGIN Boot_Mode_Sequence_0 */
   int32_t timeout;
@@ -289,20 +289,17 @@ Error_Handler();
 //  HAL_GPIO_WritePin(ETH_NRST_GPIO_Port, ETH_NRST_Pin, GPIO_PIN_SET);
 //  HAL_Delay(1000);
 
-  LOCK_HSEM(HSEM_FS_GLOBAL_ID);
-    if(FATFS_LinkDriver(&MMC_Driver, MMCPath) == 0) {
-  	  // Create a FAT volume
-  	  res = f_mkfs(MMCPath, FM_ANY, 0, workBuffer, sizeof(workBuffer));
-  	  if (res != FR_OK)
-  	     {
-  		  uint32_t err = HAL_MMC_GetError(&hmmc1);
-  		  LED_SetBrightness(&rgbLed, 40, 0, 0);
-  	      Error_Handler();
-  	     }
-  	  /* start the FatFs operations simulaneously with the Core CM4 */
-  //	  FS_FileOperations();
-  	  UNLOCK_HSEM(HSEM_FS_GLOBAL_ID);
-    }
+  if (EmmcFs_Init() != EMMC_FS_OK)
+  {
+    LED_SetBrightness(&rgbLed, 40, 0, 0);
+    Error_Handler();
+  }
+
+  if (EmmcFs_MountOrFormat() != EMMC_FS_OK)
+  {
+    LED_SetBrightness(&rgbLed, 40, 0, 0);
+    Error_Handler();
+  }
 
   IPC_InitSharedRegion();
 

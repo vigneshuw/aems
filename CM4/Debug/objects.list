@@ -1,3 +1,4 @@
+"./Common/Src/emmc_fs.o"
 "./Common/Src/mmc_diskio.o"
 "./Common/Src/system_stm32h7xx_dualcore_boot_cm4_cm7.o"
 "./Core/Src/daq_engine.o"

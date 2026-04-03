@@ -1,4 +1,5 @@
 "./BlueNRG-2/Target/hci_tl_interface.o"
+"./Common/Src/emmc_fs.o"
 "./Common/Src/mmc_diskio.o"
 "./Common/Src/system_stm32h7xx_dualcore_boot_cm4_cm7.o"
 "./Core/Src/custom_bus.o"
