@@ -16,6 +16,12 @@
 
 typedef struct
 {
+    uint16_t length;
+    uint8_t data[TCPCLIENT_TX_MSG_MAX_LEN];
+} TcpClientTxMessage_t;
+
+typedef struct
+{
     int sock;
     volatile uint8_t connected;
     volatile uint8_t reconnect_requested;
@@ -163,7 +169,6 @@ static int32_t TcpClient_ConnectOnce(void)
 static void TcpClient_ProcessRx(const char *rx_data, int32_t rx_len)
 {
     char msg[TCPCLIENT_RX_BUFFER_LEN];
-    static const char reply[] = "ACK\n";
     size_t copy_len;
 
     if (rx_len <= 0)
@@ -174,12 +179,6 @@ static void TcpClient_ProcessRx(const char *rx_data, int32_t rx_len)
     copy_len = ((size_t)rx_len < (sizeof(msg) - 1U)) ? (size_t)rx_len : (sizeof(msg) - 1U);
     memset(msg, 0, sizeof(msg));
     memcpy(msg, rx_data, copy_len);
-
-    if (lwip_send(gTcpClient.sock, reply, sizeof(reply) - 1U, 0) < 0)
-    {
-        gTcpClient.reconnect_requested = 1U;
-        return;
-    }
 
     if (gTcpClient.cfg.RxHandler != NULL)
     {
@@ -193,11 +192,11 @@ static void TcpClient_SendQueued(void)
 
     while (sys_arch_mbox_tryfetch(&gTcpClient.tx_mbox, &msg_ptr) != SYS_MBOX_EMPTY)
     {
-        char *tx = (char *)msg_ptr;
+        TcpClientTxMessage_t *tx = (TcpClientTxMessage_t *)msg_ptr;
 
         if (tx != NULL)
         {
-            if (lwip_send(gTcpClient.sock, tx, strlen(tx), 0) < 0)
+            if (lwip_send(gTcpClient.sock, tx->data, tx->length, 0) < 0)
             {
                 mem_free(tx);
                 gTcpClient.reconnect_requested = 1U;
@@ -330,30 +329,29 @@ int32_t TcpClient_Init(const TcpClientConfig_t *config)
     return 0;
 }
 
-int32_t TcpClient_Send(const char *text)
+int32_t TcpClient_SendBuffer(const uint8_t *data, uint16_t length)
 {
-    size_t len;
-    char *copy;
+    TcpClientTxMessage_t *copy;
 
-    if ((gTcpClient.initialized == 0U) || (text == NULL))
+    if ((gTcpClient.initialized == 0U) || (data == NULL) || (length == 0U))
     {
         return -1;
     }
 
-    len = strlen(text);
-    if (len >= TCPCLIENT_TX_MSG_MAX_LEN)
+    if (length > TCPCLIENT_TX_MSG_MAX_LEN)
     {
-        len = TCPCLIENT_TX_MSG_MAX_LEN - 1U;
+        length = TCPCLIENT_TX_MSG_MAX_LEN;
     }
 
-    copy = (char *)mem_malloc(TCPCLIENT_TX_MSG_MAX_LEN);
+    copy = (TcpClientTxMessage_t *)mem_malloc(sizeof(TcpClientTxMessage_t));
     if (copy == NULL)
     {
         return -2;
     }
 
-    memset(copy, 0, TCPCLIENT_TX_MSG_MAX_LEN);
-    memcpy(copy, text, len);
+    memset(copy, 0, sizeof(*copy));
+    copy->length = length;
+    memcpy(copy->data, data, length);
 
     if (sys_mbox_trypost(&gTcpClient.tx_mbox, copy) != ERR_OK)
     {
@@ -362,6 +360,19 @@ int32_t TcpClient_Send(const char *text)
     }
 
     return 0;
+}
+
+int32_t TcpClient_Send(const char *text)
+{
+    size_t len;
+
+    if (text == NULL)
+    {
+        return -1;
+    }
+
+    len = strlen(text);
+    return TcpClient_SendBuffer((const uint8_t *)text, (uint16_t)len);
 }
 
 uint8_t TcpClient_IsConnected(void)

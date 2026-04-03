@@ -18,14 +18,39 @@ def build_packet(command, server_id, epoch_time):
     return bytes(payload)
 
 
+def parse_heartbeat(packet):
+    command = packet[0]
+    server_id = struct.unpack(">I", packet[1:5])[0]
+    epoch_time = struct.unpack(">Q", packet[5:13])[0]
+    system_status = packet[13]
+    tcp_connected = packet[14]
+
+    print(
+        "RX heartbeat: "
+        f"cmd={command}, "
+        f"id={server_id}, "
+        f"time={epoch_time}, "
+        f"status={system_status}, "
+        f"tcp={tcp_connected}"
+    )
+
+
 def recv_loop(conn):
+    rx_buffer = bytearray()
+
     try:
         while True:
             data = conn.recv(1024)
             if not data:
                 print("Client disconnected.")
                 break
-            print(f"RX: {data.decode('utf-8', errors='replace').rstrip()}")
+
+            rx_buffer.extend(data)
+
+            while len(rx_buffer) >= PACKET_LEN:
+                packet = bytes(rx_buffer[:PACKET_LEN])
+                del rx_buffer[:PACKET_LEN]
+                parse_heartbeat(packet)
     except OSError as exc:
         print(f"Receive loop stopped: {exc}")
 

@@ -65,7 +65,18 @@ void TcpClient_BuildConfig(TcpClientConfig_t *config,
 int32_t TcpClient_Init(const TcpClientConfig_t *config);
 
 /**
- * @brief Queue a text message for transmission to the connected TCP server.
+ * @brief Queue a raw byte buffer for transmission to the connected TCP server.
+ * @param data Pointer to the bytes to send.
+ * @param length Number of bytes to send from `data`.
+ * @return `0` on success.
+ * @return `-1` if the TCP client is not initialized, `data` is `NULL`, or `length` is `0`.
+ * @return `-2` if memory allocation for the queued message fails.
+ * @return `-3` if the transmit mailbox is full and the message cannot be queued.
+ */
+int32_t TcpClient_SendBuffer(const uint8_t *data, uint16_t length);
+
+/**
+ * @brief Queue a null-terminated text message for transmission to the connected TCP server.
  * @param text Pointer to a null-terminated string to send.
  * @return `0` on success.
  * @return `-1` if the TCP client is not initialized or `text` is `NULL`.

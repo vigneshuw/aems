@@ -94,6 +94,8 @@ void FileTask(void const * argument);
 /* USER CODE BEGIN PFP */
 static uint32_t ReadU32Be(const uint8_t *data);
 static uint64_t ReadU64Be(const uint8_t *data);
+static void WriteU32Be(uint8_t *data, uint32_t value);
+static void WriteU64Be(uint8_t *data, uint64_t value);
 static void ProcessTcpData(const char *data, uint16_t length);
 /* USER CODE END PFP */
 
@@ -137,6 +139,26 @@ static uint64_t ReadU64Be(const uint8_t *data)
          ((uint64_t)data[5] << 16) |
          ((uint64_t)data[6] << 8) |
          (uint64_t)data[7];
+}
+
+static void WriteU32Be(uint8_t *data, uint32_t value)
+{
+  data[0] = (uint8_t)(value >> 24);
+  data[1] = (uint8_t)(value >> 16);
+  data[2] = (uint8_t)(value >> 8);
+  data[3] = (uint8_t)value;
+}
+
+static void WriteU64Be(uint8_t *data, uint64_t value)
+{
+  data[0] = (uint8_t)(value >> 56);
+  data[1] = (uint8_t)(value >> 48);
+  data[2] = (uint8_t)(value >> 40);
+  data[3] = (uint8_t)(value >> 32);
+  data[4] = (uint8_t)(value >> 24);
+  data[5] = (uint8_t)(value >> 16);
+  data[6] = (uint8_t)(value >> 8);
+  data[7] = (uint8_t)value;
 }
 
 static void ProcessTcpData(const char *data, uint16_t length)
@@ -308,7 +330,7 @@ Error_Handler();
   defaultTaskHandle = osThreadCreate(osThread(defaultTask), NULL);
 
   /* definition and creation of controllerTask */
-  osThreadDef(controllerTask, ControllerTask, osPriorityNormal, 0, 128);
+  osThreadDef(controllerTask, ControllerTask, osPriorityNormal, 0, 256);
   controllerTaskHandle = osThreadCreate(osThread(controllerTask), NULL);
 
   /* definition and creation of telemetryTask */
@@ -680,17 +702,16 @@ void ControllerTask(void const * argument)
       {
       case 0U:
       {
-        char tx[128];
+        uint8_t tx[100];
 
-        (void)snprintf(tx,
-                       sizeof(tx),
-                       "HB,cmd=%u,id=%lu,time=%llu,status=OK,tcp=%u\r\n",
-                       (unsigned int)msg.command,
-                       (unsigned long)msg.server_id,
-                       (unsigned long long)msg.epoch_time,
-                       (unsigned int)TcpClient_IsConnected());
+        memset(tx, 0, sizeof(tx));
+        tx[0] = msg.command;
+        WriteU32Be(&tx[1], msg.server_id);
+        WriteU64Be(&tx[5], msg.epoch_time);
+        tx[13] = 0U;
+        tx[14] = TcpClient_IsConnected();
 
-        (void)TcpClient_Send(tx);
+        (void)TcpClient_SendBuffer(tx, sizeof(tx));
         break;
       }
 
