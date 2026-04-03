@@ -35,6 +35,36 @@ def parse_heartbeat(packet):
     )
 
 
+def parse_file_count(packet):
+    command = packet[0]
+    server_id = struct.unpack(">I", packet[1:5])[0]
+    epoch_time = struct.unpack(">Q", packet[5:13])[0]
+    system_status = packet[13]
+    tcp_connected = packet[14]
+    dat_file_count = struct.unpack(">I", packet[15:19])[0]
+
+    print(
+        "RX file-count: "
+        f"cmd={command}, "
+        f"id={server_id}, "
+        f"time={epoch_time}, "
+        f"status={system_status}, "
+        f"tcp={tcp_connected}, "
+        f"dat_count={dat_file_count}"
+    )
+
+
+def parse_packet(packet):
+    command = packet[0]
+
+    if command == 0:
+        parse_heartbeat(packet)
+    elif command == 2:
+        parse_file_count(packet)
+    else:
+        print(f"RX unknown packet: cmd={command}, raw={packet.hex()}")
+
+
 def recv_loop(conn):
     rx_buffer = bytearray()
 
@@ -50,7 +80,7 @@ def recv_loop(conn):
             while len(rx_buffer) >= PACKET_LEN:
                 packet = bytes(rx_buffer[:PACKET_LEN])
                 del rx_buffer[:PACKET_LEN]
-                parse_heartbeat(packet)
+                parse_packet(packet)
     except OSError as exc:
         print(f"Receive loop stopped: {exc}")
 
@@ -73,7 +103,7 @@ def main():
 
             while True:
                 try:
-                    user_input = input("Enter command (0 to send heartbeat request, q to quit): ").strip()
+                    user_input = input("Enter command (0=heartbeat, 2=file count, q=quit): ").strip()
                 except (EOFError, KeyboardInterrupt):
                     print("\nExiting.")
                     break
@@ -81,13 +111,14 @@ def main():
                 if user_input.lower() == "q":
                     break
 
-                if user_input != "0":
-                    print("Only command 0 is implemented in this test.")
+                if user_input not in {"0", "2"}:
+                    print("Only commands 0 and 2 are implemented in this test.")
                     continue
 
-                packet = build_packet(0, SERVER_ID, int(time.time()))
+                command = int(user_input)
+                packet = build_packet(command, SERVER_ID, int(time.time()))
                 conn.sendall(packet)
-                print(f"TX: sent {len(packet)} bytes for command 0")
+                print(f"TX: sent {len(packet)} bytes for command {command}")
 
 
 if __name__ == "__main__":

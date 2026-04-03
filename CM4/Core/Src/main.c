@@ -28,6 +28,7 @@
 #include "daq_engine.h"
 #include "ipc_cmd.h"
 #include "statemachine.h"
+#include "emmc_fs.h"
 
 /* USER CODE END Includes */
 

@@ -78,6 +78,7 @@ osThreadId telemetryTaskHandle;
 osThreadId fileTaskHandle;
 /* USER CODE BEGIN PV */
 static QueueHandle_t gControlQueue;
+static QueueHandle_t gFileQueue;
 
 /* USER CODE END PV */
 
@@ -319,6 +320,7 @@ Error_Handler();
 
   /* USER CODE BEGIN RTOS_QUEUES */
   gControlQueue = xQueueCreate(8U, sizeof(ControlMessage_t));
+  gFileQueue = xQueueCreate(4U, sizeof(ControlMessage_t));
   /* USER CODE END RTOS_QUEUES */
 
   /* Create the thread(s) */
@@ -712,6 +714,13 @@ void ControllerTask(void const * argument)
         break;
       }
 
+      case 2U:
+        if (gFileQueue != NULL)
+        {
+          (void)xQueueSend(gFileQueue, &msg, 0U);
+        }
+        break;
+
       default:
         /* TODO: Dispatch command to board features. */
         break;
@@ -749,10 +758,44 @@ void TelemetryTask(void const * argument)
 void FileTask(void const * argument)
 {
   /* USER CODE BEGIN FileTask */
+  ControlMessage_t msg;
+
   /* Infinite loop */
   for(;;)
   {
-    osDelay(1);
+    if ((gFileQueue != NULL) &&
+        (xQueueReceive(gFileQueue, &msg, portMAX_DELAY) == pdPASS))
+    {
+      switch (msg.command)
+      {
+      case 2U:
+      {
+        uint8_t tx[100];
+        EmmcFsDatSummary_t summary;
+        EmmcFsStatus_t fs_status;
+
+        memset(tx, 0, sizeof(tx));
+        tx[0] = msg.command;
+        WriteU32Be(&tx[1], msg.server_id);
+        WriteU64Be(&tx[5], msg.epoch_time);
+        tx[14] = TcpClient_IsConnected();
+
+        fs_status = EmmcFs_CountDatFiles(&summary);
+        tx[13] = (uint8_t)((fs_status == EMMC_FS_OK) ? 0U : 1U);
+
+        if (fs_status == EMMC_FS_OK)
+        {
+          WriteU32Be(&tx[15], summary.dat_file_count);
+        }
+
+        (void)TcpClient_SendBuffer(tx, sizeof(tx));
+        break;
+      }
+
+      default:
+        break;
+      }
+    }
   }
   /* USER CODE END FileTask */
 }
