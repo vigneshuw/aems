@@ -94,6 +94,28 @@ EmmcFsStatus_t EmmcFs_ReadConfigMainChunk(uint32_t offset,
                                           uint32_t *total_size);
 
 /**
+ * @brief Read a chunk from a specific file in the eMMC filesystem.
+ * @param filename Null-terminated file name or path to read.
+ * @param offset Byte offset in the file to read from.
+ * @param buffer Destination buffer for file data.
+ * @param buffer_size Maximum number of bytes to place into `buffer`.
+ * @param bytes_read Pointer to the number of bytes read.
+ * @param total_size Pointer to the total file size in bytes.
+ * @return `EMMC_FS_OK` on success.
+ * @return `EMMC_FS_ERR_PARAM` if input or output pointers are invalid.
+ * @return `EMMC_FS_ERR_LINK` if the FatFs driver link fails.
+ * @return `EMMC_FS_ERR_MOUNT` if the filesystem cannot be mounted.
+ * @return `EMMC_FS_ERR_OPEN_FILE` if the file cannot be opened.
+ * @return `EMMC_FS_ERR_READ_FILE` if seek or read fails.
+ */
+EmmcFsStatus_t EmmcFs_ReadFileChunk(const char *filename,
+                                    uint32_t offset,
+                                    uint8_t *buffer,
+                                    uint16_t buffer_size,
+                                    uint16_t *bytes_read,
+                                    uint32_t *total_size);
+
+/**
  * @brief Count files ending with `.dat` in the eMMC root directory.
  * @param summary Pointer to the output summary structure.
  * @return `EMMC_FS_OK` on success.

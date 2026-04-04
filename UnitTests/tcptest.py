@@ -9,22 +9,31 @@ PORT = 10
 PACKET_LEN = 100
 CONFIG_READ_HEADER_LEN = 24
 SERVER_ID = 1
-CONFIG_TEST_PAYLOAD = bytes(((index * 3) + 1) & 0xFF for index in range(13, PACKET_LEN))
+MAX_USEFUL_PAYLOAD_LEN = PACKET_LEN - 15
+CONFIG_TEST_PAYLOAD = bytes(((index * 3) + 1) & 0xFF for index in range(MAX_USEFUL_PAYLOAD_LEN))
+READ_FILENAME = b"config_main.conf"
 config_rx_state = {}
 expected_config_file = None
 
 
 def build_packet(command, server_id, epoch_time):
     payload = bytearray(PACKET_LEN)
+    useful_payload = b""
+
     payload[0] = command & 0xFF
     payload[1:5] = struct.pack(">I", server_id)
     payload[5:13] = struct.pack(">Q", epoch_time)
 
     if command == 1:
-        payload[13:PACKET_LEN] = CONFIG_TEST_PAYLOAD
+        useful_payload = CONFIG_TEST_PAYLOAD
+    elif command == 5:
+        useful_payload = READ_FILENAME
     else:
-        for index in range(13, PACKET_LEN):
-            payload[index] = (index - 13) & 0xFF
+        useful_payload = bytes((index & 0xFF) for index in range(MAX_USEFUL_PAYLOAD_LEN))
+
+    useful_len = min(len(useful_payload), MAX_USEFUL_PAYLOAD_LEN)
+    payload[13:15] = struct.pack(">H", useful_len)
+    payload[15:15 + useful_len] = useful_payload[:useful_len]
 
     return bytes(payload)
 
@@ -165,6 +174,8 @@ def parse_packet(packet):
         parse_total_file_count(packet)
     elif command == 4:
         parse_config_read(packet)
+    elif command == 5:
+        parse_config_read(packet)
     else:
         print(f"RX unknown packet: cmd={command}, raw={packet.hex()}")
 
@@ -184,7 +195,7 @@ def recv_loop(conn):
             while rx_buffer:
                 command = rx_buffer[0]
 
-                if command == 4:
+                if command in {4, 5}:
                     if len(rx_buffer) < CONFIG_READ_HEADER_LEN:
                         break
 
@@ -227,7 +238,7 @@ def main():
 
             while True:
                 try:
-                    user_input = input("Enter command (0=heartbeat, 1=write config, 2=dat count, 3=all file count, 4=read config, q=quit): ").strip()
+                    user_input = input("Enter command (0=heartbeat, 1=write config, 2=dat count, 3=all file count, 4=read config, 5=read named file, q=quit): ").strip()
                 except (EOFError, KeyboardInterrupt):
                     print("\nExiting.")
                     break
@@ -235,8 +246,8 @@ def main():
                 if user_input.lower() == "q":
                     break
 
-                if user_input not in {"0", "1", "2", "3", "4"}:
-                    print("Only commands 0, 1, 2, 3, and 4 are implemented in this test.")
+                if user_input not in {"0", "1", "2", "3", "4", "5"}:
+                    print("Only commands 0, 1, 2, 3, 4, and 5 are implemented in this test.")
                     continue
 
                 command = int(user_input)
@@ -250,6 +261,8 @@ def main():
                         CONFIG_TEST_PAYLOAD
                     )
                     print(f"TX config payload: {CONFIG_TEST_PAYLOAD.hex()}")
+                elif command == 5:
+                    print(f"TX file read request for: {READ_FILENAME.decode()}")
 
                 conn.sendall(packet)
                 print(f"TX: sent {len(packet)} bytes for command {command}")

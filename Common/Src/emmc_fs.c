@@ -267,12 +267,27 @@ EmmcFsStatus_t EmmcFs_ReadConfigMainChunk(uint32_t offset,
                                           uint16_t *bytes_read,
                                           uint32_t *total_size)
 {
+    return EmmcFs_ReadFileChunk(EMMC_FS_CONFIG_MAIN_PATH,
+                                offset,
+                                buffer,
+                                buffer_size,
+                                bytes_read,
+                                total_size);
+}
+
+EmmcFsStatus_t EmmcFs_ReadFileChunk(const char *filename,
+                                    uint32_t offset,
+                                    uint8_t *buffer,
+                                    uint16_t buffer_size,
+                                    uint16_t *bytes_read,
+                                    uint32_t *total_size)
+{
     FIL file;
     FRESULT result;
     UINT fatfs_bytes_read;
     EmmcFsStatus_t status;
 
-    if ((buffer == NULL) || (bytes_read == NULL) || (total_size == NULL) || (buffer_size == 0U))
+    if ((filename == NULL) || (buffer == NULL) || (bytes_read == NULL) || (total_size == NULL) || (buffer_size == 0U))
     {
         return EMMC_FS_ERR_PARAM;
     }
@@ -289,7 +304,7 @@ EmmcFsStatus_t EmmcFs_ReadConfigMainChunk(uint32_t offset,
         return status;
     }
 
-    result = f_open(&file, EMMC_FS_CONFIG_MAIN_PATH, FA_READ);
+    result = f_open(&file, filename, FA_READ);
     if (result != FR_OK)
     {
         EmmcFs_Unlock();

@@ -47,7 +47,7 @@ typedef struct
   uint32_t server_id;
   uint64_t epoch_time;
   uint16_t payload_len;
-  uint8_t payload[87];
+  uint8_t payload[85];
 } ControlMessage_t;
 
 /* USER CODE END PTD */
@@ -100,6 +100,7 @@ void FileTask(void const * argument);
 /* USER CODE BEGIN PFP */
 static uint32_t ReadU32Be(const uint8_t *data);
 static uint64_t ReadU64Be(const uint8_t *data);
+static uint16_t ReadU16Be(const uint8_t *data);
 static void WriteU16Be(uint8_t *data, uint16_t value);
 static void WriteU32Be(uint8_t *data, uint32_t value);
 static void WriteU64Be(uint8_t *data, uint64_t value);
@@ -148,6 +149,11 @@ static uint64_t ReadU64Be(const uint8_t *data)
          (uint64_t)data[7];
 }
 
+static uint16_t ReadU16Be(const uint8_t *data)
+{
+  return (uint16_t)(((uint16_t)data[0] << 8) | (uint16_t)data[1]);
+}
+
 static void WriteU32Be(uint8_t *data, uint32_t value)
 {
   data[0] = (uint8_t)(value >> 24);
@@ -178,8 +184,9 @@ static void ProcessTcpData(const char *data, uint16_t length)
 {
   ControlMessage_t msg;
   uint16_t payload_len;
+  uint16_t available_len;
 
-  if ((data == NULL) || (length < 13U) || (gControlQueue == NULL))
+  if ((data == NULL) || (length < 15U) || (gControlQueue == NULL))
   {
     return;
   }
@@ -188,8 +195,15 @@ static void ProcessTcpData(const char *data, uint16_t length)
   msg.command = (uint8_t)data[0];
   msg.server_id = ReadU32Be((const uint8_t *)&data[1]);
   msg.epoch_time = ReadU64Be((const uint8_t *)&data[5]);
+  msg.payload_len = ReadU16Be((const uint8_t *)&data[13]);
 
-  payload_len = (uint16_t)(length - 13U);
+  available_len = (uint16_t)(length - 15U);
+  payload_len = msg.payload_len;
+  if (payload_len > available_len)
+  {
+    payload_len = available_len;
+  }
+
   if (payload_len > sizeof(msg.payload))
   {
     payload_len = sizeof(msg.payload);
@@ -198,7 +212,7 @@ static void ProcessTcpData(const char *data, uint16_t length)
   msg.payload_len = payload_len;
   if (payload_len > 0U)
   {
-    memcpy(msg.payload, &data[13], payload_len);
+    memcpy(msg.payload, &data[15], payload_len);
   }
 
   (void)xQueueSend(gControlQueue, &msg, 0U);
@@ -753,6 +767,13 @@ void ControllerTask(void const * argument)
           }
           break;
 
+        case 5U:
+          if (gFileQueue != NULL)
+          {
+            (void)xQueueSend(gFileQueue, &msg, 0U);
+          }
+          break;
+
         default:
           /* TODO: Dispatch command to board features. */
           break;
@@ -892,6 +913,71 @@ void FileTask(void const * argument)
                                                    &chunk_len,
                                                    &total_size);
             tx[1] = (uint8_t)((fs_status == EMMC_FS_OK) ? 0U : 1U);
+            WriteU32Be(&tx[14], total_size);
+            WriteU32Be(&tx[18], offset);
+            WriteU16Be(&tx[22], chunk_len);
+
+            tx_len = (uint16_t)(TCP_CONFIG_READ_HEADER_LEN + chunk_len);
+            (void)TcpClient_SendBuffer(tx, tx_len);
+
+            if ((fs_status != EMMC_FS_OK) || (chunk_len == 0U))
+            {
+              break;
+            }
+
+            offset += chunk_len;
+            osDelay(2);
+          } while (offset < total_size);
+
+          break;
+        }
+
+        case 5U:
+        {
+          static uint8_t tx[TCP_CONFIG_READ_HEADER_LEN + TCP_CONFIG_READ_CHUNK_LEN];
+          char filename[86];
+          uint16_t tx_len;
+          uint32_t offset = 0U;
+          uint32_t total_size = 0U;
+          uint16_t chunk_len = 0U;
+          EmmcFsStatus_t fs_status;
+
+          memset(filename, 0, sizeof(filename));
+          if (msg.payload_len == 0U)
+          {
+            fs_status = EMMC_FS_ERR_PARAM;
+          }
+          else
+          {
+            memcpy(filename, msg.payload, msg.payload_len);
+            filename[msg.payload_len] = '\0';
+            fs_status = EMMC_FS_OK;
+          }
+
+          do
+          {
+            memset(tx, 0, sizeof(tx));
+            tx[0] = msg.command;
+            tx[1] = (uint8_t)((fs_status == EMMC_FS_OK) ? 0U : 1U);
+            WriteU32Be(&tx[2], msg.server_id);
+            WriteU64Be(&tx[6], msg.epoch_time);
+
+            if (fs_status == EMMC_FS_OK)
+            {
+              fs_status = EmmcFs_ReadFileChunk(filename,
+                                               offset,
+                                               &tx[TCP_CONFIG_READ_HEADER_LEN],
+                                               TCP_CONFIG_READ_CHUNK_LEN,
+                                               &chunk_len,
+                                               &total_size);
+              tx[1] = (uint8_t)((fs_status == EMMC_FS_OK) ? 0U : 1U);
+            }
+            else
+            {
+              chunk_len = 0U;
+              total_size = 0U;
+            }
+
             WriteU32Be(&tx[14], total_size);
             WriteU32Be(&tx[18], offset);
             WriteU16Be(&tx[22], chunk_len);
