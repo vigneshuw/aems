@@ -28,7 +28,6 @@
 #include "daq_engine.h"
 #include "ipc_cmd.h"
 #include "statemachine.h"
-#include "emmc_fs.h"
 
 /* USER CODE END Includes */
 
@@ -46,7 +45,6 @@ void AEMS_Initialize();
 #endif
 
 #define CM4_FILE   "cm7.log"
-
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -199,7 +197,7 @@ void MX_SDMMC1_MMC_Init(void)
   hmmc1.Init.ClockPowerSave = SDMMC_CLOCK_POWER_SAVE_DISABLE;
   hmmc1.Init.BusWide = SDMMC_BUS_WIDE_8B;
   hmmc1.Init.HardwareFlowControl = SDMMC_HARDWARE_FLOW_CONTROL_DISABLE;
-  hmmc1.Init.ClockDiv = 3;
+  hmmc1.Init.ClockDiv = 4;
   if (HAL_MMC_Init(&hmmc1) != HAL_OK)
   {
     Error_Handler();

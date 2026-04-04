@@ -44,8 +44,7 @@ Core/Src/main.o: ../Core/Src/main.c ../Core/Inc/main.h \
  C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Common/Inc/mmc_diskio.h \
  ../Core/Inc/daq_engine.h \
  C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Common/Inc/ipc_shared.h \
- ../Core/Inc/ipc_cmd.h ../Core/Inc/statemachine.h ../Core/Inc/main.h \
- C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Common/Inc/emmc_fs.h
+ ../Core/Inc/ipc_cmd.h ../Core/Inc/statemachine.h ../Core/Inc/main.h
 ../Core/Inc/main.h:
 ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal.h:
 ../Core/Inc/stm32h7xx_hal_conf.h:
@@ -96,4 +95,3 @@ C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Common/Inc/ipc_shared.h:
 ../Core/Inc/ipc_cmd.h:
 ../Core/Inc/statemachine.h:
 ../Core/Inc/main.h:
-C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Common/Inc/emmc_fs.h:

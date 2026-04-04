@@ -10,11 +10,11 @@ extern "C" {
 #include "lwip/netif.h"
 
 #ifndef TCPCLIENT_TX_MSG_MAX_LEN
-#define TCPCLIENT_TX_MSG_MAX_LEN        1100U
+#define TCPCLIENT_TX_MSG_MAX_LEN        1460U
 #endif
 
 #ifndef TCPCLIENT_TX_MBOX_SIZE
-#define TCPCLIENT_TX_MBOX_SIZE          16U
+#define TCPCLIENT_TX_MBOX_SIZE          128U
 #endif
 
 #ifndef TCPCLIENT_RX_TIMEOUT_MS
@@ -30,6 +30,8 @@ extern "C" {
 #endif
 
 typedef void (*TcpClientRxHandler_t)(const char *data, uint16_t length);
+typedef int32_t (*TcpClientStreamReadFn)(void *context, uint8_t *buffer, uint16_t max_len, uint16_t *out_len);
+typedef void (*TcpClientStreamDoneFn)(void *context);
 
 typedef struct
 {
@@ -74,6 +76,13 @@ int32_t TcpClient_Init(const TcpClientConfig_t *config);
  * @return `-3` if the transmit mailbox is full and the message cannot be queued.
  */
 int32_t TcpClient_SendBuffer(const uint8_t *data, uint16_t length);
+
+int32_t TcpClient_StartStream(const uint8_t *header,
+                              uint16_t header_len,
+                              uint32_t total_size,
+                              TcpClientStreamReadFn read_fn,
+                              TcpClientStreamDoneFn done_fn,
+                              void *context);
 
 /**
  * @brief Queue a null-terminated text message for transmission to the connected TCP server.

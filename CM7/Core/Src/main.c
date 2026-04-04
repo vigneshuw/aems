@@ -50,6 +50,17 @@ typedef struct
   uint8_t payload[85];
 } ControlMessage_t;
 
+typedef struct
+{
+  EmmcFsReadHandle_t handle;
+  uint8_t active;
+} FileStreamContext_t;
+
+typedef struct
+{
+  uint32_t bytes_remaining;
+} TestStreamContext_t;
+
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
@@ -59,9 +70,15 @@ typedef struct
 #define HSEM_ID_0 (0U) /* HW semaphore 0*/
 #endif
 
+#define TEST_FILE_NAME                 "test.dat"
+#define TEST_FILE_SIZE_BYTES           (1UL * 1024UL * 1024UL)
 #define TCP_FIXED_RESPONSE_LEN         100U
 #define TCP_CONFIG_READ_HEADER_LEN     24U
 #define TCP_CONFIG_READ_CHUNK_LEN      1024U
+#define TCP_FILE_STREAM_HEADER_LEN     18U
+#define TCP_FILE_STREAM_CHUNK_LEN      1400U
+#define TCP_FILE_STREAM_TX_IDLE_TIMEOUT_MS 2000U
+#define TCP_TEST_STREAM_TOTAL_SIZE     (1UL * 1024UL * 1024UL)
 
 /* USER CODE END PD */
 
@@ -83,6 +100,9 @@ osThreadId fileTaskHandle;
 /* USER CODE BEGIN PV */
 static QueueHandle_t gControlQueue;
 static QueueHandle_t gFileQueue;
+static uint8_t g_test_stream_chunk[TCP_FILE_STREAM_CHUNK_LEN];
+static FileStreamContext_t g_file_stream_ctx;
+static TestStreamContext_t g_test_stream_ctx;
 
 /* USER CODE END PV */
 
@@ -105,6 +125,11 @@ static void WriteU16Be(uint8_t *data, uint16_t value);
 static void WriteU32Be(uint8_t *data, uint32_t value);
 static void WriteU64Be(uint8_t *data, uint64_t value);
 static void ProcessTcpData(const char *data, uint16_t length);
+static void InitTestStreamChunk(void);
+static int32_t FileStreamRead(void *context, uint8_t *buffer, uint16_t max_len, uint16_t *out_len);
+static void FileStreamDone(void *context);
+static int32_t TestStreamRead(void *context, uint8_t *buffer, uint16_t max_len, uint16_t *out_len);
+static void TestStreamDone(void *context);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -218,6 +243,68 @@ static void ProcessTcpData(const char *data, uint16_t length)
   (void)xQueueSend(gControlQueue, &msg, 0U);
 }
 
+static void InitTestStreamChunk(void)
+{
+  uint32_t index;
+
+  for (index = 0U; index < TCP_FILE_STREAM_CHUNK_LEN; index++)
+  {
+    g_test_stream_chunk[index] = (uint8_t)(((index * 37U) + 11U) & 0xFFU);
+  }
+}
+
+static int32_t FileStreamRead(void *context, uint8_t *buffer, uint16_t max_len, uint16_t *out_len)
+{
+  FileStreamContext_t *stream_ctx = (FileStreamContext_t *)context;
+  EmmcFsStatus_t fs_status;
+
+  if ((stream_ctx == NULL) || (buffer == NULL) || (out_len == NULL) || (stream_ctx->active == 0U))
+  {
+    return -1;
+  }
+
+  fs_status = EmmcFs_ReadFileNext(&stream_ctx->handle, buffer, max_len, out_len);
+  return (fs_status == EMMC_FS_OK) ? 0 : -1;
+}
+
+static void FileStreamDone(void *context)
+{
+  FileStreamContext_t *stream_ctx = (FileStreamContext_t *)context;
+
+  if ((stream_ctx != NULL) && (stream_ctx->active != 0U))
+  {
+    (void)EmmcFs_CloseFileRead(&stream_ctx->handle);
+    stream_ctx->active = 0U;
+  }
+}
+
+static int32_t TestStreamRead(void *context, uint8_t *buffer, uint16_t max_len, uint16_t *out_len)
+{
+  TestStreamContext_t *stream_ctx = (TestStreamContext_t *)context;
+  uint16_t copy_len;
+
+  if ((stream_ctx == NULL) || (buffer == NULL) || (out_len == NULL) || (stream_ctx->bytes_remaining == 0U))
+  {
+    return -1;
+  }
+
+  copy_len = (stream_ctx->bytes_remaining > max_len) ? max_len : (uint16_t)stream_ctx->bytes_remaining;
+  memcpy(buffer, g_test_stream_chunk, copy_len);
+  stream_ctx->bytes_remaining -= copy_len;
+  *out_len = copy_len;
+  return 0;
+}
+
+static void TestStreamDone(void *context)
+{
+  TestStreamContext_t *stream_ctx = (TestStreamContext_t *)context;
+
+  if (stream_ctx != NULL)
+  {
+    stream_ctx->bytes_remaining = 0U;
+  }
+}
+
 
 /* USER CODE END 0 */
 
@@ -327,6 +414,14 @@ Error_Handler();
     Error_Handler();
   }
 
+  if (EmmcFs_CreatePatternFile(TEST_FILE_NAME, TEST_FILE_SIZE_BYTES, NULL, NULL) != EMMC_FS_OK)
+  {
+    LED_SetBrightness(&rgbLed, 40, 0, 0);
+    Error_Handler();
+  }
+
+  InitTestStreamChunk();
+
   IPC_InitSharedRegion();
 
   /* USER CODE END 2 */
@@ -354,7 +449,7 @@ Error_Handler();
   defaultTaskHandle = osThreadCreate(osThread(defaultTask), NULL);
 
   /* definition and creation of controllerTask */
-  osThreadDef(controllerTask, ControllerTask, osPriorityNormal, 0, 256);
+  osThreadDef(controllerTask, ControllerTask, osPriorityNormal, 0, 128);
   controllerTaskHandle = osThreadCreate(osThread(controllerTask), NULL);
 
   /* definition and creation of telemetryTask */
@@ -362,7 +457,7 @@ Error_Handler();
   telemetryTaskHandle = osThreadCreate(osThread(telemetryTask), NULL);
 
   /* definition and creation of fileTask */
-  osThreadDef(fileTask, FileTask, osPriorityHigh, 0, 512);
+  osThreadDef(fileTask, FileTask, osPriorityLow, 0, 4096);
   fileTaskHandle = osThreadCreate(osThread(fileTask), NULL);
 
   /* USER CODE BEGIN RTOS_THREADS */
@@ -466,7 +561,7 @@ static void MX_SDMMC1_MMC_Init(void)
   hmmc1.Init.ClockPowerSave = SDMMC_CLOCK_POWER_SAVE_DISABLE;
   hmmc1.Init.BusWide = SDMMC_BUS_WIDE_8B;
   hmmc1.Init.HardwareFlowControl = SDMMC_HARDWARE_FLOW_CONTROL_DISABLE;
-  hmmc1.Init.ClockDiv = 3;
+  hmmc1.Init.ClockDiv = 4;
   if (HAL_MMC_Init(&hmmc1) != HAL_OK)
   {
     Error_Handler();
@@ -774,6 +869,13 @@ void ControllerTask(void const * argument)
           }
           break;
 
+        case 9U:
+          if (gFileQueue != NULL)
+          {
+            (void)xQueueSend(gFileQueue, &msg, 0U);
+          }
+          break;
+
         default:
           /* TODO: Dispatch command to board features. */
           break;
@@ -824,23 +926,24 @@ void FileTask(void const * argument)
         case 1U:
         {
           uint8_t tx[TCP_FIXED_RESPONSE_LEN];
-        EmmcFsStatus_t fs_status;
+          EmmcFsStatus_t fs_status;
 
-        memset(tx, 0, sizeof(tx));
-        tx[0] = msg.command;
-        WriteU32Be(&tx[1], msg.server_id);
-        WriteU64Be(&tx[5], msg.epoch_time);
+          memset(tx, 0, sizeof(tx));
+          tx[0] = msg.command;
+          WriteU32Be(&tx[1], msg.server_id);
+          WriteU64Be(&tx[5], msg.epoch_time);
         tx[14] = TcpClient_IsConnected();
 
         fs_status = EmmcFs_WriteConfigMain(msg.server_id,
-                                           msg.epoch_time,
-                                           msg.payload,
-                                           msg.payload_len);
-        tx[13] = (uint8_t)((fs_status == EMMC_FS_OK) ? 0U : 1U);
+                                             msg.epoch_time,
+                                             msg.payload,
+                                             msg.payload_len);
+          tx[13] = (uint8_t)((fs_status == EMMC_FS_OK) ? 0U : 1U);
+          WriteU32Be(&tx[15], (uint32_t)fs_status);
 
-        (void)TcpClient_SendBuffer(tx, sizeof(tx));
-        break;
-      }
+          (void)TcpClient_SendBuffer(tx, sizeof(tx));
+          break;
+        }
 
         case 2U:
         {
@@ -855,12 +958,13 @@ void FileTask(void const * argument)
         tx[14] = TcpClient_IsConnected();
 
         fs_status = EmmcFs_CountDatFiles(&summary);
-        tx[13] = (uint8_t)((fs_status == EMMC_FS_OK) ? 0U : 1U);
+          tx[13] = (uint8_t)((fs_status == EMMC_FS_OK) ? 0U : 1U);
+          WriteU32Be(&tx[19], (uint32_t)fs_status);
 
-        if (fs_status == EMMC_FS_OK)
-        {
-          WriteU32Be(&tx[15], summary.dat_file_count);
-        }
+          if (fs_status == EMMC_FS_OK)
+          {
+            WriteU32Be(&tx[15], summary.dat_file_count);
+          }
 
           (void)TcpClient_SendBuffer(tx, sizeof(tx));
           break;
@@ -880,6 +984,7 @@ void FileTask(void const * argument)
 
           fs_status = EmmcFs_CountAllFiles(&total_file_count);
           tx[13] = (uint8_t)((fs_status == EMMC_FS_OK) ? 0U : 1U);
+          WriteU32Be(&tx[19], (uint32_t)fs_status);
 
           if (fs_status == EMMC_FS_OK)
           {
@@ -934,13 +1039,11 @@ void FileTask(void const * argument)
 
         case 5U:
         {
-          static uint8_t tx[TCP_CONFIG_READ_HEADER_LEN + TCP_CONFIG_READ_CHUNK_LEN];
+          static uint8_t header[TCP_FILE_STREAM_HEADER_LEN];
           char filename[86];
-          uint16_t tx_len;
-          uint32_t offset = 0U;
           uint32_t total_size = 0U;
-          uint16_t chunk_len = 0U;
           EmmcFsStatus_t fs_status;
+          int32_t stream_status;
 
           memset(filename, 0, sizeof(filename));
           if (msg.payload_len == 0U)
@@ -954,49 +1057,74 @@ void FileTask(void const * argument)
             fs_status = EMMC_FS_OK;
           }
 
-          do
+          if (fs_status == EMMC_FS_OK)
           {
-            memset(tx, 0, sizeof(tx));
-            tx[0] = msg.command;
-            tx[1] = (uint8_t)((fs_status == EMMC_FS_OK) ? 0U : 1U);
-            WriteU32Be(&tx[2], msg.server_id);
-            WriteU64Be(&tx[6], msg.epoch_time);
-
+            memset(&g_file_stream_ctx, 0, sizeof(g_file_stream_ctx));
+            fs_status = EmmcFs_OpenFileRead(filename, &g_file_stream_ctx.handle, &total_size);
             if (fs_status == EMMC_FS_OK)
             {
-              fs_status = EmmcFs_ReadFileChunk(filename,
-                                               offset,
-                                               &tx[TCP_CONFIG_READ_HEADER_LEN],
-                                               TCP_CONFIG_READ_CHUNK_LEN,
-                                               &chunk_len,
-                                               &total_size);
-              tx[1] = (uint8_t)((fs_status == EMMC_FS_OK) ? 0U : 1U);
+              g_file_stream_ctx.active = 1U;
             }
-            else
+          }
+
+          memset(header, 0, sizeof(header));
+          header[0] = msg.command;
+          header[1] = (uint8_t)((fs_status == EMMC_FS_OK) ? 0U : 1U);
+          WriteU32Be(&header[2], msg.server_id);
+          WriteU64Be(&header[6], msg.epoch_time);
+          WriteU32Be(&header[14], total_size);
+
+          if ((fs_status != EMMC_FS_OK) || (total_size == 0U))
+          {
+            (void)TcpClient_SendBuffer(header, sizeof(header));
+            if (g_file_stream_ctx.active != 0U)
             {
-              chunk_len = 0U;
-              total_size = 0U;
+              FileStreamDone(&g_file_stream_ctx);
             }
-
-            WriteU32Be(&tx[14], total_size);
-            WriteU32Be(&tx[18], offset);
-            WriteU16Be(&tx[22], chunk_len);
-
-            tx_len = (uint16_t)(TCP_CONFIG_READ_HEADER_LEN + chunk_len);
-            (void)TcpClient_SendBuffer(tx, tx_len);
-
-            if ((fs_status != EMMC_FS_OK) || (chunk_len == 0U))
+          }
+          else
+          {
+            stream_status = TcpClient_StartStream(header,
+                                                  sizeof(header),
+                                                  total_size,
+                                                  FileStreamRead,
+                                                  FileStreamDone,
+                                                  &g_file_stream_ctx);
+            if (stream_status != 0)
             {
-              break;
+              FileStreamDone(&g_file_stream_ctx);
             }
-
-            offset += chunk_len;
-            osDelay(2);
-          } while (offset < total_size);
+          }
 
           break;
         }
 
+        case 9U:
+        {
+          static uint8_t header[TCP_FILE_STREAM_HEADER_LEN];
+          int32_t stream_status;
+
+          memset(header, 0, sizeof(header));
+          header[0] = msg.command;
+          header[1] = 0U;
+          WriteU32Be(&header[2], msg.server_id);
+          WriteU64Be(&header[6], msg.epoch_time);
+          WriteU32Be(&header[14], TCP_TEST_STREAM_TOTAL_SIZE);
+
+          g_test_stream_ctx.bytes_remaining = TCP_TEST_STREAM_TOTAL_SIZE;
+          stream_status = TcpClient_StartStream(header,
+                                                sizeof(header),
+                                                TCP_TEST_STREAM_TOTAL_SIZE,
+                                                TestStreamRead,
+                                                TestStreamDone,
+                                                &g_test_stream_ctx);
+          if (stream_status != 0)
+          {
+            g_test_stream_ctx.bytes_remaining = 0U;
+          }
+
+          break;
+        }
         default:
           break;
         }

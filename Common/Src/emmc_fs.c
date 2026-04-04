@@ -10,9 +10,11 @@
 #include <string.h>
 
 #define EMMC_FS_PATH_LEN            4U
+#define EMMC_FS_FILEPATH_LEN        128U
 #define EMMC_FS_WORKBUF_LEN         _MAX_SS
 #define EMMC_FS_ROOT_SUFFIX         "/"
 #define EMMC_FS_CONFIG_MAIN_PATH    "0:/config_main.conf"
+#define EMMC_FS_PATTERN_CHUNK_LEN   4096U
 #define EMMC_FS_API_HSEM_ID         HSEM_FS_API_ID
 
 static FATFS s_emmc_fs;
@@ -20,6 +22,7 @@ static char s_emmc_path[EMMC_FS_PATH_LEN];
 static uint8_t s_driver_linked;
 static uint8_t s_fs_mounted;
 static uint8_t s_work_buffer[EMMC_FS_WORKBUF_LEN];
+static uint8_t s_pattern_chunk[EMMC_FS_PATTERN_CHUNK_LEN];
 
 static void EmmcFs_WriteU32Be(uint8_t *data, uint32_t value)
 {
@@ -132,6 +135,37 @@ static EmmcFsStatus_t EmmcFs_EnsureMounted(void)
     }
 
     return EMMC_FS_OK;
+}
+
+static void EmmcFs_FillPattern(uint8_t *buffer, uint32_t offset, uint32_t length)
+{
+    uint32_t index;
+
+    for (index = 0U; index < length; index++)
+    {
+        buffer[index] = (uint8_t)((((offset + index) * 37U) + 11U) & 0xFFU);
+    }
+}
+
+static void EmmcFs_BuildPath(const char *filename, char *path, uint32_t path_len)
+{
+    if ((filename == NULL) || (path == NULL) || (path_len == 0U))
+    {
+        return;
+    }
+
+    if ((filename[0] != '\0') && (filename[1] == ':'))
+    {
+        (void)snprintf(path, path_len, "%s", filename);
+    }
+    else if ((filename[0] == '/') || (filename[0] == '\\'))
+    {
+        (void)snprintf(path, path_len, "0:%s", filename);
+    }
+    else
+    {
+        (void)snprintf(path, path_len, "0:/%s", filename);
+    }
 }
 
 EmmcFsStatus_t EmmcFs_Init(void)
@@ -261,6 +295,110 @@ EmmcFsStatus_t EmmcFs_WriteConfigMain(uint32_t server_id,
     return EMMC_FS_OK;
 }
 
+EmmcFsStatus_t EmmcFs_CreatePatternFile(const char *filename,
+                                        uint32_t file_size,
+                                        uint32_t *fail_offset,
+                                        uint8_t *fail_stage)
+{
+    FIL file;
+    FRESULT result;
+    UINT bytes_written;
+    uint32_t bytes_remaining;
+    uint32_t chunk_len;
+    uint32_t offset;
+    EmmcFsStatus_t status;
+    char path[EMMC_FS_FILEPATH_LEN];
+
+    if (fail_offset != NULL)
+    {
+        *fail_offset = 0U;
+    }
+
+    if (fail_stage != NULL)
+    {
+        *fail_stage = EMMC_FS_CREATE_STAGE_NONE;
+    }
+
+    if (filename == NULL)
+    {
+        return EMMC_FS_ERR_PARAM;
+    }
+
+    EmmcFs_Lock();
+
+    status = EmmcFs_EnsureMounted();
+    if (status != EMMC_FS_OK)
+    {
+        if (fail_stage != NULL)
+        {
+            *fail_stage = EMMC_FS_CREATE_STAGE_MOUNT;
+        }
+        EmmcFs_Unlock();
+        return status;
+    }
+
+    memset(path, 0, sizeof(path));
+    EmmcFs_BuildPath(filename, path, sizeof(path));
+
+    result = f_open(&file, path, FA_CREATE_ALWAYS | FA_WRITE);
+    if (result != FR_OK)
+    {
+        if (fail_stage != NULL)
+        {
+            *fail_stage = EMMC_FS_CREATE_STAGE_OPEN;
+        }
+        EmmcFs_Unlock();
+        return EMMC_FS_ERR_OPEN_FILE;
+    }
+
+    bytes_remaining = file_size;
+    offset = 0U;
+
+    while (bytes_remaining > 0U)
+    {
+        chunk_len = (bytes_remaining > EMMC_FS_PATTERN_CHUNK_LEN) ? EMMC_FS_PATTERN_CHUNK_LEN : bytes_remaining;
+        EmmcFs_FillPattern(s_pattern_chunk, offset, chunk_len);
+
+        result = f_write(&file, s_pattern_chunk, chunk_len, &bytes_written);
+        if ((result != FR_OK) || (bytes_written != chunk_len))
+        {
+            if (fail_offset != NULL)
+            {
+                *fail_offset = offset;
+            }
+            if (fail_stage != NULL)
+            {
+                *fail_stage = EMMC_FS_CREATE_STAGE_WRITE;
+            }
+            (void)f_close(&file);
+            EmmcFs_Unlock();
+            return EMMC_FS_ERR_READ_FILE;
+        }
+
+        offset += chunk_len;
+        bytes_remaining -= chunk_len;
+    }
+
+    result = f_sync(&file);
+    (void)f_close(&file);
+    EmmcFs_Unlock();
+
+    if (result != FR_OK)
+    {
+        if (fail_offset != NULL)
+        {
+            *fail_offset = offset;
+        }
+        if (fail_stage != NULL)
+        {
+            *fail_stage = EMMC_FS_CREATE_STAGE_SYNC;
+        }
+        return EMMC_FS_ERR_READ_FILE;
+    }
+
+    return EMMC_FS_OK;
+}
+
 EmmcFsStatus_t EmmcFs_ReadConfigMainChunk(uint32_t offset,
                                           uint8_t *buffer,
                                           uint16_t buffer_size,
@@ -286,6 +424,7 @@ EmmcFsStatus_t EmmcFs_ReadFileChunk(const char *filename,
     FRESULT result;
     UINT fatfs_bytes_read;
     EmmcFsStatus_t status;
+    char path[EMMC_FS_FILEPATH_LEN];
 
     if ((filename == NULL) || (buffer == NULL) || (bytes_read == NULL) || (total_size == NULL) || (buffer_size == 0U))
     {
@@ -304,7 +443,10 @@ EmmcFsStatus_t EmmcFs_ReadFileChunk(const char *filename,
         return status;
     }
 
-    result = f_open(&file, filename, FA_READ);
+    memset(path, 0, sizeof(path));
+    EmmcFs_BuildPath(filename, path, sizeof(path));
+
+    result = f_open(&file, path, FA_READ);
     if (result != FR_OK)
     {
         EmmcFs_Unlock();
@@ -337,6 +479,104 @@ EmmcFsStatus_t EmmcFs_ReadFileChunk(const char *filename,
     }
 
     *bytes_read = (uint16_t)fatfs_bytes_read;
+    return EMMC_FS_OK;
+}
+
+EmmcFsStatus_t EmmcFs_OpenFileRead(const char *filename,
+                                   EmmcFsReadHandle_t *handle,
+                                   uint32_t *total_size)
+{
+    FRESULT result;
+    EmmcFsStatus_t status;
+    char path[EMMC_FS_FILEPATH_LEN];
+
+    if ((filename == NULL) || (handle == NULL) || (total_size == NULL))
+    {
+        return EMMC_FS_ERR_PARAM;
+    }
+
+    memset(handle, 0, sizeof(*handle));
+    *total_size = 0U;
+
+    EmmcFs_Lock();
+
+    status = EmmcFs_EnsureMounted();
+    if (status != EMMC_FS_OK)
+    {
+        EmmcFs_Unlock();
+        return status;
+    }
+
+    memset(path, 0, sizeof(path));
+    EmmcFs_BuildPath(filename, path, sizeof(path));
+
+    result = f_open(&handle->file, path, FA_READ);
+    EmmcFs_Unlock();
+    if (result != FR_OK)
+    {
+        return EMMC_FS_ERR_OPEN_FILE;
+    }
+
+    handle->total_size = (uint32_t)f_size(&handle->file);
+    handle->is_open = 1U;
+    *total_size = handle->total_size;
+    return EMMC_FS_OK;
+}
+
+EmmcFsStatus_t EmmcFs_ReadFileNext(EmmcFsReadHandle_t *handle,
+                                   uint8_t *buffer,
+                                   uint16_t buffer_size,
+                                   uint16_t *bytes_read)
+{
+    FRESULT result;
+    UINT fatfs_bytes_read;
+
+    if ((handle == NULL) || (buffer == NULL) || (bytes_read == NULL) || (buffer_size == 0U) || (handle->is_open == 0U))
+    {
+        return EMMC_FS_ERR_PARAM;
+    }
+
+    *bytes_read = 0U;
+
+    EmmcFs_Lock();
+    result = f_read(&handle->file, buffer, buffer_size, &fatfs_bytes_read);
+    EmmcFs_Unlock();
+
+    if (result != FR_OK)
+    {
+        return EMMC_FS_ERR_READ_FILE;
+    }
+
+    *bytes_read = (uint16_t)fatfs_bytes_read;
+    return EMMC_FS_OK;
+}
+
+EmmcFsStatus_t EmmcFs_CloseFileRead(EmmcFsReadHandle_t *handle)
+{
+    FRESULT result;
+
+    if (handle == NULL)
+    {
+        return EMMC_FS_ERR_PARAM;
+    }
+
+    if (handle->is_open == 0U)
+    {
+        return EMMC_FS_OK;
+    }
+
+    EmmcFs_Lock();
+    result = f_close(&handle->file);
+    EmmcFs_Unlock();
+
+    handle->is_open = 0U;
+    handle->total_size = 0U;
+
+    if (result != FR_OK)
+    {
+        return EMMC_FS_ERR_READ_FILE;
+    }
+
     return EMMC_FS_OK;
 }
 

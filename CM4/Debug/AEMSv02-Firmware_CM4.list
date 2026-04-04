@@ -21,25 +21,25 @@ Idx Name          Size      VMA       LMA       File off  Algn
                   ALLOC
   8 .ARM.attributes 00000030  00000000  00000000  00006030  2**0
                   CONTENTS, READONLY
-  9 .debug_info   0000db1a  00000000  00000000  00006060  2**0
+  9 .debug_info   0000db34  00000000  00000000  00006060  2**0
                   CONTENTS, READONLY, DEBUGGING, OCTETS
- 10 .debug_abbrev 0000250b  00000000  00000000  00013b7a  2**0
+ 10 .debug_abbrev 0000250b  00000000  00000000  00013b94  2**0
                   CONTENTS, READONLY, DEBUGGING, OCTETS
- 11 .debug_aranges 00000bd0  00000000  00000000  00016088  2**3
+ 11 .debug_aranges 00000bd0  00000000  00000000  000160a0  2**3
                   CONTENTS, READONLY, DEBUGGING, OCTETS
- 12 .debug_rnglists 000008ce  00000000  00000000  00016c58  2**0
+ 12 .debug_rnglists 000008ce  00000000  00000000  00016c70  2**0
                   CONTENTS, READONLY, DEBUGGING, OCTETS
- 13 .debug_macro  00003f19  00000000  00000000  00017526  2**0
+ 13 .debug_macro  00003f0f  00000000  00000000  0001753e  2**0
                   CONTENTS, READONLY, DEBUGGING, OCTETS
- 14 .debug_line   00010197  00000000  00000000  0001b43f  2**0
+ 14 .debug_line   0001018a  00000000  00000000  0001b44d  2**0
                   CONTENTS, READONLY, DEBUGGING, OCTETS
- 15 .debug_str    00180883  00000000  00000000  0002b5d6  2**0
+ 15 .debug_str    00180886  00000000  00000000  0002b5d7  2**0
                   CONTENTS, READONLY, DEBUGGING, OCTETS
- 16 .comment      00000043  00000000  00000000  001abe59  2**0
+ 16 .comment      00000043  00000000  00000000  001abe5d  2**0
                   CONTENTS, READONLY
- 17 .debug_frame  00002c1c  00000000  00000000  001abe9c  2**2
+ 17 .debug_frame  00002c1c  00000000  00000000  001abea0  2**2
                   CONTENTS, READONLY, DEBUGGING, OCTETS
- 18 .debug_line_str 00000069  00000000  00000000  001aeab8  2**0
+ 18 .debug_line_str 00000069  00000000  00000000  001aeabc  2**0
                   CONTENTS, READONLY, DEBUGGING, OCTETS
 
 Disassembly of section .text:
@@ -1107,7 +1107,7 @@ static void IPC_PublishStatus(void)
  8100956:	f8c3 2098 	str.w	r2, [r3, #152]	@ 0x98
   SHARED_IPC_REGION->status.version = IPC_SHARED_VERSION;
  810095a:	f04f 5340 	mov.w	r3, #805306368	@ 0x30000000
- 810095e:	2201      	movs	r2, #1
+ 810095e:	2202      	movs	r2, #2
  8100960:	f8c3 209c 	str.w	r2, [r3, #156]	@ 0x9c
   SHARED_IPC_REGION->status.daq_state = (uint32_t)g_daq_ctx.state;
  8100964:	4b24      	ldr	r3, [pc, #144]	@ (81009f8 <IPC_PublishStatus+0xc0>)
@@ -1173,7 +1173,7 @@ static void IPC_PublishStatus(void)
  81009f2:	bd80      	pop	{r7, pc}
  81009f4:	41454d53 	.word	0x41454d53
  81009f8:	10001800 	.word	0x10001800
- 81009fc:	300000d0 	.word	0x300000d0
+ 81009fc:	300000d8 	.word	0x300000d8
 
 08100a00 <IPC_WriteResponse>:
 
@@ -1192,7 +1192,7 @@ static void IPC_WriteResponse(uint32_t seq, uint32_t cmd, uint32_t result, uint3
  8100a12:	601a      	str	r2, [r3, #0]
   ipc_last_rsp.version = IPC_SHARED_VERSION;
  8100a14:	4b14      	ldr	r3, [pc, #80]	@ (8100a68 <IPC_WriteResponse+0x68>)
- 8100a16:	2201      	movs	r2, #1
+ 8100a16:	2202      	movs	r2, #2
  8100a18:	605a      	str	r2, [r3, #4]
   ipc_last_rsp.ready = 1U;
  8100a1a:	4b13      	ldr	r3, [pc, #76]	@ (8100a68 <IPC_WriteResponse+0x68>)
@@ -1370,7 +1370,7 @@ void IPC_CmdInit(void)
  8100b2c:	2b00      	cmp	r3, #0
  8100b2e:	d1f9      	bne.n	8100b24 <IPC_CmdInit+0x4>
   memset((void *)SHARED_IPC_REGION, 0, sizeof(*SHARED_IPC_REGION));
- 8100b30:	f241 1210 	movw	r2, #4368	@ 0x1110
+ 8100b30:	f241 1218 	movw	r2, #4376	@ 0x1118
  8100b34:	2100      	movs	r1, #0
  8100b36:	f04f 5040 	mov.w	r0, #805306368	@ 0x30000000
  8100b3a:	f003 ff91 	bl	8104a60 <memset>
@@ -1380,7 +1380,7 @@ void IPC_CmdInit(void)
  8100b44:	601a      	str	r2, [r3, #0]
   SHARED_IPC_REGION->cmd.version = IPC_SHARED_VERSION;
  8100b46:	f04f 5340 	mov.w	r3, #805306368	@ 0x30000000
- 8100b4a:	2201      	movs	r2, #1
+ 8100b4a:	2202      	movs	r2, #2
  8100b4c:	605a      	str	r2, [r3, #4]
   SHARED_IPC_REGION->rsp.magic = IPC_SHARED_MAGIC;
  8100b4e:	f04f 5340 	mov.w	r3, #805306368	@ 0x30000000
@@ -1388,7 +1388,7 @@ void IPC_CmdInit(void)
  8100b54:	679a      	str	r2, [r3, #120]	@ 0x78
   SHARED_IPC_REGION->rsp.version = IPC_SHARED_VERSION;
  8100b56:	f04f 5340 	mov.w	r3, #805306368	@ 0x30000000
- 8100b5a:	2201      	movs	r2, #1
+ 8100b5a:	2202      	movs	r2, #2
  8100b5c:	67da      	str	r2, [r3, #124]	@ 0x7c
   SHARED_IPC_REGION->status.magic = IPC_SHARED_MAGIC;
  8100b5e:	f04f 5340 	mov.w	r3, #805306368	@ 0x30000000
@@ -1396,7 +1396,7 @@ void IPC_CmdInit(void)
  8100b64:	f8c3 2098 	str.w	r2, [r3, #152]	@ 0x98
   SHARED_IPC_REGION->status.version = IPC_SHARED_VERSION;
  8100b68:	f04f 5340 	mov.w	r3, #805306368	@ 0x30000000
- 8100b6c:	2201      	movs	r2, #1
+ 8100b6c:	2202      	movs	r2, #2
  8100b6e:	f8c3 209c 	str.w	r2, [r3, #156]	@ 0x9c
   UNLOCK_HSEM(HSEM_IPC_ID);
  8100b72:	2100      	movs	r1, #0
@@ -1447,7 +1447,7 @@ void IPC_CmdService(void)
  8100bb4:	4293      	cmp	r3, r2
  8100bb6:	d102      	bne.n	8100bbe <IPC_CmdService+0x2a>
  8100bb8:	6d7b      	ldr	r3, [r7, #84]	@ 0x54
- 8100bba:	2b01      	cmp	r3, #1
+ 8100bba:	2b02      	cmp	r3, #2
  8100bbc:	d006      	beq.n	8100bcc <IPC_CmdService+0x38>
   {
     IPC_WriteResponse(cmd_local.seq, cmd_local.cmd, IPC_CMD_RES_INVALID, 1U);

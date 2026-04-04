@@ -2,6 +2,7 @@
 #define EMMC_FS_H
 
 #include <stdint.h>
+#include "ff.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -21,11 +22,27 @@ typedef enum
     EMMC_FS_ERR_READ_FILE = -9
 } EmmcFsStatus_t;
 
+typedef enum
+{
+    EMMC_FS_CREATE_STAGE_NONE = 0,
+    EMMC_FS_CREATE_STAGE_MOUNT = 1,
+    EMMC_FS_CREATE_STAGE_OPEN = 2,
+    EMMC_FS_CREATE_STAGE_WRITE = 3,
+    EMMC_FS_CREATE_STAGE_SYNC = 4
+} EmmcFsCreateStage_t;
+
 typedef struct
 {
     uint32_t total_file_count;
     uint32_t dat_file_count;
 } EmmcFsDatSummary_t;
+
+typedef struct
+{
+    FIL file;
+    uint32_t total_size;
+    uint8_t is_open;
+} EmmcFsReadHandle_t;
 
 /**
  * @brief Link the eMMC FatFs driver for the current core.
@@ -60,6 +77,22 @@ EmmcFsStatus_t EmmcFs_WriteConfigMain(uint32_t server_id,
                                       uint64_t epoch_time,
                                       const uint8_t *payload,
                                       uint16_t payload_len);
+
+/**
+ * @brief Create or rewrite a file with deterministic patterned data.
+ * @param filename Null-terminated file name or path to create.
+ * @param file_size Total file size in bytes.
+ * @return `EMMC_FS_OK` on success.
+ * @return `EMMC_FS_ERR_PARAM` if `filename` is `NULL`.
+ * @return `EMMC_FS_ERR_LINK` if the FatFs driver link fails.
+ * @return `EMMC_FS_ERR_MOUNT` if the filesystem cannot be mounted.
+ * @return `EMMC_FS_ERR_OPEN_FILE` if the file cannot be opened for write.
+ * @return `EMMC_FS_ERR_READ_FILE` if a write or sync operation fails.
+ */
+EmmcFsStatus_t EmmcFs_CreatePatternFile(const char *filename,
+                                       uint32_t file_size,
+                                       uint32_t *fail_offset,
+                                       uint8_t *fail_stage);
 
 /**
  * @brief Count all files in the eMMC root directory.
@@ -114,6 +147,17 @@ EmmcFsStatus_t EmmcFs_ReadFileChunk(const char *filename,
                                     uint16_t buffer_size,
                                     uint16_t *bytes_read,
                                     uint32_t *total_size);
+
+EmmcFsStatus_t EmmcFs_OpenFileRead(const char *filename,
+                                   EmmcFsReadHandle_t *handle,
+                                   uint32_t *total_size);
+
+EmmcFsStatus_t EmmcFs_ReadFileNext(EmmcFsReadHandle_t *handle,
+                                   uint8_t *buffer,
+                                   uint16_t buffer_size,
+                                   uint16_t *bytes_read);
+
+EmmcFsStatus_t EmmcFs_CloseFileRead(EmmcFsReadHandle_t *handle);
 
 /**
  * @brief Count files ending with `.dat` in the eMMC root directory.

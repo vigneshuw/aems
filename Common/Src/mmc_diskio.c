@@ -155,10 +155,12 @@ DRESULT MMC_read(BYTE lun, BYTE* buff, DWORD sector, UINT count)
 DRESULT MMC_write(BYTE lun, const BYTE* buff, DWORD sector, UINT count)
 {
   DRESULT res = RES_ERROR;
+  HAL_StatusTypeDef hal_status;
 
   LOCK_HSEM(EMMC_HSEM_ID);
 
-  if (HAL_MMC_WriteBlocks(&hmmc1, (uint8_t*)buff, sector, count, MMC_TIMEOUT) == HAL_OK)
+  hal_status = HAL_MMC_WriteBlocks(&hmmc1, (uint8_t*)buff, sector, count, MMC_TIMEOUT);
+  if (hal_status == HAL_OK)
   {
     /* Wait until transfer complete */
     while (HAL_MMC_GetCardState(&hmmc1) != HAL_MMC_CARD_TRANSFER)

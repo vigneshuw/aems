@@ -8,12 +8,16 @@ HOST = "0.0.0.0"
 PORT = 10
 PACKET_LEN = 100
 CONFIG_READ_HEADER_LEN = 24
+FILE_STREAM_HEADER_LEN = 18
 SERVER_ID = 1
 MAX_USEFUL_PAYLOAD_LEN = PACKET_LEN - 15
 CONFIG_TEST_PAYLOAD = bytes(((index * 3) + 1) & 0xFF for index in range(MAX_USEFUL_PAYLOAD_LEN))
-READ_FILENAME = b"config_main.conf"
+READ_FILENAME = b"test.dat"
 config_rx_state = {}
 expected_config_file = None
+transfer_metrics = {}
+file_read_in_progress = False
+active_file_stream = None
 
 
 def build_packet(command, server_id, epoch_time):
@@ -28,6 +32,8 @@ def build_packet(command, server_id, epoch_time):
         useful_payload = CONFIG_TEST_PAYLOAD
     elif command == 5:
         useful_payload = READ_FILENAME
+    elif command == 9:
+        useful_payload = b""
     else:
         useful_payload = bytes((index & 0xFF) for index in range(MAX_USEFUL_PAYLOAD_LEN))
 
@@ -44,6 +50,7 @@ def parse_config_write(packet):
     epoch_time = struct.unpack(">Q", packet[5:13])[0]
     system_status = packet[13]
     tcp_connected = packet[14]
+    fs_status = struct.unpack(">I", packet[15:19])[0]
 
     print(
         "RX config-write: "
@@ -51,7 +58,8 @@ def parse_config_write(packet):
         f"id={server_id}, "
         f"time={epoch_time}, "
         f"status={system_status}, "
-        f"tcp={tcp_connected}"
+        f"tcp={tcp_connected}, "
+        f"fs_status=0x{fs_status:08X}"
     )
 
 
@@ -79,6 +87,7 @@ def parse_file_count(packet):
     system_status = packet[13]
     tcp_connected = packet[14]
     dat_file_count = struct.unpack(">I", packet[15:19])[0]
+    fs_status = struct.unpack(">I", packet[19:23])[0]
 
     print(
         "RX file-count: "
@@ -87,7 +96,8 @@ def parse_file_count(packet):
         f"time={epoch_time}, "
         f"status={system_status}, "
         f"tcp={tcp_connected}, "
-        f"dat_count={dat_file_count}"
+        f"dat_count={dat_file_count}, "
+        f"fs_status=0x{fs_status:08X}"
     )
 
 
@@ -98,6 +108,7 @@ def parse_total_file_count(packet):
     system_status = packet[13]
     tcp_connected = packet[14]
     total_file_count = struct.unpack(">I", packet[15:19])[0]
+    fs_status = struct.unpack(">I", packet[19:23])[0]
 
     print(
         "RX total-file-count: "
@@ -106,12 +117,14 @@ def parse_total_file_count(packet):
         f"time={epoch_time}, "
         f"status={system_status}, "
         f"tcp={tcp_connected}, "
-        f"total_count={total_file_count}"
+        f"total_count={total_file_count}, "
+        f"fs_status=0x{fs_status:08X}"
     )
 
 
 def parse_config_read(packet):
     global expected_config_file
+    global file_read_in_progress
 
     command = packet[0]
     system_status = packet[1]
@@ -121,18 +134,38 @@ def parse_config_read(packet):
     offset = struct.unpack(">I", packet[18:22])[0]
     chunk_len = struct.unpack(">H", packet[22:24])[0]
     chunk = packet[24:24 + chunk_len]
+    state_key = (command, server_id)
 
-    state = config_rx_state.setdefault(
-        server_id,
-        {"total_size": total_size, "buffer": bytearray(total_size)}
-    )
+    if command == 4:
+        state = config_rx_state.setdefault(
+            state_key,
+            {"total_size": total_size, "buffer": bytearray(total_size)}
+        )
+    else:
+        state = config_rx_state.setdefault(
+            state_key,
+            {"total_size": total_size, "bytes_received": 0}
+        )
+
+    if command in {5, 9} and offset == 0 and server_id not in transfer_metrics:
+        transfer_metrics[server_id] = time.time()
 
     if state["total_size"] != total_size:
         state["total_size"] = total_size
-        state["buffer"] = bytearray(total_size)
+        if command == 4:
+            state["buffer"] = bytearray(total_size)
+        else:
+            state["bytes_received"] = 0
 
-    if chunk_len > 0 and (offset + chunk_len) <= len(state["buffer"]):
-        state["buffer"][offset:offset + chunk_len] = chunk
+    if command == 4:
+        if chunk_len > 0 and (offset + chunk_len) <= len(state["buffer"]):
+            state["buffer"][offset:offset + chunk_len] = chunk
+    else:
+        state["bytes_received"] += chunk_len
+        if (state["bytes_received"] % (256 * 1024) == 0) or ((offset + chunk_len) >= total_size):
+            print(
+                f"Read progress: {state['bytes_received']}/{total_size} bytes"
+            )
 
     print(
         "RX config-read: "
@@ -147,18 +180,94 @@ def parse_config_read(packet):
 
     if (system_status == 0) and (total_size == 0):
         print("Config file is empty.")
-        config_rx_state.pop(server_id, None)
+        config_rx_state.pop(state_key, None)
+        transfer_metrics.pop(server_id, None)
+        if command in {5, 9}:
+            file_read_in_progress = False
     elif (system_status == 0) and ((offset + chunk_len) >= total_size) and (total_size > 0):
-        full_data = bytes(state["buffer"])
-        print(f"Config read complete: {full_data.hex()}")
+        if command == 4:
+            full_data = bytes(state["buffer"])
+            print(f"Config read complete: {full_data.hex()}")
 
-        if expected_config_file is not None:
-            if full_data == expected_config_file:
-                print("Config verification passed.")
-            else:
-                print("Config verification FAILED.")
+            if expected_config_file is not None:
+                if full_data == expected_config_file:
+                    print("Config verification passed.")
+                else:
+                    print("Config verification FAILED.")
+        else:
+            print(f"Named file read complete: received {state['bytes_received']} bytes.")
 
-        config_rx_state.pop(server_id, None)
+        if command in {5, 9}:
+            start_time = transfer_metrics.pop(server_id, None)
+            if start_time is not None:
+                elapsed = max(time.time() - start_time, 1e-6)
+                throughput_mbps = (total_size / elapsed) / (1024 * 1024)
+                print(
+                    f"Read throughput: {throughput_mbps:.2f} MiB/s "
+                    f"for {total_size} bytes in {elapsed:.3f} s"
+                )
+
+        config_rx_state.pop(state_key, None)
+        if command in {5, 9}:
+            file_read_in_progress = False
+
+
+def parse_file_stream_header(packet):
+    global active_file_stream
+    global file_read_in_progress
+
+    command = packet[0]
+    system_status = packet[1]
+    server_id = struct.unpack(">I", packet[2:6])[0]
+    epoch_time = struct.unpack(">Q", packet[6:14])[0]
+    total_size = struct.unpack(">I", packet[14:18])[0]
+
+    if (system_status != 0) or (total_size == 0):
+        active_file_stream = None
+        file_read_in_progress = False
+        if total_size == 0:
+            print("Stream is empty or unavailable.")
+        return
+
+    print(f"RX stream start: cmd={command}, total_size={total_size}")
+
+    transfer_metrics[server_id] = time.time()
+    active_file_stream = {
+        "command": command,
+        "server_id": server_id,
+        "epoch_time": epoch_time,
+        "total_size": total_size,
+        "bytes_received": 0,
+        "next_progress_mark": 16 * 1024,
+        "first_data_reported": False,
+    }
+
+
+def parse_file_stream_data(data):
+    global active_file_stream
+    global file_read_in_progress
+
+    if active_file_stream is None:
+        return
+
+    active_file_stream["bytes_received"] += len(data)
+
+    if (len(data) > 0) and (active_file_stream["first_data_reported"] is False):
+        print(f"Read data started: received first {len(data)} bytes")
+        active_file_stream["first_data_reported"] = True
+
+    while active_file_stream["bytes_received"] >= active_file_stream["next_progress_mark"]:
+        print(
+            f"Read progress: {active_file_stream['bytes_received']}/{active_file_stream['total_size']} bytes"
+        )
+        active_file_stream["next_progress_mark"] += 16 * 1024
+
+    if active_file_stream["bytes_received"] >= active_file_stream["total_size"]:
+        print(f"Named file read complete: received {active_file_stream['bytes_received']} bytes.")
+        transfer_metrics.pop(active_file_stream["server_id"], None)
+
+        active_file_stream = None
+        file_read_in_progress = False
 
 
 def parse_packet(packet):
@@ -174,13 +283,12 @@ def parse_packet(packet):
         parse_total_file_count(packet)
     elif command == 4:
         parse_config_read(packet)
-    elif command == 5:
-        parse_config_read(packet)
     else:
-        print(f"RX unknown packet: cmd={command}, raw={packet.hex()}")
+        pass
 
 
 def recv_loop(conn):
+    global active_file_stream
     rx_buffer = bytearray()
 
     try:
@@ -193,9 +301,31 @@ def recv_loop(conn):
             rx_buffer.extend(data)
 
             while rx_buffer:
+                if active_file_stream is not None:
+                    remaining = active_file_stream["total_size"] - active_file_stream["bytes_received"]
+                    if remaining == 0:
+                        active_file_stream = None
+                        continue
+
+                    if len(rx_buffer) == 0:
+                        break
+
+                    consume_len = min(len(rx_buffer), remaining)
+                    payload = bytes(rx_buffer[:consume_len])
+                    del rx_buffer[:consume_len]
+                    parse_file_stream_data(payload)
+                    continue
+
                 command = rx_buffer[0]
 
-                if command in {4, 5}:
+                if command in {5, 9}:
+                    if len(rx_buffer) < FILE_STREAM_HEADER_LEN:
+                        break
+
+                    packet = bytes(rx_buffer[:FILE_STREAM_HEADER_LEN])
+                    del rx_buffer[:FILE_STREAM_HEADER_LEN]
+                    parse_file_stream_header(packet)
+                elif command == 4:
                     if len(rx_buffer) < CONFIG_READ_HEADER_LEN:
                         break
 
@@ -220,6 +350,7 @@ def recv_loop(conn):
 
 def main():
     global expected_config_file
+    global file_read_in_progress
 
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server:
         server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -238,7 +369,7 @@ def main():
 
             while True:
                 try:
-                    user_input = input("Enter command (0=heartbeat, 1=write config, 2=dat count, 3=all file count, 4=read config, 5=read named file, q=quit): ").strip()
+                    user_input = input("Enter command (0=heartbeat, 1=write config, 2=dat count, 3=all file count, 4=read config, 5=read named file, 9=test stream, q=quit): ").strip()
                 except (EOFError, KeyboardInterrupt):
                     print("\nExiting.")
                     break
@@ -246,11 +377,19 @@ def main():
                 if user_input.lower() == "q":
                     break
 
-                if user_input not in {"0", "1", "2", "3", "4", "5"}:
-                    print("Only commands 0, 1, 2, 3, 4, and 5 are implemented in this test.")
+                if user_input not in {"0", "1", "2", "3", "4", "5", "9"}:
+                    print("Only commands 0, 1, 2, 3, 4, 5, and 9 are implemented in this test.")
                     continue
 
                 command = int(user_input)
+
+                if (command == 5) and file_read_in_progress:
+                    print("File read already in progress. Wait for completion.")
+                    continue
+                if (command == 9) and file_read_in_progress:
+                    print("File stream already in progress. Wait for completion.")
+                    continue
+
                 epoch_time = int(time.time())
                 packet = build_packet(command, SERVER_ID, epoch_time)
 
@@ -261,8 +400,11 @@ def main():
                         CONFIG_TEST_PAYLOAD
                     )
                     print(f"TX config payload: {CONFIG_TEST_PAYLOAD.hex()}")
-                elif command == 5:
+                elif command in {5, 9}:
                     print(f"TX file read request for: {READ_FILENAME.decode()}")
+                    if command == 9:
+                        print("TX test stream request")
+                    file_read_in_progress = True
 
                 conn.sendall(packet)
                 print(f"TX: sent {len(packet)} bytes for command {command}")

@@ -8,7 +8,7 @@ extern "C" {
 #include <stdint.h>
 
 #define IPC_SHARED_MAGIC            (0x41454D53UL)
-#define IPC_SHARED_VERSION          (1UL)
+#define IPC_SHARED_VERSION          (2UL)
 #define IPC_FILENAME_LEN            (64U)
 #define IPC_COMMAND_PAYLOAD_SIZE    (96U)
 #define IPC_CHUNK_BUFFER_SIZE       (4096U)
@@ -78,6 +78,8 @@ typedef struct
   volatile uint32_t dropped_buffers;
   volatile uint64_t bytes_queued;
   volatile uint64_t bytes_written;
+  volatile uint32_t fs_ready;
+  volatile uint32_t emmc_busy;
   char active_filename[IPC_FILENAME_LEN];
 } SharedStatusBlock_t;
 
