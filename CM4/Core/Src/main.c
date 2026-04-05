@@ -70,6 +70,7 @@ volatile DaqContext_t g_daq_ctx;
 volatile int32_t g_cm4_emmc_init_status = 0;
 volatile int32_t g_cm4_emmc_mount_status = 0;
 volatile int32_t g_cm4_emmc_create_status = 0;
+volatile int32_t g_cm4_emmc_readthrough_status = 0;
 
 /* USER CODE END PV */
 
@@ -81,6 +82,7 @@ void MX_SDMMC1_MMC_Init(void);
 //static void FS_FileOperations(void);
 static uint8_t Buffercmp(uint8_t* pBuffer1, uint8_t* pBuffer2, uint32_t BufferLength);
 static void CM4_PublishBootStatus(void);
+static int32_t CM4_ReadThroughTestFile(void);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -176,6 +178,13 @@ int main(void)
   g_cm4_emmc_create_status = (int32_t)EmmcFs_CreatePatternFile(TEST_FILE_NAME, TEST_FILE_SIZE_BYTES, NULL, NULL);
   CM4_PublishBootStatus();
   if (g_cm4_emmc_create_status != EMMC_FS_OK)
+  {
+    Error_Handler();
+  }
+
+  g_cm4_emmc_readthrough_status = CM4_ReadThroughTestFile();
+  CM4_PublishBootStatus();
+  if (g_cm4_emmc_readthrough_status != EMMC_FS_OK)
   {
     Error_Handler();
   }
@@ -426,10 +435,51 @@ static void CM4_PublishBootStatus(void)
   SHARED_IPC_REGION->status.emmc_init_status = g_cm4_emmc_init_status;
   SHARED_IPC_REGION->status.emmc_mount_status = g_cm4_emmc_mount_status;
   SHARED_IPC_REGION->status.emmc_create_status = g_cm4_emmc_create_status;
+  SHARED_IPC_REGION->status.emmc_readthrough_status = g_cm4_emmc_readthrough_status;
   SHARED_IPC_REGION->status.fs_ready = (uint32_t)((g_cm4_emmc_init_status == EMMC_FS_OK) &&
                                                   (g_cm4_emmc_mount_status == EMMC_FS_OK) &&
-                                                  (g_cm4_emmc_create_status == EMMC_FS_OK));
+                                                  (g_cm4_emmc_create_status == EMMC_FS_OK) &&
+                                                  (g_cm4_emmc_readthrough_status == EMMC_FS_OK));
   UNLOCK_HSEM(HSEM_IPC_ID);
+}
+
+static int32_t CM4_ReadThroughTestFile(void)
+{
+  EmmcFsReadHandle_t handle;
+  uint32_t total_size = 0U;
+  uint32_t bytes_total = 0U;
+  uint16_t bytes_read = 0U;
+  ALIGN_32BYTES(static uint8_t read_buf[1024]);
+  EmmcFsStatus_t status;
+
+  memset(&handle, 0, sizeof(handle));
+
+  status = EmmcFs_OpenFileRead(TEST_FILE_NAME, &handle, &total_size);
+  if (status != EMMC_FS_OK)
+  {
+    return (int32_t)status;
+  }
+
+  do
+  {
+    bytes_read = 0U;
+    status = EmmcFs_ReadFileNext(&handle, read_buf, sizeof(read_buf), &bytes_read);
+    if (status != EMMC_FS_OK)
+    {
+      (void)EmmcFs_CloseFileRead(&handle);
+      return (int32_t)status;
+    }
+
+    bytes_total += bytes_read;
+  } while (bytes_read > 0U);
+
+  status = EmmcFs_CloseFileRead(&handle);
+  if (status != EMMC_FS_OK)
+  {
+    return (int32_t)status;
+  }
+
+  return (bytes_total == total_size) ? (int32_t)EMMC_FS_OK : (int32_t)EMMC_FS_ERR_READ_FILE;
 }
 
 /*

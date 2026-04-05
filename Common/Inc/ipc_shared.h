@@ -90,6 +90,7 @@ typedef struct
   volatile int32_t emmc_init_status;
   volatile int32_t emmc_mount_status;
   volatile int32_t emmc_create_status;
+  volatile int32_t emmc_readthrough_status;
   char active_filename[IPC_FILENAME_LEN];
 } SharedStatusBlock_t;
 

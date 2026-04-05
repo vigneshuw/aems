@@ -856,6 +856,7 @@ void ControllerTask(void const * argument)
           WriteU32Be(&tx[31], (uint32_t)ipc_status.emmc_init_status);
           WriteU32Be(&tx[35], (uint32_t)ipc_status.emmc_mount_status);
           WriteU32Be(&tx[39], (uint32_t)ipc_status.emmc_create_status);
+          WriteU32Be(&tx[43], (uint32_t)ipc_status.emmc_readthrough_status);
           (void)TcpClient_SendBuffer(tx, sizeof(tx));
           ipc_seq++;
           break;

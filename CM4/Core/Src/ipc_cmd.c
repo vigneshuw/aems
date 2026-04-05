@@ -12,6 +12,7 @@
 extern volatile int32_t g_cm4_emmc_init_status;
 extern volatile int32_t g_cm4_emmc_mount_status;
 extern volatile int32_t g_cm4_emmc_create_status;
+extern volatile int32_t g_cm4_emmc_readthrough_status;
 
 static IpcResponseBlock_t ipc_last_rsp;
 static struct
@@ -55,9 +56,11 @@ static void IPC_PublishStatus(void)
   SHARED_IPC_REGION->status.emmc_init_status = g_cm4_emmc_init_status;
   SHARED_IPC_REGION->status.emmc_mount_status = g_cm4_emmc_mount_status;
   SHARED_IPC_REGION->status.emmc_create_status = g_cm4_emmc_create_status;
+  SHARED_IPC_REGION->status.emmc_readthrough_status = g_cm4_emmc_readthrough_status;
   SHARED_IPC_REGION->status.fs_ready = (uint32_t)((g_cm4_emmc_init_status == EMMC_FS_OK) &&
                                                   (g_cm4_emmc_mount_status == EMMC_FS_OK) &&
-                                                  (g_cm4_emmc_create_status == EMMC_FS_OK));
+                                                  (g_cm4_emmc_create_status == EMMC_FS_OK) &&
+                                                  (g_cm4_emmc_readthrough_status == EMMC_FS_OK));
   memcpy((void *)SHARED_IPC_REGION->status.active_filename, cfg->filename, IPC_FILENAME_LEN);
   UNLOCK_HSEM(HSEM_IPC_ID);
 }

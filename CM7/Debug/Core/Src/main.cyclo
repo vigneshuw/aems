@@ -16,8 +16,8 @@
 ../Core/Src/main.c:624:13:MX_GPIO_Init	1
 ../Core/Src/main.c:719:6:StartDefaultTask	1
 ../Core/Src/main.c:765:6:ControllerTask	21
-../Core/Src/main.c:887:6:TelemetryTask	1
-../Core/Src/main.c:905:6:FileTask	19
-../Core/Src/main.c:1073:6:MPU_Config	1
-../Core/Src/main.c:1141:6:HAL_TIM_PeriodElapsedCallback	2
-../Core/Src/main.c:1159:6:Error_Handler	1
+../Core/Src/main.c:888:6:TelemetryTask	1
+../Core/Src/main.c:906:6:FileTask	19
+../Core/Src/main.c:1074:6:MPU_Config	1
+../Core/Src/main.c:1142:6:HAL_TIM_PeriodElapsedCallback	2
+../Core/Src/main.c:1160:6:Error_Handler	1

@@ -135,6 +135,7 @@ def parse_cm4_heartbeat(packet):
     emmc_init_status = struct.unpack(">i", packet[31:35])[0]
     emmc_mount_status = struct.unpack(">i", packet[35:39])[0]
     emmc_create_status = struct.unpack(">i", packet[39:43])[0]
+    emmc_readthrough_status = struct.unpack(">i", packet[43:47])[0]
 
     print(
         "RX cm4-heartbeat: "
@@ -149,7 +150,8 @@ def parse_cm4_heartbeat(packet):
         f"emmc_busy={emmc_busy}, "
         f"emmc_init_status={emmc_init_status}, "
         f"emmc_mount_status={emmc_mount_status}, "
-        f"emmc_create_status={emmc_create_status}"
+        f"emmc_create_status={emmc_create_status}, "
+        f"emmc_readthrough_status={emmc_readthrough_status}"
     )
 
 
