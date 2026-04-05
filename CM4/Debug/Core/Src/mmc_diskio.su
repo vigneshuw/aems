@@ -1,0 +1,6 @@
+../Core/Src/mmc_diskio.c:64:16:MMC_CheckStatus	24	static
+../Core/Src/mmc_diskio.c:84:9:MMC_initialize	16	static
+../Core/Src/mmc_diskio.c:111:9:MMC_status	16	static
+../Core/Src/mmc_diskio.c:125:9:MMC_read	40	static
+../Core/Src/mmc_diskio.c:160:9:MMC_write	40	static
+../Core/Src/mmc_diskio.c:197:9:MMC_ioctl	48	static

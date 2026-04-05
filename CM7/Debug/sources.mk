@@ -28,8 +28,6 @@ Core/Src \
 Core/Startup \
 Drivers/BSP/Components \
 Drivers/STM32H7xx_HAL_Driver \
-FATFS/App \
-FATFS/Target \
 LWIP/App \
 LWIP/Target \
 Library/Bluenrg \
@@ -38,7 +36,6 @@ Library/led \
 Middlewares/BlueNRG-2/Wireless/BlueNRG-2/Controller \
 Middlewares/BlueNRG-2/Wireless/BlueNRG-2/HCI_TL/Basic \
 Middlewares/BlueNRG-2/Wireless/BlueNRG-2/Utils \
-Middlewares/Third_Party/FatFs \
 Middlewares/Third_Party/FreeRTOS \
 Middlewares/Third_Party/LwIP \
 

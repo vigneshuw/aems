@@ -1,17 +1,15 @@
-Common/Src/mmc_diskio.o: \
- C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Common/Src/mmc_diskio.c \
- ../../Middlewares/Third_Party/FatFs/src/ff_gen_drv.h \
- ../../Middlewares/Third_Party/FatFs/src/diskio.h \
+Library/emmc_fs/emmc_fs.o: ../Library/emmc_fs/emmc_fs.c \
+ ../Library/emmc_fs/emmc_fs.h \
+ ../../Middlewares/Third_Party/FatFs/src/ff.h \
  ../../Middlewares/Third_Party/FatFs/src/integer.h \
- ../../Middlewares/Third_Party/FatFs/src/ff.h ../FATFS/Target/ffconf.h \
- ../Core/Inc/main.h \
+ ../FATFS/Target/ffconf.h ../Core/Inc/main.h \
  ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal.h \
  ../Core/Inc/stm32h7xx_hal_conf.h \
  ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_rcc.h \
  ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_def.h \
  ../../Drivers/CMSIS/Device/ST/STM32H7xx/Include/stm32h7xx.h \
  ../../Drivers/CMSIS/Device/ST/STM32H7xx/Include/stm32h745xx.h \
- ../../Drivers/CMSIS/Include/core_cm7.h \
+ ../../Drivers/CMSIS/Include/core_cm4.h \
  ../../Drivers/CMSIS/Include/cmsis_version.h \
  ../../Drivers/CMSIS/Include/cmsis_compiler.h \
  ../../Drivers/CMSIS/Include/cmsis_gcc.h \
@@ -24,8 +22,6 @@ Common/Src/mmc_diskio.o: \
  ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_dma.h \
  ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_dma_ex.h \
  ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_mdma.h \
- ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_eth.h \
- ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_eth_ex.h \
  ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_exti.h \
  ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_cortex.h \
  ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_flash.h \
@@ -40,34 +36,15 @@ Common/Src/mmc_diskio.o: \
  ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_pwr_ex.h \
  ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_spi.h \
  ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_spi_ex.h \
- ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_tim.h \
- ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_tim_ex.h \
- ../BlueNRG-2/Target/hci_tl_interface.h ../Core/Inc/custom_bus.h \
- ../Core/Inc/custom_conf.h ../Core/Inc/custom_errno.h \
  C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Common/Inc/hsem_lock.h \
- C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS/cmsis_os.h \
- ../../Middlewares/Third_Party/FreeRTOS/Source/include/FreeRTOS.h \
- ../Core/Inc/FreeRTOSConfig.h \
- ../../Middlewares/Third_Party/FreeRTOS/Source/include/projdefs.h \
- ../../Middlewares/Third_Party/FreeRTOS/Source/include/portable.h \
- ../../Middlewares/Third_Party/FreeRTOS/Source/include/deprecated_definitions.h \
- ../../Middlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM4F/portmacro.h \
- ../../Middlewares/Third_Party/FreeRTOS/Source/include/mpu_wrappers.h \
- ../../Middlewares/Third_Party/FreeRTOS/Source/include/task.h \
- ../../Middlewares/Third_Party/FreeRTOS/Source/include/list.h \
- ../../Middlewares/Third_Party/FreeRTOS/Source/include/timers.h \
- ../../Middlewares/Third_Party/FreeRTOS/Source/include/task.h \
- ../../Middlewares/Third_Party/FreeRTOS/Source/include/queue.h \
- ../../Middlewares/Third_Party/FreeRTOS/Source/include/semphr.h \
- ../../Middlewares/Third_Party/FreeRTOS/Source/include/queue.h \
- ../../Middlewares/Third_Party/FreeRTOS/Source/include/event_groups.h \
- ../../Middlewares/Third_Party/FreeRTOS/Source/include/timers.h \
- C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Common/Inc/mmc_diskio.h \
- C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Common/Inc/hsem_ids.h
-../../Middlewares/Third_Party/FatFs/src/ff_gen_drv.h:
-../../Middlewares/Third_Party/FatFs/src/diskio.h:
-../../Middlewares/Third_Party/FatFs/src/integer.h:
+ ../../Middlewares/Third_Party/FatFs/src/ff_gen_drv.h \
+ ../../Middlewares/Third_Party/FatFs/src/diskio.h \
+ ../../Middlewares/Third_Party/FatFs/src/ff.h \
+ C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Common/Inc/hsem_ids.h \
+ ../Core/Inc/mmc_diskio.h
+../Library/emmc_fs/emmc_fs.h:
 ../../Middlewares/Third_Party/FatFs/src/ff.h:
+../../Middlewares/Third_Party/FatFs/src/integer.h:
 ../FATFS/Target/ffconf.h:
 ../Core/Inc/main.h:
 ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal.h:
@@ -76,7 +53,7 @@ Common/Src/mmc_diskio.o: \
 ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_def.h:
 ../../Drivers/CMSIS/Device/ST/STM32H7xx/Include/stm32h7xx.h:
 ../../Drivers/CMSIS/Device/ST/STM32H7xx/Include/stm32h745xx.h:
-../../Drivers/CMSIS/Include/core_cm7.h:
+../../Drivers/CMSIS/Include/core_cm4.h:
 ../../Drivers/CMSIS/Include/cmsis_version.h:
 ../../Drivers/CMSIS/Include/cmsis_compiler.h:
 ../../Drivers/CMSIS/Include/cmsis_gcc.h:
@@ -89,8 +66,6 @@ Common/Src/mmc_diskio.o: \
 ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_dma.h:
 ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_dma_ex.h:
 ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_mdma.h:
-../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_eth.h:
-../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_eth_ex.h:
 ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_exti.h:
 ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_cortex.h:
 ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_flash.h:
@@ -105,29 +80,9 @@ Common/Src/mmc_diskio.o: \
 ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_pwr_ex.h:
 ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_spi.h:
 ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_spi_ex.h:
-../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_tim.h:
-../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_tim_ex.h:
-../BlueNRG-2/Target/hci_tl_interface.h:
-../Core/Inc/custom_bus.h:
-../Core/Inc/custom_conf.h:
-../Core/Inc/custom_errno.h:
 C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Common/Inc/hsem_lock.h:
-C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS/cmsis_os.h:
-../../Middlewares/Third_Party/FreeRTOS/Source/include/FreeRTOS.h:
-../Core/Inc/FreeRTOSConfig.h:
-../../Middlewares/Third_Party/FreeRTOS/Source/include/projdefs.h:
-../../Middlewares/Third_Party/FreeRTOS/Source/include/portable.h:
-../../Middlewares/Third_Party/FreeRTOS/Source/include/deprecated_definitions.h:
-../../Middlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM4F/portmacro.h:
-../../Middlewares/Third_Party/FreeRTOS/Source/include/mpu_wrappers.h:
-../../Middlewares/Third_Party/FreeRTOS/Source/include/task.h:
-../../Middlewares/Third_Party/FreeRTOS/Source/include/list.h:
-../../Middlewares/Third_Party/FreeRTOS/Source/include/timers.h:
-../../Middlewares/Third_Party/FreeRTOS/Source/include/task.h:
-../../Middlewares/Third_Party/FreeRTOS/Source/include/queue.h:
-../../Middlewares/Third_Party/FreeRTOS/Source/include/semphr.h:
-../../Middlewares/Third_Party/FreeRTOS/Source/include/queue.h:
-../../Middlewares/Third_Party/FreeRTOS/Source/include/event_groups.h:
-../../Middlewares/Third_Party/FreeRTOS/Source/include/timers.h:
-C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Common/Inc/mmc_diskio.h:
+../../Middlewares/Third_Party/FatFs/src/ff_gen_drv.h:
+../../Middlewares/Third_Party/FatFs/src/diskio.h:
+../../Middlewares/Third_Party/FatFs/src/ff.h:
 C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Common/Inc/hsem_ids.h:
+../Core/Inc/mmc_diskio.h:

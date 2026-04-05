@@ -122,6 +122,37 @@ def parse_total_file_count(packet):
     )
 
 
+def parse_cm4_heartbeat(packet):
+    command = packet[0]
+    server_id = struct.unpack(">I", packet[1:5])[0]
+    epoch_time = struct.unpack(">Q", packet[5:13])[0]
+    system_status = packet[13]
+    tcp_connected = packet[14]
+    ipc_result = struct.unpack(">I", packet[15:19])[0]
+    ipc_error = struct.unpack(">I", packet[19:23])[0]
+    fs_ready = struct.unpack(">I", packet[23:27])[0]
+    emmc_busy = struct.unpack(">I", packet[27:31])[0]
+    emmc_init_status = struct.unpack(">i", packet[31:35])[0]
+    emmc_mount_status = struct.unpack(">i", packet[35:39])[0]
+    emmc_create_status = struct.unpack(">i", packet[39:43])[0]
+
+    print(
+        "RX cm4-heartbeat: "
+        f"cmd={command}, "
+        f"id={server_id}, "
+        f"time={epoch_time}, "
+        f"status={system_status}, "
+        f"tcp={tcp_connected}, "
+        f"ipc_result={ipc_result}, "
+        f"ipc_error={ipc_error}, "
+        f"fs_ready={fs_ready}, "
+        f"emmc_busy={emmc_busy}, "
+        f"emmc_init_status={emmc_init_status}, "
+        f"emmc_mount_status={emmc_mount_status}, "
+        f"emmc_create_status={emmc_create_status}"
+    )
+
+
 def parse_config_read(packet):
     global expected_config_file
     global file_read_in_progress
@@ -283,6 +314,8 @@ def parse_packet(packet):
         parse_total_file_count(packet)
     elif command == 4:
         parse_config_read(packet)
+    elif command == 6:
+        parse_cm4_heartbeat(packet)
     else:
         pass
 
@@ -369,7 +402,7 @@ def main():
 
             while True:
                 try:
-                    user_input = input("Enter command (0=heartbeat, 1=write config, 2=dat count, 3=all file count, 4=read config, 5=read named file, 9=test stream, q=quit): ").strip()
+                    user_input = input("Enter command (0=heartbeat, 1=write config, 2=dat count, 3=all file count, 4=read config, 5=read named file, 6=cm4 heartbeat, 9=test stream, q=quit): ").strip()
                 except (EOFError, KeyboardInterrupt):
                     print("\nExiting.")
                     break
@@ -377,8 +410,8 @@ def main():
                 if user_input.lower() == "q":
                     break
 
-                if user_input not in {"0", "1", "2", "3", "4", "5", "9"}:
-                    print("Only commands 0, 1, 2, 3, 4, 5, and 9 are implemented in this test.")
+                if user_input not in {"0", "1", "2", "3", "4", "5", "6", "9"}:
+                    print("Only commands 0, 1, 2, 3, 4, 5, 6, and 9 are implemented in this test.")
                     continue
 
                 command = int(user_input)

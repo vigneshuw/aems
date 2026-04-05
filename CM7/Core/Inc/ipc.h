@@ -39,6 +39,7 @@ uint32_t IPC_PostStartAcq(uint32_t seq, uint32_t sample_rate_hz, uint32_t channe
   * @return uint32_t Returns 1 if command is posted, 0 if mailbox is busy.
   */
 uint32_t IPC_PostSimpleCommand(uint32_t seq, uint32_t cmd_id);
+uint32_t IPC_PostStreamFile(uint32_t seq, const char *filename);
 
 /**
   * @brief Wait for a matching response from CM4.
@@ -55,6 +56,8 @@ uint32_t IPC_WaitForResponse(uint32_t seq, IpcResponseBlock_t *rsp, uint32_t tim
   * @return None
   */
 void IPC_ReadStatus(SharedStatusBlock_t *status);
+uint32_t IPC_ReadStreamInfo(uint32_t seq, IpcStreamBlock_t *stream);
+uint32_t IPC_StreamFetchChunk(uint32_t seq, uint8_t *dst, uint16_t max_len, uint16_t *out_len, uint32_t *out_state, uint32_t *out_error);
 
 #ifdef __cplusplus
 }

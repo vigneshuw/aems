@@ -24,9 +24,14 @@
 /* USER CODE BEGIN Includes */
 #include "ads131m08.h"
 #include "ff_gen_drv.h"
+#include "emmc_fs.h"
 #include "mmc_diskio.h"
 #include "daq_engine.h"
 #include "ipc_cmd.h"
+#include "ipc_shared.h"
+#include "shared_memory.h"
+#include "hsem_ids.h"
+#include "hsem_lock.h"
 #include "statemachine.h"
 
 /* USER CODE END Includes */
@@ -45,6 +50,8 @@ void AEMS_Initialize();
 #endif
 
 #define CM4_FILE   "cm7.log"
+#define TEST_FILE_NAME "test.dat"
+#define TEST_FILE_SIZE_BYTES (1UL * 1024UL * 1024UL)
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -60,15 +67,20 @@ SPI_HandleTypeDef hspi4;
 
 /* USER CODE BEGIN PV */
 volatile DaqContext_t g_daq_ctx;
+volatile int32_t g_cm4_emmc_init_status = 0;
+volatile int32_t g_cm4_emmc_mount_status = 0;
+volatile int32_t g_cm4_emmc_create_status = 0;
 
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
 static void MX_GPIO_Init(void);
 static void MX_SPI4_Init(void);
+void MX_SDMMC1_MMC_Init(void);
 /* USER CODE BEGIN PFP */
 //static void FS_FileOperations(void);
 static uint8_t Buffercmp(uint8_t* pBuffer1, uint8_t* pBuffer2, uint32_t BufferLength);
+static void CM4_PublishBootStatus(void);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -140,10 +152,33 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_SPI4_Init();
+  MX_SDMMC1_MMC_Init();
+//  MX_FATFS_Init();
   /* USER CODE BEGIN 2 */
   DAQ_ContextInit();
   IPC_CmdInit();
-  AEMS_Initialize();
+  //AEMS_Initialize();
+
+  g_cm4_emmc_init_status = (int32_t)EmmcFs_Init();
+  CM4_PublishBootStatus();
+  if (g_cm4_emmc_init_status != EMMC_FS_OK)
+  {
+    Error_Handler();
+  }
+
+  g_cm4_emmc_mount_status = (int32_t)EmmcFs_MountOrFormat();
+  CM4_PublishBootStatus();
+  if (g_cm4_emmc_mount_status != EMMC_FS_OK)
+  {
+    Error_Handler();
+  }
+
+  g_cm4_emmc_create_status = (int32_t)EmmcFs_CreatePatternFile(TEST_FILE_NAME, TEST_FILE_SIZE_BYTES, NULL, NULL);
+  CM4_PublishBootStatus();
+  if (g_cm4_emmc_create_status != EMMC_FS_OK)
+  {
+    Error_Handler();
+  }
 
   /*
    * Link the I/O driver
@@ -276,6 +311,8 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOE_CLK_ENABLE();
   __HAL_RCC_GPIOC_CLK_ENABLE();
   __HAL_RCC_GPIOF_CLK_ENABLE();
+  __HAL_RCC_GPIOD_CLK_ENABLE();
+  __HAL_RCC_GPIOB_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(ADS_CS_GPIO_Port, ADS_CS_Pin, GPIO_PIN_RESET);
@@ -379,6 +416,20 @@ static uint8_t Buffercmp(uint8_t* pBuffer1, uint8_t* pBuffer2, uint32_t BufferLe
     pBuffer2++;
   }
   return 0;
+}
+
+static void CM4_PublishBootStatus(void)
+{
+  LOCK_HSEM(HSEM_IPC_ID);
+  SHARED_IPC_REGION->status.magic = IPC_SHARED_MAGIC;
+  SHARED_IPC_REGION->status.version = IPC_SHARED_VERSION;
+  SHARED_IPC_REGION->status.emmc_init_status = g_cm4_emmc_init_status;
+  SHARED_IPC_REGION->status.emmc_mount_status = g_cm4_emmc_mount_status;
+  SHARED_IPC_REGION->status.emmc_create_status = g_cm4_emmc_create_status;
+  SHARED_IPC_REGION->status.fs_ready = (uint32_t)((g_cm4_emmc_init_status == EMMC_FS_OK) &&
+                                                  (g_cm4_emmc_mount_status == EMMC_FS_OK) &&
+                                                  (g_cm4_emmc_create_status == EMMC_FS_OK));
+  UNLOCK_HSEM(HSEM_IPC_ID);
 }
 
 /*

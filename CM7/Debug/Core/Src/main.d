@@ -27,9 +27,6 @@ Core/Src/main.o: ../Core/Src/main.c ../Core/Inc/main.h \
  ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_hsem.h \
  ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_i2c.h \
  ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_i2c_ex.h \
- ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_mmc.h \
- ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_ll_sdmmc.h \
- ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_mmc_ex.h \
  ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_pwr.h \
  ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_pwr_ex.h \
  ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_spi.h \
@@ -57,13 +54,7 @@ Core/Src/main.o: ../Core/Src/main.c ../Core/Inc/main.h \
  C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/FreeRTOS/Source/include/queue.h \
  C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/FreeRTOS/Source/include/event_groups.h \
  C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/FreeRTOS/Source/include/timers.h \
- ../FATFS/App/fatfs.h ../../Middlewares/Third_Party/FatFs/src/ff.h \
- ../../Middlewares/Third_Party/FatFs/src/integer.h \
- ../FATFS/Target/ffconf.h \
- ../../Middlewares/Third_Party/FatFs/src/ff_gen_drv.h \
- ../../Middlewares/Third_Party/FatFs/src/diskio.h \
- ../../Middlewares/Third_Party/FatFs/src/ff.h \
- ../FATFS/Target/user_diskio.h ../LWIP/App/lwip.h \
+ ../LWIP/App/lwip.h \
  ../../Middlewares/Third_Party/LwIP/src/include/lwip/opt.h \
  ../LWIP/Target/lwipopts.h \
  ../../Middlewares/Third_Party/LwIP/src/include/lwip/debug.h \
@@ -127,11 +118,9 @@ Core/Src/main.o: ../Core/Src/main.c ../Core/Inc/main.h \
  C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/ST/BlueNRG-2/includes/hci.h \
  C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/CM7/Library/led/led.h \
  ../../Drivers/CMSIS/Device/ST/STM32H7xx/Include/stm32h745xx.h \
- C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Common/Inc/emmc_fs.h \
  C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Common/Inc/hsem_ids.h \
  ../Core/Inc/ipc.h \
  C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Common/Inc/ipc_shared.h \
- C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Common/Inc/mmc_diskio.h \
  C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Common/Inc/shared_memory.h \
  C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Common/Inc/ipc_shared.h \
  C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/CM7/Library/eth/tcpclient.h
@@ -164,9 +153,6 @@ Core/Src/main.o: ../Core/Src/main.c ../Core/Inc/main.h \
 ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_hsem.h:
 ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_i2c.h:
 ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_i2c_ex.h:
-../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_mmc.h:
-../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_ll_sdmmc.h:
-../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_mmc_ex.h:
 ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_pwr.h:
 ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_pwr_ex.h:
 ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_spi.h:
@@ -195,14 +181,6 @@ C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/F
 C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/FreeRTOS/Source/include/queue.h:
 C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/FreeRTOS/Source/include/event_groups.h:
 C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/FreeRTOS/Source/include/timers.h:
-../FATFS/App/fatfs.h:
-../../Middlewares/Third_Party/FatFs/src/ff.h:
-../../Middlewares/Third_Party/FatFs/src/integer.h:
-../FATFS/Target/ffconf.h:
-../../Middlewares/Third_Party/FatFs/src/ff_gen_drv.h:
-../../Middlewares/Third_Party/FatFs/src/diskio.h:
-../../Middlewares/Third_Party/FatFs/src/ff.h:
-../FATFS/Target/user_diskio.h:
 ../LWIP/App/lwip.h:
 ../../Middlewares/Third_Party/LwIP/src/include/lwip/opt.h:
 ../LWIP/Target/lwipopts.h:
@@ -267,11 +245,9 @@ C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/ST/BlueNRG-2/
 C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/ST/BlueNRG-2/includes/hci.h:
 C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/CM7/Library/led/led.h:
 ../../Drivers/CMSIS/Device/ST/STM32H7xx/Include/stm32h745xx.h:
-C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Common/Inc/emmc_fs.h:
 C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Common/Inc/hsem_ids.h:
 ../Core/Inc/ipc.h:
 C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Common/Inc/ipc_shared.h:
-C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Common/Inc/mmc_diskio.h:
 C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Common/Inc/shared_memory.h:
 C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Common/Inc/ipc_shared.h:
 C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/CM7/Library/eth/tcpclient.h:

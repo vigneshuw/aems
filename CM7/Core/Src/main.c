@@ -19,19 +19,15 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "cmsis_os.h"
-#include "fatfs.h"
 #include "lwip.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "bluenrg2_intf.h"
 #include "led.h"
-#include "ff_gen_drv.h"
-#include "emmc_fs.h"
 #include "hsem_ids.h"
 #include "ipc.h"
 #include "ipc_shared.h"
-#include "mmc_diskio.h"
 #include "shared_memory.h"
 #include "queue.h"
 #include <stdio.h>
@@ -52,7 +48,7 @@ typedef struct
 
 typedef struct
 {
-  EmmcFsReadHandle_t handle;
+  uint32_t seq;
   uint8_t active;
 } FileStreamContext_t;
 
@@ -70,8 +66,6 @@ typedef struct
 #define HSEM_ID_0 (0U) /* HW semaphore 0*/
 #endif
 
-#define TEST_FILE_NAME                 "test.dat"
-#define TEST_FILE_SIZE_BYTES           (1UL * 1024UL * 1024UL)
 #define TCP_FIXED_RESPONSE_LEN         100U
 #define TCP_CONFIG_READ_HEADER_LEN     24U
 #define TCP_CONFIG_READ_CHUNK_LEN      1024U
@@ -88,8 +82,6 @@ typedef struct
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
-
-MMC_HandleTypeDef hmmc1;
 
 TIM_HandleTypeDef htim1;
 
@@ -111,7 +103,6 @@ void SystemClock_Config(void);
 static void MPU_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_TIM1_Init(void);
-static void MX_SDMMC1_MMC_Init(void);
 void StartDefaultTask(void const * argument);
 void ControllerTask(void const * argument);
 void TelemetryTask(void const * argument);
@@ -140,15 +131,6 @@ static uint32_t ipc_seq = 1U;
 
 extern struct netif gnetif;
 
-
-FATFS MMCFatFs;  /* File system object for SD card logical drive */
-FIL daqFile;     /* File object */
-char MMCPath[4]; /* SD card logical drive path */
-
-uint8_t workBuffer[_MAX_SS];
-ALIGN_32BYTES(uint8_t rtext[96]);
-
-uint8_t wtext[] = "This is FatFs running on CM7 core"; /* File write buffer */
 
 /*
  * BLE
@@ -256,15 +238,40 @@ static void InitTestStreamChunk(void)
 static int32_t FileStreamRead(void *context, uint8_t *buffer, uint16_t max_len, uint16_t *out_len)
 {
   FileStreamContext_t *stream_ctx = (FileStreamContext_t *)context;
-  EmmcFsStatus_t fs_status;
+  uint32_t state;
+  uint32_t error;
+  uint32_t start;
 
   if ((stream_ctx == NULL) || (buffer == NULL) || (out_len == NULL) || (stream_ctx->active == 0U))
   {
     return -1;
   }
 
-  fs_status = EmmcFs_ReadFileNext(&stream_ctx->handle, buffer, max_len, out_len);
-  return (fs_status == EMMC_FS_OK) ? 0 : -1;
+  start = HAL_GetTick();
+  for (;;)
+  {
+    if (IPC_StreamFetchChunk(stream_ctx->seq, buffer, max_len, out_len, &state, &error) == 0U)
+    {
+      return -1;
+    }
+
+    if ((state == IPC_STREAM_READY) && (*out_len > 0U))
+    {
+      return 0;
+    }
+
+    if ((state == IPC_STREAM_ERROR) || (state == IPC_STREAM_DONE))
+    {
+      return -1;
+    }
+
+    if ((HAL_GetTick() - start) >= 5000U)
+    {
+      return -1;
+    }
+
+    osDelay(1);
+  }
 }
 
 static void FileStreamDone(void *context)
@@ -273,7 +280,6 @@ static void FileStreamDone(void *context)
 
   if ((stream_ctx != NULL) && (stream_ctx->active != 0U))
   {
-    (void)EmmcFs_CloseFileRead(&stream_ctx->handle);
     stream_ctx->active = 0U;
   }
 }
@@ -378,7 +384,6 @@ Error_Handler();
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_TIM1_Init();
-  MX_SDMMC1_MMC_Init();
   /* USER CODE BEGIN 2 */
 
   /*
@@ -401,24 +406,6 @@ Error_Handler();
 //  HAL_Delay(100);
 //  HAL_GPIO_WritePin(ETH_NRST_GPIO_Port, ETH_NRST_Pin, GPIO_PIN_SET);
 //  HAL_Delay(1000);
-
-  if (EmmcFs_Init() != EMMC_FS_OK)
-  {
-    LED_SetBrightness(&rgbLed, 40, 0, 0);
-    Error_Handler();
-  }
-
-  if (EmmcFs_MountOrFormat() != EMMC_FS_OK)
-  {
-    LED_SetBrightness(&rgbLed, 40, 0, 0);
-    Error_Handler();
-  }
-
-  if (EmmcFs_CreatePatternFile(TEST_FILE_NAME, TEST_FILE_SIZE_BYTES, NULL, NULL) != EMMC_FS_OK)
-  {
-    LED_SetBrightness(&rgbLed, 40, 0, 0);
-    Error_Handler();
-  }
 
   InitTestStreamChunk();
 
@@ -539,37 +526,6 @@ void SystemClock_Config(void)
     Error_Handler();
   }
   HAL_RCC_MCOConfig(RCC_MCO1, RCC_MCO1SOURCE_HSI, RCC_MCODIV_8);
-}
-
-/**
-  * @brief SDMMC1 Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_SDMMC1_MMC_Init(void)
-{
-
-  /* USER CODE BEGIN SDMMC1_Init 0 */
-
-  /* USER CODE END SDMMC1_Init 0 */
-
-  /* USER CODE BEGIN SDMMC1_Init 1 */
-
-  /* USER CODE END SDMMC1_Init 1 */
-  hmmc1.Instance = SDMMC1;
-  hmmc1.Init.ClockEdge = SDMMC_CLOCK_EDGE_RISING;
-  hmmc1.Init.ClockPowerSave = SDMMC_CLOCK_POWER_SAVE_DISABLE;
-  hmmc1.Init.BusWide = SDMMC_BUS_WIDE_8B;
-  hmmc1.Init.HardwareFlowControl = SDMMC_HARDWARE_FLOW_CONTROL_DISABLE;
-  hmmc1.Init.ClockDiv = 4;
-  if (HAL_MMC_Init(&hmmc1) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /* USER CODE BEGIN SDMMC1_Init 2 */
-
-  /* USER CODE END SDMMC1_Init 2 */
-
 }
 
 /**
@@ -869,6 +825,42 @@ void ControllerTask(void const * argument)
           }
           break;
 
+        case 6U:
+        {
+          uint8_t tx[TCP_FIXED_RESPONSE_LEN];
+          IpcResponseBlock_t ipc_rsp;
+          SharedStatusBlock_t ipc_status;
+          uint32_t ping_ok = 0U;
+
+          memset(&ipc_rsp, 0, sizeof(ipc_rsp));
+          memset(&ipc_status, 0, sizeof(ipc_status));
+
+          if ((IPC_PostSimpleCommand(ipc_seq, IPC_CMD_PING) != 0U) &&
+              (IPC_WaitForResponse(ipc_seq, &ipc_rsp, 1000U) != 0U))
+          {
+            ping_ok = 1U;
+          }
+
+          IPC_ReadStatus(&ipc_status);
+
+          memset(tx, 0, sizeof(tx));
+          tx[0] = msg.command;
+          WriteU32Be(&tx[1], msg.server_id);
+          WriteU64Be(&tx[5], msg.epoch_time);
+          tx[13] = (uint8_t)(((ping_ok != 0U) && (ipc_rsp.result == IPC_CMD_RES_OK)) ? 0U : 1U);
+          tx[14] = TcpClient_IsConnected();
+          WriteU32Be(&tx[15], ipc_rsp.result);
+          WriteU32Be(&tx[19], ipc_rsp.error);
+          WriteU32Be(&tx[23], ipc_status.fs_ready);
+          WriteU32Be(&tx[27], ipc_status.emmc_busy);
+          WriteU32Be(&tx[31], (uint32_t)ipc_status.emmc_init_status);
+          WriteU32Be(&tx[35], (uint32_t)ipc_status.emmc_mount_status);
+          WriteU32Be(&tx[39], (uint32_t)ipc_status.emmc_create_status);
+          (void)TcpClient_SendBuffer(tx, sizeof(tx));
+          ipc_seq++;
+          break;
+        }
+
         case 9U:
           if (gFileQueue != NULL)
           {
@@ -926,21 +918,14 @@ void FileTask(void const * argument)
         case 1U:
         {
           uint8_t tx[TCP_FIXED_RESPONSE_LEN];
-          EmmcFsStatus_t fs_status;
 
           memset(tx, 0, sizeof(tx));
           tx[0] = msg.command;
           WriteU32Be(&tx[1], msg.server_id);
           WriteU64Be(&tx[5], msg.epoch_time);
-        tx[14] = TcpClient_IsConnected();
-
-        fs_status = EmmcFs_WriteConfigMain(msg.server_id,
-                                             msg.epoch_time,
-                                             msg.payload,
-                                             msg.payload_len);
-          tx[13] = (uint8_t)((fs_status == EMMC_FS_OK) ? 0U : 1U);
-          WriteU32Be(&tx[15], (uint32_t)fs_status);
-
+          tx[13] = 1U;
+          tx[14] = TcpClient_IsConnected();
+          WriteU32Be(&tx[15], 0xFFFFFFFFU);
           (void)TcpClient_SendBuffer(tx, sizeof(tx));
           break;
         }
@@ -948,24 +933,13 @@ void FileTask(void const * argument)
         case 2U:
         {
           uint8_t tx[TCP_FIXED_RESPONSE_LEN];
-          EmmcFsDatSummary_t summary;
-          EmmcFsStatus_t fs_status;
-
-        memset(tx, 0, sizeof(tx));
-        tx[0] = msg.command;
-        WriteU32Be(&tx[1], msg.server_id);
-        WriteU64Be(&tx[5], msg.epoch_time);
-        tx[14] = TcpClient_IsConnected();
-
-        fs_status = EmmcFs_CountDatFiles(&summary);
-          tx[13] = (uint8_t)((fs_status == EMMC_FS_OK) ? 0U : 1U);
-          WriteU32Be(&tx[19], (uint32_t)fs_status);
-
-          if (fs_status == EMMC_FS_OK)
-          {
-            WriteU32Be(&tx[15], summary.dat_file_count);
-          }
-
+          memset(tx, 0, sizeof(tx));
+          tx[0] = msg.command;
+          WriteU32Be(&tx[1], msg.server_id);
+          WriteU64Be(&tx[5], msg.epoch_time);
+          tx[13] = 1U;
+          tx[14] = TcpClient_IsConnected();
+          WriteU32Be(&tx[19], 0xFFFFFFFFU);
           (void)TcpClient_SendBuffer(tx, sizeof(tx));
           break;
         }
@@ -973,114 +947,73 @@ void FileTask(void const * argument)
         case 3U:
         {
           uint8_t tx[TCP_FIXED_RESPONSE_LEN];
-          uint32_t total_file_count = 0U;
-          EmmcFsStatus_t fs_status;
-
           memset(tx, 0, sizeof(tx));
           tx[0] = msg.command;
           WriteU32Be(&tx[1], msg.server_id);
           WriteU64Be(&tx[5], msg.epoch_time);
+          tx[13] = 1U;
           tx[14] = TcpClient_IsConnected();
-
-          fs_status = EmmcFs_CountAllFiles(&total_file_count);
-          tx[13] = (uint8_t)((fs_status == EMMC_FS_OK) ? 0U : 1U);
-          WriteU32Be(&tx[19], (uint32_t)fs_status);
-
-          if (fs_status == EMMC_FS_OK)
-          {
-            WriteU32Be(&tx[15], total_file_count);
-          }
-
+          WriteU32Be(&tx[19], 0xFFFFFFFFU);
           (void)TcpClient_SendBuffer(tx, sizeof(tx));
           break;
         }
 
         case 4U:
         {
-          static uint8_t tx[TCP_CONFIG_READ_HEADER_LEN + TCP_CONFIG_READ_CHUNK_LEN];
-          uint16_t tx_len;
-          uint32_t offset = 0U;
-          uint32_t total_size = 0U;
-          uint16_t chunk_len = 0U;
-          EmmcFsStatus_t fs_status;
-
-          do
-          {
-            memset(tx, 0, sizeof(tx));
-            tx[0] = msg.command;
-            tx[1] = 0U;
-            WriteU32Be(&tx[2], msg.server_id);
-            WriteU64Be(&tx[6], msg.epoch_time);
-
-            fs_status = EmmcFs_ReadConfigMainChunk(offset,
-                                                   &tx[TCP_CONFIG_READ_HEADER_LEN],
-                                                   TCP_CONFIG_READ_CHUNK_LEN,
-                                                   &chunk_len,
-                                                   &total_size);
-            tx[1] = (uint8_t)((fs_status == EMMC_FS_OK) ? 0U : 1U);
-            WriteU32Be(&tx[14], total_size);
-            WriteU32Be(&tx[18], offset);
-            WriteU16Be(&tx[22], chunk_len);
-
-            tx_len = (uint16_t)(TCP_CONFIG_READ_HEADER_LEN + chunk_len);
-            (void)TcpClient_SendBuffer(tx, tx_len);
-
-            if ((fs_status != EMMC_FS_OK) || (chunk_len == 0U))
-            {
-              break;
-            }
-
-            offset += chunk_len;
-            osDelay(2);
-          } while (offset < total_size);
-
+          uint8_t tx[TCP_FIXED_RESPONSE_LEN];
+          memset(tx, 0, sizeof(tx));
+          tx[0] = msg.command;
+          WriteU32Be(&tx[1], msg.server_id);
+          WriteU64Be(&tx[5], msg.epoch_time);
+          tx[13] = 1U;
+          tx[14] = TcpClient_IsConnected();
+          WriteU32Be(&tx[19], 0xFFFFFFFFU);
+          (void)TcpClient_SendBuffer(tx, sizeof(tx));
           break;
         }
 
         case 5U:
         {
           static uint8_t header[TCP_FILE_STREAM_HEADER_LEN];
-          char filename[86];
+          IpcResponseBlock_t ipc_rsp;
+          IpcStreamBlock_t stream_info;
+          char filename[IPC_FILENAME_LEN];
           uint32_t total_size = 0U;
-          EmmcFsStatus_t fs_status;
+          uint32_t posted;
           int32_t stream_status;
 
           memset(filename, 0, sizeof(filename));
-          if (msg.payload_len == 0U)
+          if ((msg.payload_len == 0U) || (msg.payload_len >= sizeof(filename)))
           {
-            fs_status = EMMC_FS_ERR_PARAM;
+            posted = 0U;
           }
           else
           {
             memcpy(filename, msg.payload, msg.payload_len);
             filename[msg.payload_len] = '\0';
-            fs_status = EMMC_FS_OK;
-          }
-
-          if (fs_status == EMMC_FS_OK)
-          {
-            memset(&g_file_stream_ctx, 0, sizeof(g_file_stream_ctx));
-            fs_status = EmmcFs_OpenFileRead(filename, &g_file_stream_ctx.handle, &total_size);
-            if (fs_status == EMMC_FS_OK)
+            posted = IPC_PostStreamFile(ipc_seq, filename);
+            if ((posted != 0U) &&
+                (IPC_WaitForResponse(ipc_seq, &ipc_rsp, 5000U) != 0U) &&
+                (ipc_rsp.result == IPC_CMD_RES_OK) &&
+                (IPC_ReadStreamInfo(ipc_seq, &stream_info) != 0U))
             {
+              total_size = stream_info.total_size;
+              memset(&g_file_stream_ctx, 0, sizeof(g_file_stream_ctx));
+              g_file_stream_ctx.seq = ipc_seq;
               g_file_stream_ctx.active = 1U;
             }
           }
 
           memset(header, 0, sizeof(header));
           header[0] = msg.command;
-          header[1] = (uint8_t)((fs_status == EMMC_FS_OK) ? 0U : 1U);
+          header[1] = (uint8_t)((g_file_stream_ctx.active != 0U) ? 0U : 1U);
           WriteU32Be(&header[2], msg.server_id);
           WriteU64Be(&header[6], msg.epoch_time);
           WriteU32Be(&header[14], total_size);
 
-          if ((fs_status != EMMC_FS_OK) || (total_size == 0U))
+          if ((g_file_stream_ctx.active == 0U) || (total_size == 0U))
           {
             (void)TcpClient_SendBuffer(header, sizeof(header));
-            if (g_file_stream_ctx.active != 0U)
-            {
-              FileStreamDone(&g_file_stream_ctx);
-            }
           }
           else
           {
@@ -1095,6 +1028,8 @@ void FileTask(void const * argument)
               FileStreamDone(&g_file_stream_ctx);
             }
           }
+
+          ipc_seq++;
 
           break;
         }
@@ -1185,7 +1120,7 @@ void MPU_Config(void)
   */
   MPU_InitStruct.Number = MPU_REGION_NUMBER3;
   MPU_InitStruct.BaseAddress = 0x30000000;
-  MPU_InitStruct.Size = MPU_REGION_SIZE_4KB;
+  MPU_InitStruct.Size = MPU_REGION_SIZE_64KB;
   MPU_InitStruct.TypeExtField = MPU_TEX_LEVEL1;
   MPU_InitStruct.IsBufferable = MPU_ACCESS_NOT_BUFFERABLE;
 

@@ -1,9 +1,10 @@
 Core/Src/ipc_cmd.o: ../Core/Src/ipc_cmd.c ../Core/Inc/ipc_cmd.h \
  C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Common/Inc/ipc_shared.h \
  ../Core/Inc/daq_engine.h \
- C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Common/Inc/hsem_ids.h \
- C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Common/Inc/hsem_lock.h \
- ../Core/Inc/main.h \
+ C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/CM4/Library/emmc_fs/emmc_fs.h \
+ ../../Middlewares/Third_Party/FatFs/src/ff.h \
+ ../../Middlewares/Third_Party/FatFs/src/integer.h \
+ ../FATFS/Target/ffconf.h ../Core/Inc/main.h \
  ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal.h \
  ../Core/Inc/stm32h7xx_hal_conf.h \
  ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_rcc.h \
@@ -37,14 +38,18 @@ Core/Src/ipc_cmd.o: ../Core/Src/ipc_cmd.c ../Core/Inc/ipc_cmd.h \
  ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_pwr_ex.h \
  ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_spi.h \
  ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_spi_ex.h \
+ C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Common/Inc/hsem_lock.h \
+ C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Common/Inc/hsem_ids.h \
  C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Common/Inc/shared_memory.h \
  C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Common/Inc/ipc_shared.h \
  ../Core/Inc/statemachine.h ../Core/Inc/main.h
 ../Core/Inc/ipc_cmd.h:
 C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Common/Inc/ipc_shared.h:
 ../Core/Inc/daq_engine.h:
-C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Common/Inc/hsem_ids.h:
-C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Common/Inc/hsem_lock.h:
+C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/CM4/Library/emmc_fs/emmc_fs.h:
+../../Middlewares/Third_Party/FatFs/src/ff.h:
+../../Middlewares/Third_Party/FatFs/src/integer.h:
+../FATFS/Target/ffconf.h:
 ../Core/Inc/main.h:
 ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal.h:
 ../Core/Inc/stm32h7xx_hal_conf.h:
@@ -79,6 +84,8 @@ C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Common/Inc/hsem_lock.h:
 ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_pwr_ex.h:
 ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_spi.h:
 ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_spi_ex.h:
+C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Common/Inc/hsem_lock.h:
+C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Common/Inc/hsem_ids.h:
 C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Common/Inc/shared_memory.h:
 C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Common/Inc/ipc_shared.h:
 ../Core/Inc/statemachine.h:

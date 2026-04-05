@@ -41,10 +41,14 @@ Core/Src/main.o: ../Core/Src/main.c ../Core/Inc/main.h \
  ../../Middlewares/Third_Party/FatFs/src/ff.h \
  ../FATFS/Target/user_diskio.h \
  C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/CM4/Library/ads131m08/ads131m08.h \
- C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Common/Inc/mmc_diskio.h \
- ../Core/Inc/daq_engine.h \
+ C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/CM4/Library/emmc_fs/emmc_fs.h \
+ ../Core/Inc/mmc_diskio.h ../Core/Inc/daq_engine.h \
  C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Common/Inc/ipc_shared.h \
- ../Core/Inc/ipc_cmd.h ../Core/Inc/statemachine.h ../Core/Inc/main.h
+ ../Core/Inc/ipc_cmd.h \
+ C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Common/Inc/shared_memory.h \
+ C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Common/Inc/ipc_shared.h \
+ C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Common/Inc/hsem_ids.h \
+ ../Core/Inc/statemachine.h ../Core/Inc/main.h
 ../Core/Inc/main.h:
 ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal.h:
 ../Core/Inc/stm32h7xx_hal_conf.h:
@@ -89,9 +93,13 @@ C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Common/Inc/hsem_lock.h:
 ../../Middlewares/Third_Party/FatFs/src/ff.h:
 ../FATFS/Target/user_diskio.h:
 C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/CM4/Library/ads131m08/ads131m08.h:
-C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Common/Inc/mmc_diskio.h:
+C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/CM4/Library/emmc_fs/emmc_fs.h:
+../Core/Inc/mmc_diskio.h:
 ../Core/Inc/daq_engine.h:
 C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Common/Inc/ipc_shared.h:
 ../Core/Inc/ipc_cmd.h:
+C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Common/Inc/shared_memory.h:
+C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Common/Inc/ipc_shared.h:
+C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Common/Inc/hsem_ids.h:
 ../Core/Inc/statemachine.h:
 ../Core/Inc/main.h:

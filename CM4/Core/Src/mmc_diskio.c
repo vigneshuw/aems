@@ -26,8 +26,6 @@
 
 #define EMMC_HSEM_ID (HSEM_FS_GLOBAL_ID)
 
-#define DISABLE_MMC_INIT
-
 /* Private variables ---------------------------------------------------------*/
 /* Disk status */
 static volatile DSTATUS Stat = STA_NOINIT;
@@ -127,14 +125,21 @@ DSTATUS MMC_status(BYTE lun)
 DRESULT MMC_read(BYTE lun, BYTE* buff, DWORD sector, UINT count)
 {
   DRESULT res = RES_ERROR;
+  uint32_t timeout;
 
   LOCK_HSEM(EMMC_HSEM_ID);
 
   if (HAL_MMC_ReadBlocks(&hmmc1, buff, sector, count, MMC_TIMEOUT) == HAL_OK)
   {
     /* Wait until transfer complete */
+    timeout = HAL_GetTick();
     while (HAL_MMC_GetCardState(&hmmc1) != HAL_MMC_CARD_TRANSFER)
     {
+      if ((HAL_GetTick() - timeout) >= 1000U)
+      {
+        UNLOCK_HSEM(EMMC_HSEM_ID);
+        return RES_ERROR;
+      }
     }
     res = RES_OK;
   }
@@ -156,6 +161,7 @@ DRESULT MMC_write(BYTE lun, const BYTE* buff, DWORD sector, UINT count)
 {
   DRESULT res = RES_ERROR;
   HAL_StatusTypeDef hal_status;
+  uint32_t timeout;
 
   LOCK_HSEM(EMMC_HSEM_ID);
 
@@ -163,8 +169,14 @@ DRESULT MMC_write(BYTE lun, const BYTE* buff, DWORD sector, UINT count)
   if (hal_status == HAL_OK)
   {
     /* Wait until transfer complete */
+    timeout = HAL_GetTick();
     while (HAL_MMC_GetCardState(&hmmc1) != HAL_MMC_CARD_TRANSFER)
     {
+      if ((HAL_GetTick() - timeout) >= 1000U)
+      {
+        UNLOCK_HSEM(EMMC_HSEM_ID);
+        return RES_ERROR;
+      }
     }
     res = RES_OK;
   }

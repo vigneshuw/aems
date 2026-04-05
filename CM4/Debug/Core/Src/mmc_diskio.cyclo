@@ -1,0 +1,6 @@
+../Core/Src/mmc_diskio.c:64:16:MMC_CheckStatus	3
+../Core/Src/mmc_diskio.c:84:9:MMC_initialize	3
+../Core/Src/mmc_diskio.c:111:9:MMC_status	1
+../Core/Src/mmc_diskio.c:125:9:MMC_read	5
+../Core/Src/mmc_diskio.c:160:9:MMC_write	5
+../Core/Src/mmc_diskio.c:197:9:MMC_ioctl	7
