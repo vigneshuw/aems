@@ -31,6 +31,7 @@
 #include "mmc_diskio.h"
 #include "daq_engine.h"
 #include "statemachine.h"
+#include "openamp_fs.h"
 
 /* USER CODE END Includes */
 
@@ -146,6 +147,10 @@ int main(void)
   MX_SPI4_Init();
   /* USER CODE BEGIN 2 */
   DAQ_ContextInit();
+  if (OpenAmpFs_RemoteInit() != 0)
+  {
+    Error_Handler();
+  }
   //AEMS_Initialize();
 
   g_cm4_emmc_init_status = (int32_t)EmmcFs_Init();
@@ -199,6 +204,7 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+    OpenAmpFs_RemotePoll();
     DAQ_StateMachine_Run();
   }
   /* USER CODE END 3 */

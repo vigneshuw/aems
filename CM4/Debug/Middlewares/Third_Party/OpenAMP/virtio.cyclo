@@ -1,0 +1,4 @@
+C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/OpenAMP/open-amp/lib/virtio/virtio.c:39:13:virtio_dev_name	3
+C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/OpenAMP/open-amp/lib/virtio/virtio.c:51:20:virtio_feature_name	5
+C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/OpenAMP/open-amp/lib/virtio/virtio.c:72:6:virtio_describe	1
+C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/OpenAMP/open-amp/lib/virtio/virtio.c:83:5:virtio_create_virtqueues	4

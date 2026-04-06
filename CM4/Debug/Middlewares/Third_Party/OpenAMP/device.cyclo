@@ -1,0 +1,17 @@
+../../Middlewares/Third_Party/OpenAMP/libmetal/lib/include/metal/list.h:40:20:metal_list_init	1
+../../Middlewares/Third_Party/OpenAMP/libmetal/lib/include/metal/list.h:45:20:metal_list_add_before	1
+../../Middlewares/Third_Party/OpenAMP/libmetal/lib/include/metal/list.h:69:20:metal_list_add_tail	1
+../../Middlewares/Third_Party/OpenAMP/libmetal/lib/include/metal/list.h:80:20:metal_list_del	1
+../../Middlewares/Third_Party/OpenAMP/libmetal/lib/include/metal/system/generic/cache.h:26:20:__metal_cache_flush	1
+../../Middlewares/Third_Party/OpenAMP/libmetal/lib/include/metal/system/generic/cache.h:31:20:__metal_cache_invalidate	1
+../../Middlewares/Third_Party/OpenAMP/libmetal/lib/include/metal/cache.h:33:20:metal_cache_flush	1
+../../Middlewares/Third_Party/OpenAMP/libmetal/lib/include/metal/cache.h:46:20:metal_cache_invalidate	1
+C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/OpenAMP/libmetal/lib/device.c:18:5:metal_bus_register	7
+C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/OpenAMP/libmetal/lib/device.c:30:5:metal_bus_unregister	4
+C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/OpenAMP/libmetal/lib/device.c:39:5:metal_bus_find	4
+C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/OpenAMP/libmetal/lib/device.c:55:5:metal_device_open	9
+C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/OpenAMP/libmetal/lib/device.c:80:6:metal_device_close	3
+C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/OpenAMP/libmetal/lib/device.c:87:5:metal_register_generic_device	4
+C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/OpenAMP/libmetal/lib/device.c:99:5:metal_generic_dev_open	3
+C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/OpenAMP/libmetal/lib/device.c:118:5:metal_generic_dev_dma_map	4
+C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/OpenAMP/libmetal/lib/device.c:141:6:metal_generic_dev_dma_unmap	2

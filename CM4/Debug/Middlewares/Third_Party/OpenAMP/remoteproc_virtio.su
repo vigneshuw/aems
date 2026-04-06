@@ -1,0 +1,16 @@
+../../Middlewares/Third_Party/OpenAMP/libmetal/lib/include/metal/io.h:127:1:metal_io_virt	16	static
+../../Middlewares/Third_Party/OpenAMP/libmetal/lib/include/metal/io.h:141:1:metal_io_virt_to_offset	24	static
+../../Middlewares/Third_Party/OpenAMP/libmetal/lib/include/metal/io.h:221:1:metal_io_read	64	static,ignoring_inline_asm
+../../Middlewares/Third_Party/OpenAMP/libmetal/lib/include/metal/system/generic/alloc.h:25:21:metal_allocate_memory	16	static
+../../Middlewares/Third_Party/OpenAMP/libmetal/lib/include/metal/system/generic/alloc.h:30:20:metal_free_memory	16	static
+../../Middlewares/Third_Party/OpenAMP/open-amp/lib/include/openamp/virtqueue.h:207:33:virtqueue_allocate	24	static
+C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/OpenAMP/open-amp/lib/remoteproc/remoteproc_virtio.c:42:13:rproc_virtio_virtqueue_notify	32	static
+C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/OpenAMP/open-amp/lib/remoteproc/remoteproc_virtio.c:56:22:rproc_virtio_get_status	32	static
+C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/OpenAMP/open-amp/lib/remoteproc/remoteproc_virtio.c:89:17:rproc_virtio_get_features	32	static
+C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/OpenAMP/open-amp/lib/remoteproc/remoteproc_virtio.c:125:17:rproc_virtio_negotiate_features	16	static
+C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/OpenAMP/open-amp/lib/remoteproc/remoteproc_virtio.c:134:13:rproc_virtio_read_config	24	static
+C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/OpenAMP/open-amp/lib/remoteproc/remoteproc_virtio.c:181:1:rproc_virtio_create_vdev	64	static
+C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/OpenAMP/open-amp/lib/remoteproc/remoteproc_virtio.c:250:6:rproc_virtio_remove_vdev	32	static
+C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/OpenAMP/open-amp/lib/remoteproc/remoteproc_virtio.c:269:5:rproc_virtio_init_vring	32	static
+C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/OpenAMP/open-amp/lib/remoteproc/remoteproc_virtio.c:290:5:rproc_virtio_notified	32	static
+C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/OpenAMP/open-amp/lib/remoteproc/remoteproc_virtio.c:313:6:rproc_virtio_wait_remote_ready	24	static

@@ -5,6 +5,7 @@
 "./Core/Src/gpio.o"
 "./Core/Src/ipc.o"
 "./Core/Src/main.o"
+"./Core/Src/openamp_fs.o"
 "./Core/Src/spi.o"
 "./Core/Src/stm32h7xx_hal_msp.o"
 "./Core/Src/stm32h7xx_hal_timebase_tim.o"

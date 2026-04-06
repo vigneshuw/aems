@@ -74,7 +74,8 @@ Core/Src/freertos.o: ../Core/Src/freertos.c \
  ../../Middlewares/Third_Party/LwIP/src/include/lwip/memp.h \
  ../../Middlewares/Third_Party/LwIP/src/include/lwip/priv/memp_std.h \
  ../../Middlewares/Third_Party/LwIP/src/include/lwip/priv/memp_priv.h \
- ../../Middlewares/Third_Party/LwIP/src/include/lwip/priv/mem_priv.h
+ ../../Middlewares/Third_Party/LwIP/src/include/lwip/priv/mem_priv.h \
+ ../Core/Inc/openamp_fs.h
 ../../Middlewares/Third_Party/FreeRTOS/Source/include/FreeRTOS.h:
 ../Core/Inc/FreeRTOSConfig.h:
 ../../Middlewares/Third_Party/FreeRTOS/Source/include/projdefs.h:
@@ -153,3 +154,4 @@ C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/CM7/Library/eth/tcpclient
 ../../Middlewares/Third_Party/LwIP/src/include/lwip/priv/memp_std.h:
 ../../Middlewares/Third_Party/LwIP/src/include/lwip/priv/memp_priv.h:
 ../../Middlewares/Third_Party/LwIP/src/include/lwip/priv/mem_priv.h:
+../Core/Inc/openamp_fs.h:

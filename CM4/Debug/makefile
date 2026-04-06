@@ -10,6 +10,7 @@ RM := rm -rf
 # All of the sources participating in the build are defined here
 -include sources.mk
 -include OPENAMP/subdir.mk
+-include Middlewares/Third_Party/OpenAMP/subdir.mk
 -include Middlewares/Third_Party/FatFs/subdir.mk
 -include Library/emmc_fs/subdir.mk
 -include Library/ads131m08/subdir.mk

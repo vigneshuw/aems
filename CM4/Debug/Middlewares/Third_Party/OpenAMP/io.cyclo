@@ -1,0 +1,5 @@
+../../Middlewares/Third_Party/OpenAMP/libmetal/lib/include/metal/io.h:127:1:metal_io_virt	3
+C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/OpenAMP/libmetal/lib/io.c:12:6:metal_io_init	3
+C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/OpenAMP/libmetal/lib/io.c:33:5:metal_io_block_read	9
+C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/OpenAMP/libmetal/lib/io.c:70:5:metal_io_block_write	9
+C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/OpenAMP/libmetal/lib/io.c:107:5:metal_io_block_set	9

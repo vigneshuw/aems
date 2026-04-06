@@ -1,0 +1,4 @@
+../../Middlewares/Third_Party/OpenAMP/open-amp/lib/include/openamp/rpmsg.h:147:19:rpmsg_send	2
+../Core/Src/openamp_fs.c:37:9:OpenAmpFs_RemoteInit	2
+../Core/Src/openamp_fs.c:55:6:OpenAmpFs_RemotePoll	1
+../Core/Src/openamp_fs.c:60:12:OpenAmpFs_RxCallback	6

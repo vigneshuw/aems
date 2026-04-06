@@ -29,6 +29,7 @@
 #include "queue.h"
 #include <string.h>
 #include "tcpclient.h"
+#include "openamp_fs.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -90,7 +91,7 @@ void ControllerTask(void const * argument);
 void TelemetryTask(void const * argument);
 
 extern void MX_LWIP_Init(void);
-void MX_FREERTOS_Init(void);
+void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
 
 /* GetIdleTaskMemory prototype (linked to static allocation support) */
 void vApplicationGetIdleTaskMemory( StaticTask_t **ppxIdleTaskTCBBuffer, StackType_t **ppxIdleTaskStackBuffer, uint32_t *pulIdleTaskStackSize );
@@ -106,6 +107,218 @@ void vApplicationGetIdleTaskMemory( StaticTask_t **ppxIdleTaskTCBBuffer, StackTy
   *pulIdleTaskStackSize = configMINIMAL_STACK_SIZE;
 }
 /* USER CODE END GET_IDLE_TASK_MEMORY */
+
+/**
+  * @brief  FreeRTOS initialization
+  * @param  None
+  * @retval None
+  */
+void MX_FREERTOS_Init(void) {
+  /* USER CODE BEGIN Init */
+  InitTestStreamChunk();
+  /* USER CODE END Init */
+
+  /* USER CODE BEGIN RTOS_MUTEX */
+  /* USER CODE END RTOS_MUTEX */
+
+  /* USER CODE BEGIN RTOS_SEMAPHORES */
+  /* USER CODE END RTOS_SEMAPHORES */
+
+  /* USER CODE BEGIN RTOS_TIMERS */
+  /* USER CODE END RTOS_TIMERS */
+
+  /* USER CODE BEGIN RTOS_QUEUES */
+  gControlQueue = xQueueCreate(8U, sizeof(ControlMessage_t));
+  /* USER CODE END RTOS_QUEUES */
+
+  /* Create the thread(s) */
+  /* definition and creation of defaultTask */
+  osThreadDef(defaultTask, StartDefaultTask, osPriorityHigh, 0, 256);
+  defaultTaskHandle = osThreadCreate(osThread(defaultTask), NULL);
+
+  /* definition and creation of controllerTask */
+  osThreadDef(controllerTask, ControllerTask, osPriorityNormal, 0, 2048);
+  controllerTaskHandle = osThreadCreate(osThread(controllerTask), NULL);
+
+  /* definition and creation of telemetryTask */
+  osThreadDef(telemetryTask, TelemetryTask, osPriorityLow, 0, 128);
+  telemetryTaskHandle = osThreadCreate(osThread(telemetryTask), NULL);
+
+  /* USER CODE BEGIN RTOS_THREADS */
+  /* USER CODE END RTOS_THREADS */
+
+}
+
+/* USER CODE BEGIN Header_StartDefaultTask */
+/**
+  * @brief  Function implementing the defaultTask thread.
+  * @param  argument: Not used
+  * @retval None
+  */
+/* USER CODE END Header_StartDefaultTask */
+void StartDefaultTask(void const * argument)
+{
+  TcpClientConfig_t tcpCfg;
+  ip_addr_t tcpServerIp;
+
+  /* init code for LWIP */
+  MX_LWIP_Init();
+  /* USER CODE BEGIN StartDefaultTask */
+  IP4_ADDR(&tcpServerIp, 192, 168, 0, 20);
+  TcpClient_BuildConfig(&tcpCfg, &tcpServerIp, 10U, &gnetif, ProcessTcpData);
+  (void)TcpClient_Init(&tcpCfg);
+
+  for(;;)
+  {
+    osDelay(1);
+  }
+  /* USER CODE END StartDefaultTask */
+}
+
+/* USER CODE BEGIN Header_ControllerTask */
+/**
+* @brief Function implementing the controllerTask thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_ControllerTask */
+void ControllerTask(void const * argument)
+{
+  ControlMessage_t msg;
+
+  /* USER CODE BEGIN ControllerTask */
+  for(;;)
+  {
+    if ((gControlQueue != NULL) &&
+        (xQueueReceive(gControlQueue, &msg, portMAX_DELAY) == pdPASS))
+    {
+      switch (msg.command)
+      {
+        case 0U:
+        {
+          uint8_t tx[TCP_FIXED_RESPONSE_LEN];
+
+          memset(tx, 0, sizeof(tx));
+          tx[0] = msg.command;
+          WriteU32Be(&tx[1], msg.server_id);
+          WriteU64Be(&tx[5], msg.epoch_time);
+          tx[13] = 0U;
+          tx[14] = TcpClient_IsConnected();
+          (void)TcpClient_SendBuffer(tx, sizeof(tx));
+          break;
+        }
+
+        case 9U:
+        {
+          uint8_t header[TCP_FILE_STREAM_HEADER_LEN];
+          int32_t stream_status;
+
+          memset(header, 0, sizeof(header));
+          header[0] = msg.command;
+          header[1] = 0U;
+          WriteU32Be(&header[2], msg.server_id);
+          WriteU64Be(&header[6], msg.epoch_time);
+          WriteU32Be(&header[14], TCP_TEST_STREAM_TOTAL_SIZE);
+
+          g_test_stream_ctx.bytes_remaining = TCP_TEST_STREAM_TOTAL_SIZE;
+          stream_status = TcpClient_StartStream(header,
+                                                sizeof(header),
+                                                TCP_TEST_STREAM_TOTAL_SIZE,
+                                                TestStreamRead,
+                                                TestStreamDone,
+                                                &g_test_stream_ctx);
+          if (stream_status != 0)
+          {
+            g_test_stream_ctx.bytes_remaining = 0U;
+          }
+          break;
+        }
+
+        case 1U:
+        case 4U:
+        case 5U:
+        case 6U:
+        {
+          uint8_t tx[TCP_FIXED_RESPONSE_LEN];
+
+          memset(tx, 0, sizeof(tx));
+          tx[0] = msg.command;
+          WriteU32Be(&tx[1], msg.server_id);
+          WriteU64Be(&tx[5], msg.epoch_time);
+          tx[13] = 1U;
+          tx[14] = TcpClient_IsConnected();
+          WriteU32Be(&tx[19], 0xFFFFFFFFU);
+          (void)TcpClient_SendBuffer(tx, sizeof(tx));
+          break;
+        }
+
+        case 2U:
+        {
+          uint8_t tx[TCP_FIXED_RESPONSE_LEN];
+          uint32_t dat_count = 0U;
+          int32_t fs_status;
+
+          fs_status = OpenAmpFs_CountDatFiles(&dat_count);
+
+          memset(tx, 0, sizeof(tx));
+          tx[0] = msg.command;
+          WriteU32Be(&tx[1], msg.server_id);
+          WriteU64Be(&tx[5], msg.epoch_time);
+          tx[13] = (fs_status == 0) ? 0U : 1U;
+          tx[14] = TcpClient_IsConnected();
+          WriteU32Be(&tx[15], dat_count);
+          WriteU32Be(&tx[19], (uint32_t)fs_status);
+          (void)TcpClient_SendBuffer(tx, sizeof(tx));
+          break;
+        }
+
+        case 3U:
+        {
+          uint8_t tx[TCP_FIXED_RESPONSE_LEN];
+          uint32_t total_count = 0U;
+          int32_t fs_status;
+
+          fs_status = OpenAmpFs_CountAllFiles(&total_count);
+
+          memset(tx, 0, sizeof(tx));
+          tx[0] = msg.command;
+          WriteU32Be(&tx[1], msg.server_id);
+          WriteU64Be(&tx[5], msg.epoch_time);
+          tx[13] = (fs_status == 0) ? 0U : 1U;
+          tx[14] = TcpClient_IsConnected();
+          WriteU32Be(&tx[15], total_count);
+          WriteU32Be(&tx[19], (uint32_t)fs_status);
+          (void)TcpClient_SendBuffer(tx, sizeof(tx));
+          break;
+        }
+
+        default:
+          break;
+      }
+    }
+  }
+  /* USER CODE END ControllerTask */
+}
+
+/* USER CODE BEGIN Header_TelemetryTask */
+/**
+* @brief Function implementing the telemetryTask thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_TelemetryTask */
+void TelemetryTask(void const * argument)
+{
+  /* USER CODE BEGIN TelemetryTask */
+  for(;;)
+  {
+    osDelay(1);
+  }
+  /* USER CODE END TelemetryTask */
+}
+
+/* Private application code --------------------------------------------------*/
+/* USER CODE BEGIN Application */
 
 /* USER CODE BEGIN Helpers */
 static uint32_t ReadU32Be(const uint8_t *data)
@@ -228,172 +441,5 @@ static void TestStreamDone(void *context)
   }
 }
 /* USER CODE END Helpers */
-
-void MX_FREERTOS_Init(void) {
-  /* USER CODE BEGIN Init */
-  InitTestStreamChunk();
-  /* USER CODE END Init */
-
-  /* USER CODE BEGIN RTOS_MUTEX */
-  /* USER CODE END RTOS_MUTEX */
-
-  /* USER CODE BEGIN RTOS_SEMAPHORES */
-  /* USER CODE END RTOS_SEMAPHORES */
-
-  /* USER CODE BEGIN RTOS_TIMERS */
-  /* USER CODE END RTOS_TIMERS */
-
-  /* USER CODE BEGIN RTOS_QUEUES */
-  gControlQueue = xQueueCreate(8U, sizeof(ControlMessage_t));
-  /* USER CODE END RTOS_QUEUES */
-
-  /* definition and creation of defaultTask */
-  osThreadDef(defaultTask, StartDefaultTask, osPriorityHigh, 0, 256);
-  defaultTaskHandle = osThreadCreate(osThread(defaultTask), NULL);
-
-  /* definition and creation of controllerTask */
-  osThreadDef(controllerTask, ControllerTask, osPriorityNormal, 0, 2048);
-  controllerTaskHandle = osThreadCreate(osThread(controllerTask), NULL);
-
-  /* definition and creation of telemetryTask */
-  osThreadDef(telemetryTask, TelemetryTask, osPriorityLow, 0, 128);
-  telemetryTaskHandle = osThreadCreate(osThread(telemetryTask), NULL);
-
-  /* USER CODE BEGIN RTOS_THREADS */
-  /* USER CODE END RTOS_THREADS */
-}
-
-/* USER CODE BEGIN Header_StartDefaultTask */
-/**
-  * @brief  Function implementing the defaultTask thread.
-  * @param  argument: Not used
-  * @retval None
-  */
-/* USER CODE END Header_StartDefaultTask */
-void StartDefaultTask(void const * argument)
-{
-  TcpClientConfig_t tcpCfg;
-  ip_addr_t tcpServerIp;
-
-  MX_LWIP_Init();
-
-  /* USER CODE BEGIN StartDefaultTask */
-  IP4_ADDR(&tcpServerIp, 192, 168, 0, 20);
-  TcpClient_BuildConfig(&tcpCfg, &tcpServerIp, 10U, &gnetif, ProcessTcpData);
-  (void)TcpClient_Init(&tcpCfg);
-
-  for(;;)
-  {
-    osDelay(1);
-  }
-  /* USER CODE END StartDefaultTask */
-}
-
-/* USER CODE BEGIN Header_ControllerTask */
-/**
-* @brief Function implementing the controllerTask thread.
-* @param argument: Not used
-* @retval None
-*/
-/* USER CODE END Header_ControllerTask */
-void ControllerTask(void const * argument)
-{
-  ControlMessage_t msg;
-
-  /* USER CODE BEGIN ControllerTask */
-  for(;;)
-  {
-    if ((gControlQueue != NULL) &&
-        (xQueueReceive(gControlQueue, &msg, portMAX_DELAY) == pdPASS))
-    {
-      switch (msg.command)
-      {
-        case 0U:
-        {
-          uint8_t tx[TCP_FIXED_RESPONSE_LEN];
-
-          memset(tx, 0, sizeof(tx));
-          tx[0] = msg.command;
-          WriteU32Be(&tx[1], msg.server_id);
-          WriteU64Be(&tx[5], msg.epoch_time);
-          tx[13] = 0U;
-          tx[14] = TcpClient_IsConnected();
-          (void)TcpClient_SendBuffer(tx, sizeof(tx));
-          break;
-        }
-
-        case 9U:
-        {
-          uint8_t header[TCP_FILE_STREAM_HEADER_LEN];
-          int32_t stream_status;
-
-          memset(header, 0, sizeof(header));
-          header[0] = msg.command;
-          header[1] = 0U;
-          WriteU32Be(&header[2], msg.server_id);
-          WriteU64Be(&header[6], msg.epoch_time);
-          WriteU32Be(&header[14], TCP_TEST_STREAM_TOTAL_SIZE);
-
-          g_test_stream_ctx.bytes_remaining = TCP_TEST_STREAM_TOTAL_SIZE;
-          stream_status = TcpClient_StartStream(header,
-                                                sizeof(header),
-                                                TCP_TEST_STREAM_TOTAL_SIZE,
-                                                TestStreamRead,
-                                                TestStreamDone,
-                                                &g_test_stream_ctx);
-          if (stream_status != 0)
-          {
-            g_test_stream_ctx.bytes_remaining = 0U;
-          }
-          break;
-        }
-
-        case 1U:
-        case 2U:
-        case 3U:
-        case 4U:
-        case 5U:
-        case 6U:
-        {
-          uint8_t tx[TCP_FIXED_RESPONSE_LEN];
-
-          memset(tx, 0, sizeof(tx));
-          tx[0] = msg.command;
-          WriteU32Be(&tx[1], msg.server_id);
-          WriteU64Be(&tx[5], msg.epoch_time);
-          tx[13] = 1U;
-          tx[14] = TcpClient_IsConnected();
-          WriteU32Be(&tx[19], 0xFFFFFFFFU);
-          (void)TcpClient_SendBuffer(tx, sizeof(tx));
-          break;
-        }
-
-        default:
-          break;
-      }
-    }
-  }
-  /* USER CODE END ControllerTask */
-}
-
-/* USER CODE BEGIN Header_TelemetryTask */
-/**
-* @brief Function implementing the telemetryTask thread.
-* @param argument: Not used
-* @retval None
-*/
-/* USER CODE END Header_TelemetryTask */
-void TelemetryTask(void const * argument)
-{
-  /* USER CODE BEGIN TelemetryTask */
-  for(;;)
-  {
-    osDelay(1);
-  }
-  /* USER CODE END TelemetryTask */
-}
-
-/* Private application code --------------------------------------------------*/
-/* USER CODE BEGIN Application */
 
 /* USER CODE END Application */
