@@ -1,13 +1,11 @@
 #include "ipc_cmd.h"
 
 #include <string.h>
-#include "daq_engine.h"
 #include "emmc_fs.h"
 #include "hsem_ids.h"
 #include "hsem_lock.h"
 #include "main.h"
 #include "shared_memory.h"
-#include "statemachine.h"
 
 extern volatile int32_t g_cm4_emmc_init_status;
 extern volatile int32_t g_cm4_emmc_mount_status;
@@ -25,34 +23,21 @@ static struct
 } ipc_stream_ctx;
 ALIGN_32BYTES(static uint8_t ipc_stream_buf[IPC_CHUNK_BUFFER_SIZE]);
 
-static uint8_t IPC_CanStart(void)
-{
-  return (uint8_t)(g_daq_ctx.state == DAQ_STATE_IDLE);
-}
-
-static uint8_t IPC_CanStop(void)
-{
-  return (uint8_t)((g_daq_ctx.state == DAQ_STATE_PREPARING) ||
-                   (g_daq_ctx.state == DAQ_STATE_ACQUIRING) ||
-                   (g_daq_ctx.state == DAQ_STATE_ERROR));
-}
-
 static void IPC_PublishStatus(void)
 {
-  const DaqConfig_t *cfg = DAQ_GetConfig();
-
   LOCK_HSEM(HSEM_IPC_ID);
   SHARED_IPC_REGION->status.magic = IPC_SHARED_MAGIC;
   SHARED_IPC_REGION->status.version = IPC_SHARED_VERSION;
-  SHARED_IPC_REGION->status.daq_state = (uint32_t)g_daq_ctx.state;
-  SHARED_IPC_REGION->status.last_error = g_daq_ctx.last_error;
-  SHARED_IPC_REGION->status.sample_rate_hz = cfg->sample_rate_hz;
-  SHARED_IPC_REGION->status.channel_mask = cfg->channel_mask;
-  SHARED_IPC_REGION->status.block_samples = cfg->block_samples;
-  SHARED_IPC_REGION->status.samples_captured = g_daq_ctx.samples_captured;
-  SHARED_IPC_REGION->status.dropped_buffers = g_daq_ctx.dropped_buffers;
-  SHARED_IPC_REGION->status.bytes_queued = g_daq_ctx.bytes_queued;
-  SHARED_IPC_REGION->status.bytes_written = g_daq_ctx.bytes_written;
+  SHARED_IPC_REGION->status.daq_state = 0U;
+  SHARED_IPC_REGION->status.last_error = 0U;
+  SHARED_IPC_REGION->status.sample_rate_hz = 0U;
+  SHARED_IPC_REGION->status.channel_mask = 0U;
+  SHARED_IPC_REGION->status.block_samples = 0U;
+  SHARED_IPC_REGION->status.samples_captured = 0U;
+  SHARED_IPC_REGION->status.dropped_buffers = 0U;
+  SHARED_IPC_REGION->status.bytes_queued = 0U;
+  SHARED_IPC_REGION->status.bytes_written = 0U;
+  SHARED_IPC_REGION->status.emmc_busy = (uint32_t)(ipc_stream_ctx.active != 0U);
   SHARED_IPC_REGION->status.emmc_init_status = g_cm4_emmc_init_status;
   SHARED_IPC_REGION->status.emmc_mount_status = g_cm4_emmc_mount_status;
   SHARED_IPC_REGION->status.emmc_create_status = g_cm4_emmc_create_status;
@@ -61,7 +46,13 @@ static void IPC_PublishStatus(void)
                                                   (g_cm4_emmc_mount_status == EMMC_FS_OK) &&
                                                   (g_cm4_emmc_create_status == EMMC_FS_OK) &&
                                                   (g_cm4_emmc_readthrough_status == EMMC_FS_OK));
-  memcpy((void *)SHARED_IPC_REGION->status.active_filename, cfg->filename, IPC_FILENAME_LEN);
+  memset((void *)SHARED_IPC_REGION->status.active_filename, 0, IPC_FILENAME_LEN);
+  if (ipc_stream_ctx.active != 0U)
+  {
+    memcpy((void *)SHARED_IPC_REGION->status.active_filename,
+           (const void *)SHARED_IPC_REGION->stream.filename,
+           IPC_FILENAME_LEN);
+  }
   UNLOCK_HSEM(HSEM_IPC_ID);
 }
 
@@ -94,23 +85,6 @@ static uint8_t IPC_ReadPendingCommand(IpcCommandBlock_t *cmd_local)
   UNLOCK_HSEM(HSEM_IPC_ID);
 
   return has_cmd;
-}
-
-static uint8_t IPC_CopyStartConfig(const IpcCommandBlock_t *cmd, DaqConfig_t *cfg)
-{
-  if ((cmd->payload_size < sizeof(IpcStartAcqParams_t)) || (cfg == NULL))
-  {
-    return 0U;
-  }
-
-  cfg->sample_rate_hz = cmd->payload.start_acq.sample_rate_hz;
-  cfg->channel_mask = cmd->payload.start_acq.channel_mask;
-  cfg->block_samples = cmd->payload.start_acq.block_samples;
-  cfg->flags = cmd->payload.start_acq.flags;
-  memcpy(cfg->filename, cmd->payload.start_acq.filename, IPC_FILENAME_LEN);
-  cfg->filename[IPC_FILENAME_LEN - 1U] = '\0';
-
-  return 1U;
 }
 
 static void IPC_StreamResetShared(void)
@@ -204,7 +178,6 @@ void IPC_CmdInit(void)
 void IPC_CmdService(void)
 {
   IpcCommandBlock_t cmd_local;
-  DaqConfig_t next_cfg;
 
   IPC_PublishStatus();
   IPC_StreamService();
@@ -227,42 +200,9 @@ void IPC_CmdService(void)
       break;
 
     case IPC_CMD_GET_STATUS:
-      IPC_WriteResponse(cmd_local.seq, cmd_local.cmd, IPC_CMD_RES_OK, 0U);
-      break;
-
     case IPC_CMD_START_ACQ:
-      if (IPC_CanStart() == 0U)
-      {
-        IPC_WriteResponse(cmd_local.seq, cmd_local.cmd, IPC_CMD_RES_REJECTED_STATE, 2U);
-        break;
-      }
-
-      if (IPC_CopyStartConfig(&cmd_local, &next_cfg) == 0U)
-      {
-        IPC_WriteResponse(cmd_local.seq, cmd_local.cmd, IPC_CMD_RES_INVALID, 3U);
-        break;
-      }
-
-      if (DAQ_ApplyConfig(&next_cfg) == 0U)
-      {
-        IPC_WriteResponse(cmd_local.seq, cmd_local.cmd, IPC_CMD_RES_INVALID, 4U);
-        break;
-      }
-
-      g_daq_ctx.events |= DAQ_EVT_CMD_START;
-      IPC_PublishStatus();
-      IPC_WriteResponse(cmd_local.seq, cmd_local.cmd, IPC_CMD_RES_OK, 0U);
-      break;
-
     case IPC_CMD_STOP_ACQ:
-      if (IPC_CanStop() == 0U)
-      {
-        IPC_WriteResponse(cmd_local.seq, cmd_local.cmd, IPC_CMD_RES_REJECTED_STATE, 5U);
-        break;
-      }
-
-      g_daq_ctx.events |= DAQ_EVT_CMD_STOP;
-      IPC_WriteResponse(cmd_local.seq, cmd_local.cmd, IPC_CMD_RES_OK, 0U);
+      IPC_WriteResponse(cmd_local.seq, cmd_local.cmd, IPC_CMD_RES_INVALID, 9U);
       break;
 
     case IPC_CMD_STREAM_FILE:
@@ -302,6 +242,41 @@ void IPC_CmdService(void)
 
       IPC_WriteResponse(cmd_local.seq, cmd_local.cmd, IPC_CMD_RES_OK, 0U);
       break;
+
+    case IPC_CMD_COUNT_DAT_FILES:
+    {
+      EmmcFsDatSummary_t summary;
+      EmmcFsStatus_t fs_status;
+
+      memset(&summary, 0, sizeof(summary));
+      fs_status = EmmcFs_CountDatFiles(&summary);
+      if (fs_status != EMMC_FS_OK)
+      {
+        IPC_WriteResponse(cmd_local.seq, cmd_local.cmd, IPC_CMD_RES_INVALID, (uint32_t)fs_status);
+      }
+      else
+      {
+        IPC_WriteResponse(cmd_local.seq, cmd_local.cmd, IPC_CMD_RES_OK, summary.dat_file_count);
+      }
+      break;
+    }
+
+    case IPC_CMD_COUNT_ALL_FILES:
+    {
+      uint32_t file_count = 0U;
+      EmmcFsStatus_t fs_status;
+
+      fs_status = EmmcFs_CountAllFiles(&file_count);
+      if (fs_status != EMMC_FS_OK)
+      {
+        IPC_WriteResponse(cmd_local.seq, cmd_local.cmd, IPC_CMD_RES_INVALID, (uint32_t)fs_status);
+      }
+      else
+      {
+        IPC_WriteResponse(cmd_local.seq, cmd_local.cmd, IPC_CMD_RES_OK, file_count);
+      }
+      break;
+    }
 
     default:
       IPC_WriteResponse(cmd_local.seq, cmd_local.cmd, IPC_CMD_RES_INVALID, 6U);

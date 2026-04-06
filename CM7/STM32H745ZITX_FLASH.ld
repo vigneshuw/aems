@@ -49,9 +49,13 @@ MEMORY
   DTCMRAM (xrw)    : ORIGIN = 0x20000000, LENGTH = 128K
   RAM_D2 (xrw)     : ORIGIN = 0x30000000, LENGTH = 256K
   RAM_D2_ETH (xrw) : ORIGIN = 0x30040000, LENGTH = 32K
-  RAM_D3 (xrw)     : ORIGIN = 0x38000000, LENGTH = 64K
+/*  RAM_D3 (xrw)     : ORIGIN = 0x38000000, LENGTH = 64K */
   ITCMRAM (xrw)    : ORIGIN = 0x00000000, LENGTH = 64K
+  OPENAMP_RSC_TAB (xrw)   : ORIGIN = 0x38000000, LENGTH = 1K
+  OPEN_AMP_SHMEM (xrw) : ORIGIN = 0x38000400, LENGTH = 63K
 }
+__OPENAMP_region_start__  = ORIGIN(OPEN_AMP_SHMEM);
+__OPENAMP_region_end__ = ORIGIN(OPEN_AMP_SHMEM) + LENGTH(OPEN_AMP_SHMEM);
 
 /* Sections */
 SECTIONS
@@ -186,6 +190,11 @@ SECTIONS
     . = ALIGN(32);
     *(.Rx_PoolSection) 
   } >RAM_D2_ETH
+  
+   .openamp_section (NOLOAD) : {
+     . = ABSOLUTE(0x38000000);
+     *(.resource_table) 
+  } >OPENAMP_RSC_TAB  AT > FLASH
   /* Modification end */
 
   /* Remove information from the compiler libraries */

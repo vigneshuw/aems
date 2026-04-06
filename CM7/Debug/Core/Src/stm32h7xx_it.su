@@ -7,3 +7,4 @@
 ../Core/Src/stm32h7xx_it.c:166:6:EXTI3_IRQHandler	8	static
 ../Core/Src/stm32h7xx_it.c:180:6:TIM6_DAC_IRQHandler	8	static
 ../Core/Src/stm32h7xx_it.c:194:6:ETH_IRQHandler	8	static
+../Core/Src/stm32h7xx_it.c:208:6:HSEM1_IRQHandler	8	static

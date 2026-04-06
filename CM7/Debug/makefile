@@ -9,6 +9,8 @@ RM := rm -rf
 
 # All of the sources participating in the build are defined here
 -include sources.mk
+-include OPENAMP/subdir.mk
+-include Middlewares/Third_Party/OpenAMP/subdir.mk
 -include Middlewares/Third_Party/LwIP/subdir.mk
 -include Middlewares/Third_Party/FreeRTOS/subdir.mk
 -include Middlewares/BlueNRG-2/Wireless/BlueNRG-2/Utils/subdir.mk

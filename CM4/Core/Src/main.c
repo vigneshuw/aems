@@ -19,6 +19,9 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "fatfs.h"
+#include "openamp.h"
+#include "spi.h"
+#include "gpio.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -27,11 +30,6 @@
 #include "emmc_fs.h"
 #include "mmc_diskio.h"
 #include "daq_engine.h"
-#include "ipc_cmd.h"
-#include "ipc_shared.h"
-#include "shared_memory.h"
-#include "hsem_ids.h"
-#include "hsem_lock.h"
 #include "statemachine.h"
 
 /* USER CODE END Includes */
@@ -61,27 +59,19 @@ void AEMS_Initialize();
 
 /* Private variables ---------------------------------------------------------*/
 
-MMC_HandleTypeDef hmmc1;
-
-SPI_HandleTypeDef hspi4;
-
 /* USER CODE BEGIN PV */
 volatile DaqContext_t g_daq_ctx;
-volatile int32_t g_cm4_emmc_init_status = 0;
-volatile int32_t g_cm4_emmc_mount_status = 0;
-volatile int32_t g_cm4_emmc_create_status = 0;
-volatile int32_t g_cm4_emmc_readthrough_status = 0;
+static int32_t g_cm4_emmc_init_status = 0;
+static int32_t g_cm4_emmc_mount_status = 0;
+static int32_t g_cm4_emmc_create_status = 0;
+static int32_t g_cm4_emmc_readthrough_status = 0;
 
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
-static void MX_GPIO_Init(void);
-static void MX_SPI4_Init(void);
-void MX_SDMMC1_MMC_Init(void);
 /* USER CODE BEGIN PFP */
 //static void FS_FileOperations(void);
 static uint8_t Buffercmp(uint8_t* pBuffer1, uint8_t* pBuffer2, uint32_t BufferLength);
-static void CM4_PublishBootStatus(void);
 static int32_t CM4_ReadThroughTestFile(void);
 /* USER CODE END PFP */
 
@@ -154,36 +144,29 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_SPI4_Init();
-  MX_SDMMC1_MMC_Init();
-//  MX_FATFS_Init();
   /* USER CODE BEGIN 2 */
   DAQ_ContextInit();
-  IPC_CmdInit();
   //AEMS_Initialize();
 
   g_cm4_emmc_init_status = (int32_t)EmmcFs_Init();
-  CM4_PublishBootStatus();
   if (g_cm4_emmc_init_status != EMMC_FS_OK)
   {
     Error_Handler();
   }
 
   g_cm4_emmc_mount_status = (int32_t)EmmcFs_MountOrFormat();
-  CM4_PublishBootStatus();
   if (g_cm4_emmc_mount_status != EMMC_FS_OK)
   {
     Error_Handler();
   }
 
   g_cm4_emmc_create_status = (int32_t)EmmcFs_CreatePatternFile(TEST_FILE_NAME, TEST_FILE_SIZE_BYTES, NULL, NULL);
-  CM4_PublishBootStatus();
   if (g_cm4_emmc_create_status != EMMC_FS_OK)
   {
     Error_Handler();
   }
 
   g_cm4_emmc_readthrough_status = CM4_ReadThroughTestFile();
-  CM4_PublishBootStatus();
   if (g_cm4_emmc_readthrough_status != EMMC_FS_OK)
   {
     Error_Handler();
@@ -216,169 +199,9 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-    IPC_CmdService();
     DAQ_StateMachine_Run();
   }
   /* USER CODE END 3 */
-}
-
-/**
-  * @brief SDMMC1 Initialization Function
-  * @param None
-  * @retval None
-  */
-void MX_SDMMC1_MMC_Init(void)
-{
-
-  /* USER CODE BEGIN SDMMC1_Init 0 */
-  /* USER CODE END SDMMC1_Init 0 */
-
-  /* USER CODE BEGIN SDMMC1_Init 1 */
-
-  /* USER CODE END SDMMC1_Init 1 */
-  hmmc1.Instance = SDMMC1;
-  hmmc1.Init.ClockEdge = SDMMC_CLOCK_EDGE_RISING;
-  hmmc1.Init.ClockPowerSave = SDMMC_CLOCK_POWER_SAVE_DISABLE;
-  hmmc1.Init.BusWide = SDMMC_BUS_WIDE_8B;
-  hmmc1.Init.HardwareFlowControl = SDMMC_HARDWARE_FLOW_CONTROL_DISABLE;
-  hmmc1.Init.ClockDiv = 4;
-  if (HAL_MMC_Init(&hmmc1) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /* USER CODE BEGIN SDMMC1_Init 2 */
-  HAL_MMC_CardInfoTypeDef cardInfo;
-	if (HAL_MMC_GetCardInfo(&hmmc1, &cardInfo) != HAL_OK)
-	{
-		Error_Handler();
-	}
-  /* USER CODE END SDMMC1_Init 2 */
-
-}
-
-/**
-  * @brief SPI4 Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_SPI4_Init(void)
-{
-
-  /* USER CODE BEGIN SPI4_Init 0 */
-
-  /* USER CODE END SPI4_Init 0 */
-
-  /* USER CODE BEGIN SPI4_Init 1 */
-
-  /* USER CODE END SPI4_Init 1 */
-  /* SPI4 parameter configuration*/
-  hspi4.Instance = SPI4;
-  hspi4.Init.Mode = SPI_MODE_MASTER;
-  hspi4.Init.Direction = SPI_DIRECTION_2LINES;
-  hspi4.Init.DataSize = SPI_DATASIZE_8BIT;
-  hspi4.Init.CLKPolarity = SPI_POLARITY_LOW;
-  hspi4.Init.CLKPhase = SPI_PHASE_2EDGE;
-  hspi4.Init.NSS = SPI_NSS_SOFT;
-  hspi4.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_8;
-  hspi4.Init.FirstBit = SPI_FIRSTBIT_MSB;
-  hspi4.Init.TIMode = SPI_TIMODE_DISABLE;
-  hspi4.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
-  hspi4.Init.CRCPolynomial = 0x0;
-  hspi4.Init.NSSPMode = SPI_NSS_PULSE_ENABLE;
-  hspi4.Init.NSSPolarity = SPI_NSS_POLARITY_LOW;
-  hspi4.Init.FifoThreshold = SPI_FIFO_THRESHOLD_01DATA;
-  hspi4.Init.TxCRCInitializationPattern = SPI_CRC_INITIALIZATION_ALL_ZERO_PATTERN;
-  hspi4.Init.RxCRCInitializationPattern = SPI_CRC_INITIALIZATION_ALL_ZERO_PATTERN;
-  hspi4.Init.MasterSSIdleness = SPI_MASTER_SS_IDLENESS_00CYCLE;
-  hspi4.Init.MasterInterDataIdleness = SPI_MASTER_INTERDATA_IDLENESS_00CYCLE;
-  hspi4.Init.MasterReceiverAutoSusp = SPI_MASTER_RX_AUTOSUSP_DISABLE;
-  hspi4.Init.MasterKeepIOState = SPI_MASTER_KEEP_IO_STATE_DISABLE;
-  hspi4.Init.IOSwap = SPI_IO_SWAP_DISABLE;
-  if (HAL_SPI_Init(&hspi4) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /* USER CODE BEGIN SPI4_Init 2 */
-
-  /* USER CODE END SPI4_Init 2 */
-
-}
-
-/**
-  * @brief GPIO Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_GPIO_Init(void)
-{
-  GPIO_InitTypeDef GPIO_InitStruct = {0};
-  /* USER CODE BEGIN MX_GPIO_Init_1 */
-
-  /* USER CODE END MX_GPIO_Init_1 */
-
-  /* GPIO Ports Clock Enable */
-  __HAL_RCC_GPIOE_CLK_ENABLE();
-  __HAL_RCC_GPIOC_CLK_ENABLE();
-  __HAL_RCC_GPIOF_CLK_ENABLE();
-  __HAL_RCC_GPIOD_CLK_ENABLE();
-  __HAL_RCC_GPIOB_CLK_ENABLE();
-
-  /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(ADS_CS_GPIO_Port, ADS_CS_Pin, GPIO_PIN_RESET);
-
-  /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(ADS_SYNC_RESET_GPIO_Port, ADS_SYNC_RESET_Pin, GPIO_PIN_SET);
-
-  /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOF, LDO_EN_Pin|DCDC_2_EN_Pin, GPIO_PIN_SET);
-
-  /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(eMMC_RSTn_GPIO_Port, eMMC_RSTn_Pin, GPIO_PIN_SET);
-
-  /*Configure GPIO pin : ADS_DRDY_Pin */
-  GPIO_InitStruct.Pin = ADS_DRDY_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(ADS_DRDY_GPIO_Port, &GPIO_InitStruct);
-
-  /*Configure GPIO pin : ADS_CS_Pin */
-  GPIO_InitStruct.Pin = ADS_CS_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Pull = GPIO_PULLDOWN;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_MEDIUM;
-  HAL_GPIO_Init(ADS_CS_GPIO_Port, &GPIO_InitStruct);
-
-  /*Configure GPIO pin : ADS_SYNC_RESET_Pin */
-  GPIO_InitStruct.Pin = ADS_SYNC_RESET_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(ADS_SYNC_RESET_GPIO_Port, &GPIO_InitStruct);
-
-  /*Configure GPIO pin : LDO_EN_Pin */
-  GPIO_InitStruct.Pin = LDO_EN_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Pull = GPIO_PULLUP;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_MEDIUM;
-  HAL_GPIO_Init(LDO_EN_GPIO_Port, &GPIO_InitStruct);
-
-  /*Configure GPIO pin : DCDC_2_EN_Pin */
-  GPIO_InitStruct.Pin = DCDC_2_EN_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Pull = GPIO_PULLUP;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(DCDC_2_EN_GPIO_Port, &GPIO_InitStruct);
-
-  /*Configure GPIO pin : eMMC_RSTn_Pin */
-  GPIO_InitStruct.Pin = eMMC_RSTn_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
-  HAL_GPIO_Init(eMMC_RSTn_GPIO_Port, &GPIO_InitStruct);
-
-  /* USER CODE BEGIN MX_GPIO_Init_2 */
-
-  /* USER CODE END MX_GPIO_Init_2 */
 }
 
 /* USER CODE BEGIN 4 */
@@ -425,22 +248,6 @@ static uint8_t Buffercmp(uint8_t* pBuffer1, uint8_t* pBuffer2, uint32_t BufferLe
     pBuffer2++;
   }
   return 0;
-}
-
-static void CM4_PublishBootStatus(void)
-{
-  LOCK_HSEM(HSEM_IPC_ID);
-  SHARED_IPC_REGION->status.magic = IPC_SHARED_MAGIC;
-  SHARED_IPC_REGION->status.version = IPC_SHARED_VERSION;
-  SHARED_IPC_REGION->status.emmc_init_status = g_cm4_emmc_init_status;
-  SHARED_IPC_REGION->status.emmc_mount_status = g_cm4_emmc_mount_status;
-  SHARED_IPC_REGION->status.emmc_create_status = g_cm4_emmc_create_status;
-  SHARED_IPC_REGION->status.emmc_readthrough_status = g_cm4_emmc_readthrough_status;
-  SHARED_IPC_REGION->status.fs_ready = (uint32_t)((g_cm4_emmc_init_status == EMMC_FS_OK) &&
-                                                  (g_cm4_emmc_mount_status == EMMC_FS_OK) &&
-                                                  (g_cm4_emmc_create_status == EMMC_FS_OK) &&
-                                                  (g_cm4_emmc_readthrough_status == EMMC_FS_OK));
-  UNLOCK_HSEM(HSEM_IPC_ID);
 }
 
 static int32_t CM4_ReadThroughTestFile(void)

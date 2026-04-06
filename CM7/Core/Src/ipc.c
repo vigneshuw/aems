@@ -6,16 +6,58 @@
 #include "main.h"
 #include "shared_memory.h"
 
+#define IPC_CACHE_LINE_SIZE 32U
+
+static void IPC_CacheCleanRegion(const void *addr, uint32_t size)
+{
+  uintptr_t start_addr;
+  uintptr_t aligned_addr;
+  uint32_t adjusted_size;
+
+  if ((addr == NULL) || (size == 0U))
+  {
+    return;
+  }
+
+  start_addr = (uintptr_t)addr;
+  aligned_addr = start_addr & ~((uintptr_t)IPC_CACHE_LINE_SIZE - 1U);
+  adjusted_size = (uint32_t)((start_addr - aligned_addr) + size);
+  adjusted_size = (adjusted_size + (IPC_CACHE_LINE_SIZE - 1U)) & ~((uint32_t)IPC_CACHE_LINE_SIZE - 1U);
+  SCB_CleanDCache_by_Addr((uint32_t *)aligned_addr, (int32_t)adjusted_size);
+}
+
+static void IPC_CacheInvalidateRegion(const void *addr, uint32_t size)
+{
+  uintptr_t start_addr;
+  uintptr_t aligned_addr;
+  uint32_t adjusted_size;
+
+  if ((addr == NULL) || (size == 0U))
+  {
+    return;
+  }
+
+  start_addr = (uintptr_t)addr;
+  aligned_addr = start_addr & ~((uintptr_t)IPC_CACHE_LINE_SIZE - 1U);
+  adjusted_size = (uint32_t)((start_addr - aligned_addr) + size);
+  adjusted_size = (adjusted_size + (IPC_CACHE_LINE_SIZE - 1U)) & ~((uint32_t)IPC_CACHE_LINE_SIZE - 1U);
+  SCB_InvalidateDCache_by_Addr((uint32_t *)aligned_addr, (int32_t)adjusted_size);
+}
+
 static uint32_t IPC_PostCommand(const IpcCommandBlock_t *cmd)
 {
   uint32_t accepted = 0U;
 
   LOCK_HSEM(HSEM_IPC_ID);
+  IPC_CacheInvalidateRegion((const void *)&SHARED_IPC_REGION->cmd, sizeof(SHARED_IPC_REGION->cmd));
+  IPC_CacheInvalidateRegion((const void *)&SHARED_IPC_REGION->rsp, sizeof(SHARED_IPC_REGION->rsp));
   if (SHARED_IPC_REGION->cmd.pending == 0U)
   {
     SHARED_IPC_REGION->rsp.ready = 0U;
     memcpy((void *)&SHARED_IPC_REGION->cmd, cmd, sizeof(*cmd));
     SHARED_IPC_REGION->cmd.pending = 1U;
+    IPC_CacheCleanRegion((const void *)&SHARED_IPC_REGION->rsp, sizeof(SHARED_IPC_REGION->rsp));
+    IPC_CacheCleanRegion((const void *)&SHARED_IPC_REGION->cmd, sizeof(SHARED_IPC_REGION->cmd));
     accepted = 1U;
   }
   UNLOCK_HSEM(HSEM_IPC_ID);
@@ -26,6 +68,7 @@ static uint32_t IPC_PostCommand(const IpcCommandBlock_t *cmd)
 void IPC_InitSharedRegion(void)
 {
   LOCK_HSEM(HSEM_IPC_ID);
+  IPC_CacheInvalidateRegion((const void *)SHARED_IPC_REGION, sizeof(*SHARED_IPC_REGION));
   if (SHARED_IPC_REGION->cmd.magic != IPC_SHARED_MAGIC)
   {
     memset((void *)SHARED_IPC_REGION, 0, sizeof(*SHARED_IPC_REGION));
@@ -35,6 +78,9 @@ void IPC_InitSharedRegion(void)
     SHARED_IPC_REGION->rsp.version = IPC_SHARED_VERSION;
     SHARED_IPC_REGION->status.magic = IPC_SHARED_MAGIC;
     SHARED_IPC_REGION->status.version = IPC_SHARED_VERSION;
+    SHARED_IPC_REGION->stream.magic = IPC_SHARED_MAGIC;
+    SHARED_IPC_REGION->stream.version = IPC_SHARED_VERSION;
+    IPC_CacheCleanRegion((const void *)SHARED_IPC_REGION, sizeof(*SHARED_IPC_REGION));
   }
   UNLOCK_HSEM(HSEM_IPC_ID);
 }
@@ -101,6 +147,7 @@ uint32_t IPC_WaitForResponse(uint32_t seq, IpcResponseBlock_t *rsp, uint32_t tim
   do
   {
     LOCK_HSEM(HSEM_IPC_ID);
+    IPC_CacheInvalidateRegion((const void *)&SHARED_IPC_REGION->rsp, sizeof(SHARED_IPC_REGION->rsp));
     memcpy(&local_rsp, (const void *)&SHARED_IPC_REGION->rsp, sizeof(local_rsp));
     UNLOCK_HSEM(HSEM_IPC_ID);
 
@@ -125,6 +172,7 @@ void IPC_ReadStatus(SharedStatusBlock_t *status)
   }
 
   LOCK_HSEM(HSEM_IPC_ID);
+  IPC_CacheInvalidateRegion((const void *)&SHARED_IPC_REGION->status, sizeof(*status));
   memcpy(status, (const void *)&SHARED_IPC_REGION->status, sizeof(*status));
   UNLOCK_HSEM(HSEM_IPC_ID);
 }
@@ -137,6 +185,7 @@ uint32_t IPC_ReadStreamInfo(uint32_t seq, IpcStreamBlock_t *stream)
   }
 
   LOCK_HSEM(HSEM_IPC_ID);
+  IPC_CacheInvalidateRegion((const void *)&SHARED_IPC_REGION->stream, sizeof(*stream));
   memcpy(stream, (const void *)&SHARED_IPC_REGION->stream, sizeof(*stream));
   UNLOCK_HSEM(HSEM_IPC_ID);
 
@@ -165,6 +214,7 @@ uint32_t IPC_StreamFetchChunk(uint32_t seq,
   *out_error = 0U;
 
   LOCK_HSEM(HSEM_IPC_ID);
+  IPC_CacheInvalidateRegion((const void *)&SHARED_IPC_REGION->stream, sizeof(stream));
   memcpy(&stream, (const void *)&SHARED_IPC_REGION->stream, sizeof(stream));
   if ((stream.magic == IPC_SHARED_MAGIC) &&
       (stream.version == IPC_SHARED_VERSION) &&
@@ -176,9 +226,11 @@ uint32_t IPC_StreamFetchChunk(uint32_t seq,
     if (stream.state == IPC_STREAM_READY)
     {
       copy_len = (stream.length > max_len) ? max_len : (uint16_t)stream.length;
+      IPC_CacheInvalidateRegion((const void *)SHARED_IPC_REGION->chunk_buffer, copy_len);
       memcpy(dst, (const void *)SHARED_IPC_REGION->chunk_buffer, copy_len);
       *out_len = copy_len;
       SHARED_IPC_REGION->stream.state = IPC_STREAM_EMPTY;
+      IPC_CacheCleanRegion((const void *)&SHARED_IPC_REGION->stream, sizeof(SHARED_IPC_REGION->stream));
     }
   }
   UNLOCK_HSEM(HSEM_IPC_ID);

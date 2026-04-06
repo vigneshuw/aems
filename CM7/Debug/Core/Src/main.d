@@ -33,27 +33,26 @@ Core/Src/main.o: ../Core/Src/main.c ../Core/Inc/main.h \
  ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_spi_ex.h \
  ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_tim.h \
  ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_tim_ex.h \
- C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/CM7/BlueNRG-2/Target/hci_tl_interface.h \
- ../Core/Inc/custom_bus.h ../Core/Inc/custom_conf.h \
- ../Core/Inc/custom_errno.h \
+ ../BlueNRG-2/Target/hci_tl_interface.h ../Core/Inc/custom_bus.h \
+ ../Core/Inc/custom_conf.h ../Core/Inc/custom_errno.h \
  C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Common/Inc/hsem_lock.h \
  C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS/cmsis_os.h \
- C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/FreeRTOS/Source/include/FreeRTOS.h \
+ ../../Middlewares/Third_Party/FreeRTOS/Source/include/FreeRTOS.h \
  ../Core/Inc/FreeRTOSConfig.h \
- C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/FreeRTOS/Source/include/projdefs.h \
- C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/FreeRTOS/Source/include/portable.h \
- C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/FreeRTOS/Source/include/deprecated_definitions.h \
- C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM4F/portmacro.h \
- C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/FreeRTOS/Source/include/mpu_wrappers.h \
- C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/FreeRTOS/Source/include/task.h \
- C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/FreeRTOS/Source/include/list.h \
- C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/FreeRTOS/Source/include/timers.h \
- C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/FreeRTOS/Source/include/task.h \
- C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/FreeRTOS/Source/include/queue.h \
- C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/FreeRTOS/Source/include/semphr.h \
- C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/FreeRTOS/Source/include/queue.h \
- C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/FreeRTOS/Source/include/event_groups.h \
- C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/FreeRTOS/Source/include/timers.h \
+ ../../Middlewares/Third_Party/FreeRTOS/Source/include/projdefs.h \
+ ../../Middlewares/Third_Party/FreeRTOS/Source/include/portable.h \
+ ../../Middlewares/Third_Party/FreeRTOS/Source/include/deprecated_definitions.h \
+ ../../Middlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM4F/portmacro.h \
+ ../../Middlewares/Third_Party/FreeRTOS/Source/include/mpu_wrappers.h \
+ ../../Middlewares/Third_Party/FreeRTOS/Source/include/task.h \
+ ../../Middlewares/Third_Party/FreeRTOS/Source/include/list.h \
+ ../../Middlewares/Third_Party/FreeRTOS/Source/include/timers.h \
+ ../../Middlewares/Third_Party/FreeRTOS/Source/include/task.h \
+ ../../Middlewares/Third_Party/FreeRTOS/Source/include/queue.h \
+ ../../Middlewares/Third_Party/FreeRTOS/Source/include/semphr.h \
+ ../../Middlewares/Third_Party/FreeRTOS/Source/include/queue.h \
+ ../../Middlewares/Third_Party/FreeRTOS/Source/include/event_groups.h \
+ ../../Middlewares/Third_Party/FreeRTOS/Source/include/timers.h \
  ../LWIP/App/lwip.h \
  ../../Middlewares/Third_Party/LwIP/src/include/lwip/opt.h \
  ../LWIP/Target/lwipopts.h \
@@ -89,41 +88,44 @@ Core/Src/main.o: ../Core/Src/main.c ../Core/Inc/main.h \
  ../../Middlewares/Third_Party/LwIP/system/arch/sys_arch.h \
  ../LWIP/Target/ethernetif.h \
  ../../Middlewares/Third_Party/LwIP/src/include/lwip/tcpip.h \
- C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/CM7/Library/Bluenrg/bluenrg2_intf.h \
- C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/ST/BlueNRG-2/includes/bluenrg1_types.h \
- C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/ST/BlueNRG-2/includes/compiler.h \
- C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/ST/BlueNRG-2/includes/ble_const.h \
- C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/ST/BlueNRG-2/includes/hci_const.h \
- C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/ST/BlueNRG-2/includes/link_layer.h \
- C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/ST/BlueNRG-2/includes/ble_types.h \
- C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/ST/BlueNRG-2/includes/ble_status.h \
- C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/ST/BlueNRG-2/hci/hci_tl_patterns/Basic/hci_tl.h \
- C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/ST/BlueNRG-2/includes/ble_types.h \
- C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/ST/BlueNRG-2/utils/ble_list.h \
- C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/CM7/BlueNRG-2/Target/bluenrg_conf.h \
- C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/ST/BlueNRG-2/includes/ble_status.h \
- C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/ST/BlueNRG-2/includes/bluenrg1_hal.h \
- C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/ST/BlueNRG-2/includes/bluenrg1_gap.h \
- C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/ST/BlueNRG-2/includes/link_layer.h \
- C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/ST/BlueNRG-2/includes/bluenrg1_gatt_server.h \
- C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/ST/BlueNRG-2/includes/sm.h \
- C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/ST/BlueNRG-2/includes/bluenrg1_gap_aci.h \
- C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/ST/BlueNRG-2/includes/bluenrg1_types.h \
- C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/ST/BlueNRG-2/includes/bluenrg1_aci.h \
- C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/ST/BlueNRG-2/includes/bluenrg1_gap_aci.h \
- C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/ST/BlueNRG-2/includes/bluenrg1_gatt_aci.h \
- C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/ST/BlueNRG-2/includes/bluenrg1_l2cap_aci.h \
- C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/ST/BlueNRG-2/includes/bluenrg1_hal_aci.h \
- C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/ST/BlueNRG-2/includes/bluenrg1_hci_le.h \
- C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/ST/BlueNRG-2/includes/hci.h \
+ ../OPENAMP/openamp.h \
+ ../../Middlewares/Third_Party/OpenAMP/open-amp/lib/include/openamp/open_amp.h \
+ ../../Middlewares/Third_Party/OpenAMP/open-amp/lib/include/openamp/rpmsg.h \
+ ../../Middlewares/Third_Party/OpenAMP/open-amp/lib/include/openamp/compiler.h \
+ ../../Middlewares/Third_Party/OpenAMP/libmetal/lib/include/metal/mutex.h \
+ ../../Middlewares/Third_Party/OpenAMP/libmetal/lib/include/metal/system/generic/mutex.h \
+ ../../Middlewares/Third_Party/OpenAMP/libmetal/lib/include/metal/atomic.h \
+ ../../Middlewares/Third_Party/OpenAMP/libmetal/lib/include/metal/config.h \
+ ../../Middlewares/Third_Party/OpenAMP/libmetal/lib/include/metal/list.h \
+ ../../Middlewares/Third_Party/OpenAMP/libmetal/lib/include/metal/utilities.h \
+ ../../Middlewares/Third_Party/OpenAMP/libmetal/lib/include/metal/assert.h \
+ ../../Middlewares/Third_Party/OpenAMP/libmetal/lib/include/metal/system/generic/assert.h \
+ ../../Middlewares/Third_Party/OpenAMP/open-amp/lib/include/openamp/rpmsg_virtio.h \
+ ../../Middlewares/Third_Party/OpenAMP/libmetal/lib/include/metal/io.h \
+ ../../Middlewares/Third_Party/OpenAMP/libmetal/lib/include/metal/compiler.h \
+ ../../Middlewares/Third_Party/OpenAMP/libmetal/lib/include/metal/compiler/gcc/compiler.h \
+ ../../Middlewares/Third_Party/OpenAMP/libmetal/lib/include/metal/sys.h \
+ ../../Middlewares/Third_Party/OpenAMP/libmetal/lib/include/metal/log.h \
+ ../../Middlewares/Third_Party/OpenAMP/libmetal/lib/include/metal/system/generic/log.h \
+ ../../Middlewares/Third_Party/OpenAMP/libmetal/lib/include/metal/system/generic/sys.h \
+ ../../Middlewares/Third_Party/OpenAMP/libmetal/lib/include/metal/errno.h \
+ ../../Middlewares/Third_Party/LwIP/src/include/lwip/errno.h \
+ ../../Middlewares/Third_Party/OpenAMP/libmetal/lib/include/metal/system/generic/./cortexm/sys.h \
+ ../../Middlewares/Third_Party/OpenAMP/libmetal/lib/include/metal/cpu.h \
+ ../../Middlewares/Third_Party/OpenAMP/libmetal/lib/include/metal/processor/arm/cpu.h \
+ ../../Middlewares/Third_Party/OpenAMP/libmetal/lib/include/metal/system/generic/io.h \
+ ../../Middlewares/Third_Party/OpenAMP/open-amp/lib/include/openamp/virtio.h \
+ ../../Middlewares/Third_Party/OpenAMP/open-amp/lib/include/openamp/virtqueue.h \
+ ../../Middlewares/Third_Party/OpenAMP/open-amp/lib/include/openamp/virtio_ring.h \
+ ../../Middlewares/Third_Party/OpenAMP/libmetal/lib/include/metal/alloc.h \
+ ../../Middlewares/Third_Party/OpenAMP/libmetal/lib/include/metal/system/generic/alloc.h \
+ ../../Middlewares/Third_Party/OpenAMP/libmetal/lib/include/metal/spinlock.h \
+ ../../Middlewares/Third_Party/OpenAMP/open-amp/lib/include/openamp/remoteproc.h \
+ ../../Middlewares/Third_Party/OpenAMP/open-amp/lib/include/openamp/remoteproc_virtio.h \
+ ../OPENAMP/openamp_conf.h ../OPENAMP/mbox_hsem.h ../Core/Inc/spi.h \
+ ../Core/Inc/main.h ../Core/Inc/tim.h ../Core/Inc/gpio.h \
  C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/CM7/Library/led/led.h \
- ../../Drivers/CMSIS/Device/ST/STM32H7xx/Include/stm32h745xx.h \
- C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Common/Inc/hsem_ids.h \
- ../Core/Inc/ipc.h \
- C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Common/Inc/ipc_shared.h \
- C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Common/Inc/shared_memory.h \
- C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Common/Inc/ipc_shared.h \
- C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/CM7/Library/eth/tcpclient.h
+ ../../Drivers/CMSIS/Device/ST/STM32H7xx/Include/stm32h745xx.h
 ../Core/Inc/main.h:
 ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal.h:
 ../Core/Inc/stm32h7xx_hal_conf.h:
@@ -159,28 +161,28 @@ Core/Src/main.o: ../Core/Src/main.c ../Core/Inc/main.h \
 ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_spi_ex.h:
 ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_tim.h:
 ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_tim_ex.h:
-C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/CM7/BlueNRG-2/Target/hci_tl_interface.h:
+../BlueNRG-2/Target/hci_tl_interface.h:
 ../Core/Inc/custom_bus.h:
 ../Core/Inc/custom_conf.h:
 ../Core/Inc/custom_errno.h:
 C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Common/Inc/hsem_lock.h:
 C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS/cmsis_os.h:
-C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/FreeRTOS/Source/include/FreeRTOS.h:
+../../Middlewares/Third_Party/FreeRTOS/Source/include/FreeRTOS.h:
 ../Core/Inc/FreeRTOSConfig.h:
-C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/FreeRTOS/Source/include/projdefs.h:
-C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/FreeRTOS/Source/include/portable.h:
-C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/FreeRTOS/Source/include/deprecated_definitions.h:
-C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM4F/portmacro.h:
-C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/FreeRTOS/Source/include/mpu_wrappers.h:
-C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/FreeRTOS/Source/include/task.h:
-C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/FreeRTOS/Source/include/list.h:
-C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/FreeRTOS/Source/include/timers.h:
-C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/FreeRTOS/Source/include/task.h:
-C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/FreeRTOS/Source/include/queue.h:
-C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/FreeRTOS/Source/include/semphr.h:
-C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/FreeRTOS/Source/include/queue.h:
-C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/FreeRTOS/Source/include/event_groups.h:
-C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/FreeRTOS/Source/include/timers.h:
+../../Middlewares/Third_Party/FreeRTOS/Source/include/projdefs.h:
+../../Middlewares/Third_Party/FreeRTOS/Source/include/portable.h:
+../../Middlewares/Third_Party/FreeRTOS/Source/include/deprecated_definitions.h:
+../../Middlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM4F/portmacro.h:
+../../Middlewares/Third_Party/FreeRTOS/Source/include/mpu_wrappers.h:
+../../Middlewares/Third_Party/FreeRTOS/Source/include/task.h:
+../../Middlewares/Third_Party/FreeRTOS/Source/include/list.h:
+../../Middlewares/Third_Party/FreeRTOS/Source/include/timers.h:
+../../Middlewares/Third_Party/FreeRTOS/Source/include/task.h:
+../../Middlewares/Third_Party/FreeRTOS/Source/include/queue.h:
+../../Middlewares/Third_Party/FreeRTOS/Source/include/semphr.h:
+../../Middlewares/Third_Party/FreeRTOS/Source/include/queue.h:
+../../Middlewares/Third_Party/FreeRTOS/Source/include/event_groups.h:
+../../Middlewares/Third_Party/FreeRTOS/Source/include/timers.h:
 ../LWIP/App/lwip.h:
 ../../Middlewares/Third_Party/LwIP/src/include/lwip/opt.h:
 ../LWIP/Target/lwipopts.h:
@@ -216,38 +218,45 @@ C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/F
 ../../Middlewares/Third_Party/LwIP/system/arch/sys_arch.h:
 ../LWIP/Target/ethernetif.h:
 ../../Middlewares/Third_Party/LwIP/src/include/lwip/tcpip.h:
-C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/CM7/Library/Bluenrg/bluenrg2_intf.h:
-C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/ST/BlueNRG-2/includes/bluenrg1_types.h:
-C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/ST/BlueNRG-2/includes/compiler.h:
-C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/ST/BlueNRG-2/includes/ble_const.h:
-C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/ST/BlueNRG-2/includes/hci_const.h:
-C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/ST/BlueNRG-2/includes/link_layer.h:
-C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/ST/BlueNRG-2/includes/ble_types.h:
-C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/ST/BlueNRG-2/includes/ble_status.h:
-C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/ST/BlueNRG-2/hci/hci_tl_patterns/Basic/hci_tl.h:
-C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/ST/BlueNRG-2/includes/ble_types.h:
-C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/ST/BlueNRG-2/utils/ble_list.h:
-C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/CM7/BlueNRG-2/Target/bluenrg_conf.h:
-C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/ST/BlueNRG-2/includes/ble_status.h:
-C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/ST/BlueNRG-2/includes/bluenrg1_hal.h:
-C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/ST/BlueNRG-2/includes/bluenrg1_gap.h:
-C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/ST/BlueNRG-2/includes/link_layer.h:
-C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/ST/BlueNRG-2/includes/bluenrg1_gatt_server.h:
-C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/ST/BlueNRG-2/includes/sm.h:
-C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/ST/BlueNRG-2/includes/bluenrg1_gap_aci.h:
-C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/ST/BlueNRG-2/includes/bluenrg1_types.h:
-C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/ST/BlueNRG-2/includes/bluenrg1_aci.h:
-C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/ST/BlueNRG-2/includes/bluenrg1_gap_aci.h:
-C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/ST/BlueNRG-2/includes/bluenrg1_gatt_aci.h:
-C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/ST/BlueNRG-2/includes/bluenrg1_l2cap_aci.h:
-C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/ST/BlueNRG-2/includes/bluenrg1_hal_aci.h:
-C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/ST/BlueNRG-2/includes/bluenrg1_hci_le.h:
-C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/ST/BlueNRG-2/includes/hci.h:
+../OPENAMP/openamp.h:
+../../Middlewares/Third_Party/OpenAMP/open-amp/lib/include/openamp/open_amp.h:
+../../Middlewares/Third_Party/OpenAMP/open-amp/lib/include/openamp/rpmsg.h:
+../../Middlewares/Third_Party/OpenAMP/open-amp/lib/include/openamp/compiler.h:
+../../Middlewares/Third_Party/OpenAMP/libmetal/lib/include/metal/mutex.h:
+../../Middlewares/Third_Party/OpenAMP/libmetal/lib/include/metal/system/generic/mutex.h:
+../../Middlewares/Third_Party/OpenAMP/libmetal/lib/include/metal/atomic.h:
+../../Middlewares/Third_Party/OpenAMP/libmetal/lib/include/metal/config.h:
+../../Middlewares/Third_Party/OpenAMP/libmetal/lib/include/metal/list.h:
+../../Middlewares/Third_Party/OpenAMP/libmetal/lib/include/metal/utilities.h:
+../../Middlewares/Third_Party/OpenAMP/libmetal/lib/include/metal/assert.h:
+../../Middlewares/Third_Party/OpenAMP/libmetal/lib/include/metal/system/generic/assert.h:
+../../Middlewares/Third_Party/OpenAMP/open-amp/lib/include/openamp/rpmsg_virtio.h:
+../../Middlewares/Third_Party/OpenAMP/libmetal/lib/include/metal/io.h:
+../../Middlewares/Third_Party/OpenAMP/libmetal/lib/include/metal/compiler.h:
+../../Middlewares/Third_Party/OpenAMP/libmetal/lib/include/metal/compiler/gcc/compiler.h:
+../../Middlewares/Third_Party/OpenAMP/libmetal/lib/include/metal/sys.h:
+../../Middlewares/Third_Party/OpenAMP/libmetal/lib/include/metal/log.h:
+../../Middlewares/Third_Party/OpenAMP/libmetal/lib/include/metal/system/generic/log.h:
+../../Middlewares/Third_Party/OpenAMP/libmetal/lib/include/metal/system/generic/sys.h:
+../../Middlewares/Third_Party/OpenAMP/libmetal/lib/include/metal/errno.h:
+../../Middlewares/Third_Party/LwIP/src/include/lwip/errno.h:
+../../Middlewares/Third_Party/OpenAMP/libmetal/lib/include/metal/system/generic/./cortexm/sys.h:
+../../Middlewares/Third_Party/OpenAMP/libmetal/lib/include/metal/cpu.h:
+../../Middlewares/Third_Party/OpenAMP/libmetal/lib/include/metal/processor/arm/cpu.h:
+../../Middlewares/Third_Party/OpenAMP/libmetal/lib/include/metal/system/generic/io.h:
+../../Middlewares/Third_Party/OpenAMP/open-amp/lib/include/openamp/virtio.h:
+../../Middlewares/Third_Party/OpenAMP/open-amp/lib/include/openamp/virtqueue.h:
+../../Middlewares/Third_Party/OpenAMP/open-amp/lib/include/openamp/virtio_ring.h:
+../../Middlewares/Third_Party/OpenAMP/libmetal/lib/include/metal/alloc.h:
+../../Middlewares/Third_Party/OpenAMP/libmetal/lib/include/metal/system/generic/alloc.h:
+../../Middlewares/Third_Party/OpenAMP/libmetal/lib/include/metal/spinlock.h:
+../../Middlewares/Third_Party/OpenAMP/open-amp/lib/include/openamp/remoteproc.h:
+../../Middlewares/Third_Party/OpenAMP/open-amp/lib/include/openamp/remoteproc_virtio.h:
+../OPENAMP/openamp_conf.h:
+../OPENAMP/mbox_hsem.h:
+../Core/Inc/spi.h:
+../Core/Inc/main.h:
+../Core/Inc/tim.h:
+../Core/Inc/gpio.h:
 C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/CM7/Library/led/led.h:
 ../../Drivers/CMSIS/Device/ST/STM32H7xx/Include/stm32h745xx.h:
-C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Common/Inc/hsem_ids.h:
-../Core/Inc/ipc.h:
-C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Common/Inc/ipc_shared.h:
-C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Common/Inc/shared_memory.h:
-C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Common/Inc/ipc_shared.h:
-C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/CM7/Library/eth/tcpclient.h:

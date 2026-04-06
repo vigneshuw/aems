@@ -136,6 +136,12 @@ def parse_cm4_heartbeat(packet):
     emmc_mount_status = struct.unpack(">i", packet[35:39])[0]
     emmc_create_status = struct.unpack(">i", packet[39:43])[0]
     emmc_readthrough_status = struct.unpack(">i", packet[43:47])[0]
+    cmd_pending = packet[47]
+    cmd_seq = struct.unpack(">I", packet[48:52])[0]
+    cmd_cmd = packet[52]
+    rsp_ready = packet[53]
+    rsp_seq = struct.unpack(">I", packet[54:58])[0]
+    rsp_cmd = packet[58]
 
     print(
         "RX cm4-heartbeat: "
@@ -151,7 +157,13 @@ def parse_cm4_heartbeat(packet):
         f"emmc_init_status={emmc_init_status}, "
         f"emmc_mount_status={emmc_mount_status}, "
         f"emmc_create_status={emmc_create_status}, "
-        f"emmc_readthrough_status={emmc_readthrough_status}"
+        f"emmc_readthrough_status={emmc_readthrough_status}, "
+        f"cmd_pending={cmd_pending}, "
+        f"cmd_seq={cmd_seq}, "
+        f"cmd_cmd={cmd_cmd}, "
+        f"rsp_ready={rsp_ready}, "
+        f"rsp_seq={rsp_seq}, "
+        f"rsp_cmd={rsp_cmd}"
     )
 
 

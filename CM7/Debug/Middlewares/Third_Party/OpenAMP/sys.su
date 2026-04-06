@@ -1,0 +1,6 @@
+C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/OpenAMP/libmetal/lib/system/generic/cortexm/sys.c:40:6:sys_irq_restore_enable	16	static
+C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/OpenAMP/libmetal/lib/system/generic/cortexm/sys.c:44:14:sys_irq_save_disable	4	static
+C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/OpenAMP/libmetal/lib/system/generic/cortexm/sys.c:49:6:metal_machine_cache_flush	16	static
+C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/OpenAMP/libmetal/lib/system/generic/cortexm/sys.c:55:6:metal_machine_cache_invalidate	16	static
+C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/OpenAMP/libmetal/lib/system/generic/cortexm/sys.c:64:28:metal_generic_default_poll	4	static
+C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/OpenAMP/libmetal/lib/system/generic/cortexm/sys.c:68:7:metal_machine_io_mem_map	24	static

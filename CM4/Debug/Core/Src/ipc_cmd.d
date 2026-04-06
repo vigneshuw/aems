@@ -1,6 +1,5 @@
 Core/Src/ipc_cmd.o: ../Core/Src/ipc_cmd.c ../Core/Inc/ipc_cmd.h \
  C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Common/Inc/ipc_shared.h \
- ../Core/Inc/daq_engine.h \
  C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/CM4/Library/emmc_fs/emmc_fs.h \
  ../../Middlewares/Third_Party/FatFs/src/ff.h \
  ../../Middlewares/Third_Party/FatFs/src/integer.h \
@@ -41,11 +40,9 @@ Core/Src/ipc_cmd.o: ../Core/Src/ipc_cmd.c ../Core/Inc/ipc_cmd.h \
  C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Common/Inc/hsem_lock.h \
  C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Common/Inc/hsem_ids.h \
  C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Common/Inc/shared_memory.h \
- C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Common/Inc/ipc_shared.h \
- ../Core/Inc/statemachine.h ../Core/Inc/main.h
+ C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Common/Inc/ipc_shared.h
 ../Core/Inc/ipc_cmd.h:
 C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Common/Inc/ipc_shared.h:
-../Core/Inc/daq_engine.h:
 C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/CM4/Library/emmc_fs/emmc_fs.h:
 ../../Middlewares/Third_Party/FatFs/src/ff.h:
 ../../Middlewares/Third_Party/FatFs/src/integer.h:
@@ -88,5 +85,3 @@ C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Common/Inc/hsem_lock.h:
 C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Common/Inc/hsem_ids.h:
 C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Common/Inc/shared_memory.h:
 C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Common/Inc/ipc_shared.h:
-../Core/Inc/statemachine.h:
-../Core/Inc/main.h:

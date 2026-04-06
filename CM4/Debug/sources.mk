@@ -31,4 +31,5 @@ FATFS/Target \
 Library/ads131m08 \
 Library/emmc_fs \
 Middlewares/Third_Party/FatFs \
+OPENAMP \
 

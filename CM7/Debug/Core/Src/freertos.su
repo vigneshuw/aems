@@ -1,1 +1,14 @@
-../Core/Src/freertos.c:62:6:vApplicationGetIdleTaskMemory	24	static
+../Core/Src/freertos.c:102:6:vApplicationGetIdleTaskMemory	24	static
+../Core/Src/freertos.c:111:17:ReadU32Be	16	static
+../Core/Src/freertos.c:119:17:ReadU64Be	144	static
+../Core/Src/freertos.c:131:17:ReadU16Be	16	static
+../Core/Src/freertos.c:136:13:WriteU32Be	16	static
+../Core/Src/freertos.c:144:13:WriteU64Be	24	static
+../Core/Src/freertos.c:156:13:ProcessTcpData	128	static
+../Core/Src/freertos.c:194:13:InitTestStreamChunk	16	static
+../Core/Src/freertos.c:204:16:TestStreamRead	32	static
+../Core/Src/freertos.c:221:13:TestStreamDone	24	static
+../Core/Src/freertos.c:232:6:MX_FREERTOS_Init	104	static
+../Core/Src/freertos.c:273:6:StartDefaultTask	48	static
+../Core/Src/freertos.c:299:6:ControllerTask	256	static
+../Core/Src/freertos.c:386:6:TelemetryTask	16	static

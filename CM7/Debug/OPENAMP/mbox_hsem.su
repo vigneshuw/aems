@@ -1,0 +1,4 @@
+../OPENAMP/mbox_hsem.c:46:6:HAL_HSEM_FreeCallback	16	static
+../OPENAMP/mbox_hsem.c:89:5:MAILBOX_Init	16	static
+../OPENAMP/mbox_hsem.c:129:5:MAILBOX_Poll	16	static
+../OPENAMP/mbox_hsem.c:178:5:MAILBOX_Notify	16	static

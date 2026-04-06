@@ -72,7 +72,6 @@ typedef struct
 
 /* Exported functions prototypes ---------------------------------------------*/
 void Error_Handler(void);
-void MX_SDMMC1_MMC_Init(void);
 
 /* USER CODE BEGIN EFP */
 extern volatile DaqContext_t g_daq_ctx;
