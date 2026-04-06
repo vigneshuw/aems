@@ -29,6 +29,7 @@ typedef struct
 
 static volatile uint8_t g_service_created;
 static volatile uint8_t g_response_ready;
+static uint8_t g_openamp_initialized;
 static OpenAmpFsResponse_t g_last_response;
 static struct rpmsg_endpoint g_openamp_fs_ept;
 
@@ -49,6 +50,7 @@ int32_t OpenAmpFs_MasterInit(void)
 
   g_service_created = 0U;
   g_response_ready = 0U;
+  g_openamp_initialized = 0U;
   memset(&g_last_response, 0, sizeof(g_last_response));
 
   OPENAMP_init_ept(&g_openamp_fs_ept);
@@ -59,6 +61,7 @@ int32_t OpenAmpFs_MasterInit(void)
     return status;
   }
 
+  g_openamp_initialized = 1U;
   OPENAMP_Wait_EndPointready(&g_openamp_fs_ept);
   return 0;
 }
@@ -82,6 +85,15 @@ static int32_t OpenAmpFs_SendRequest(uint32_t op, uint32_t *value_out)
   if (value_out == NULL)
   {
     return -1;
+  }
+
+  if (g_openamp_initialized == 0U)
+  {
+    status = OpenAmpFs_MasterInit();
+    if (status != 0)
+    {
+      return status;
+    }
   }
 
   if (!g_service_created)
