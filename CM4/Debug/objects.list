@@ -1,7 +1,6 @@
 "./Common/Src/system_stm32h7xx_dualcore_boot_cm4_cm7.o"
 "./Core/Src/daq_engine.o"
 "./Core/Src/gpio.o"
-"./Core/Src/ipc_cmd.o"
 "./Core/Src/main.o"
 "./Core/Src/mmc_diskio.o"
 "./Core/Src/openamp_fs.o"

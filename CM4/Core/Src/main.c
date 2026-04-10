@@ -24,7 +24,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "openamp_fs.h"
-
+#include "emmc_fs.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -38,6 +38,9 @@
 #define HSEM_ID_0 (0U) /* HW semaphore 0*/
 #endif
 
+#define TEST_FILE_NAME "test.dat"
+#define TEST_FILE_SIZE_BYTES (1UL * 1024UL * 1024UL)
+
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -49,11 +52,14 @@
 
 /* USER CODE BEGIN PV */
 volatile DaqContext_t g_daq_ctx;
-
+static int32_t g_cm4_emmc_init_status = 0;
+static int32_t g_cm4_emmc_mount_status = 0;
+static int32_t g_cm4_emmc_create_status = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
 /* USER CODE BEGIN PFP */
+//static int32_t CM4_ReadThroughTestFile(void);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -69,6 +75,18 @@ int main(void)
 {
 
   /* USER CODE BEGIN 1 */
+
+//  g_cm4_emmc_create_status = (int32_t)EmmcFs_CreatePatternFile(TEST_FILE_NAME, TEST_FILE_SIZE_BYTES, NULL, NULL);
+//  if (g_cm4_emmc_create_status != EMMC_FS_OK)
+//  {
+//	  Error_Handler();
+//  }
+
+//  g_cm4_emmc_readthrough_status = CM4_ReadThroughTestFile();
+//  if (g_cm4_emmc_readthrough_status != EMMC_FS_OK)
+//  {
+//	  Error_Handler();
+//  }
   /* USER CODE END 1 */
 
 /* USER CODE BEGIN Boot_Mode_Sequence_1 */
@@ -102,6 +120,14 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   /* USER CODE BEGIN 2 */
+
+  g_cm4_emmc_init_status = (int32_t)EmmcFs_Init();
+  if (g_cm4_emmc_init_status != EMMC_FS_OK)
+  {
+	  Error_Handler();
+  }
+
+  g_cm4_emmc_mount_status = (int32_t)EmmcFs_MountOrFormat();
   if (OpenAmpFs_RemoteInit() != 0)
   {
     Error_Handler();
@@ -122,6 +148,15 @@ int main(void)
 }
 
 /* USER CODE BEGIN 4 */
+int32_t CM4_GetEmmcInitStatus(void)
+{
+  return g_cm4_emmc_init_status;
+}
+
+int32_t CM4_GetEmmcMountStatus(void)
+{
+  return g_cm4_emmc_mount_status;
+}
 /* USER CODE END 4 */
 
 /**

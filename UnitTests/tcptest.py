@@ -180,6 +180,8 @@ def parse_openamp_heartbeat(packet):
     service_created = struct.unpack(">I", packet[23:27])[0]
     rx_count = struct.unpack(">I", packet[27:31])[0]
     init_status = struct.unpack(">i", packet[31:35])[0]
+    remote_init_status = struct.unpack(">i", packet[35:39])[0]
+    remote_mount_status = struct.unpack(">i", packet[39:43])[0]
 
     print(
         "RX openamp-heartbeat: "
@@ -192,7 +194,9 @@ def parse_openamp_heartbeat(packet):
         f"fs_status={fs_status}, "
         f"service_created={service_created}, "
         f"rx_count={rx_count}, "
-        f"init_status={init_status}"
+        f"init_status={init_status}, "
+        f"remote_init_status={remote_init_status}, "
+        f"remote_mount_status={remote_mount_status}"
     )
 
 

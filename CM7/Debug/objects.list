@@ -3,7 +3,6 @@
 "./Core/Src/custom_bus.o"
 "./Core/Src/freertos.o"
 "./Core/Src/gpio.o"
-"./Core/Src/ipc.o"
 "./Core/Src/main.o"
 "./Core/Src/openamp_fs.o"
 "./Core/Src/spi.o"

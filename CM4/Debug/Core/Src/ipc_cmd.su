@@ -1,8 +1,0 @@
-../Core/Src/ipc_cmd.c:26:13:IPC_PublishStatus	8	static
-../Core/Src/ipc_cmd.c:59:13:IPC_WriteResponse	32	static
-../Core/Src/ipc_cmd.c:74:16:IPC_ReadPendingCommand	24	static
-../Core/Src/ipc_cmd.c:90:13:IPC_StreamResetShared	8	static
-../Core/Src/ipc_cmd.c:106:13:IPC_StreamService	16	static
-../Core/Src/ipc_cmd.c:158:6:IPC_CmdInit	8	static
-../Core/Src/ipc_cmd.c:178:6:IPC_CmdService	152	static
-../Core/Src/ipc_cmd.c:287:27:IPC_CmdGetLastResponse	4	static

@@ -2,6 +2,7 @@
 
 #include <string.h>
 
+#include "main.h"
 #include "openamp.h"
 
 #define OPENAMP_PING_CHAN_NAME "openamp_pingpong_demo"
@@ -16,6 +17,8 @@ typedef struct
 {
   int32_t status;
   uint32_t value;
+  int32_t init_status;
+  int32_t mount_status;
 } OpenAmpPingResponse_t;
 
 static struct rpmsg_endpoint g_openamp_ping_ept;
@@ -90,6 +93,8 @@ static int OpenAmpPing_RxCallback(struct rpmsg_endpoint *ept,
   g_openamp_ping_rx_count++;
   response.status = 0;
   response.value = request->value + 1U + OPENAMP_PING_MAGIC;
+  response.init_status = CM4_GetEmmcInitStatus();
+  response.mount_status = CM4_GetEmmcMountStatus();
   (void)OPENAMP_send(ept, &response, sizeof(response));
   return 0;
 }

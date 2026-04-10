@@ -17,6 +17,8 @@ typedef struct
 {
   int32_t status;
   uint32_t value;
+  int32_t init_status;
+  int32_t mount_status;
 } OpenAmpPingResponse_t;
 
 static volatile uint8_t g_service_created;
@@ -125,6 +127,16 @@ uint32_t OpenAmpFs_GetRxCount(void)
 int32_t OpenAmpFs_GetInitStatus(void)
 {
   return g_openamp_init_status;
+}
+
+int32_t OpenAmpFs_GetRemoteInitStatus(void)
+{
+  return g_last_response.init_status;
+}
+
+int32_t OpenAmpFs_GetRemoteMountStatus(void)
+{
+  return g_last_response.mount_status;
 }
 
 static int OpenAmpPing_RxCallback(struct rpmsg_endpoint *ept,

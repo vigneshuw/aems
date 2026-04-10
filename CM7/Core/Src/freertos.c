@@ -291,6 +291,8 @@ void ControllerTask(void const * argument)
           WriteU32Be(&tx[23], OpenAmpFs_GetServiceCreated());
           WriteU32Be(&tx[27], OpenAmpFs_GetRxCount());
           WriteU32Be(&tx[31], (uint32_t)OpenAmpFs_GetInitStatus());
+          WriteU32Be(&tx[35], (uint32_t)OpenAmpFs_GetRemoteInitStatus());
+          WriteU32Be(&tx[39], (uint32_t)OpenAmpFs_GetRemoteMountStatus());
           (void)TcpClient_SendBuffer(tx, sizeof(tx));
           break;
         }

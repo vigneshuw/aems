@@ -75,6 +75,8 @@ void Error_Handler(void);
 
 /* USER CODE BEGIN EFP */
 extern volatile DaqContext_t g_daq_ctx;
+int32_t CM4_GetEmmcInitStatus(void);
+int32_t CM4_GetEmmcMountStatus(void);
 
 /* USER CODE END EFP */
 
