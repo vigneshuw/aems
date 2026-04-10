@@ -205,7 +205,7 @@ int main(void)
 
     /* USER CODE BEGIN 3 */
     OpenAmpFs_RemotePoll();
-    DAQ_StateMachine_Run();
+//    DAQ_StateMachine_Run();
   }
   /* USER CODE END 3 */
 }

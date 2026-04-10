@@ -9,6 +9,8 @@ extern "C" {
 
 int32_t OpenAmpFs_RemoteInit(void);
 void OpenAmpFs_RemotePoll(void);
+int32_t OpenAmpFs_GetRemoteInitStatus(void);
+uint32_t OpenAmpFs_GetRemoteRxCount(void);
 
 #ifdef __cplusplus
 }

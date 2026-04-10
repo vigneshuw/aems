@@ -34,6 +34,8 @@ def build_packet(command, server_id, epoch_time):
         useful_payload = READ_FILENAME
     elif command == 9:
         useful_payload = b""
+    elif command == 99:
+        useful_payload = b""
     else:
         useful_payload = bytes((index & 0xFF) for index in range(MAX_USEFUL_PAYLOAD_LEN))
 
@@ -164,6 +166,33 @@ def parse_cm4_heartbeat(packet):
         f"rsp_ready={rsp_ready}, "
         f"rsp_seq={rsp_seq}, "
         f"rsp_cmd={rsp_cmd}"
+    )
+
+
+def parse_openamp_heartbeat(packet):
+    command = packet[0]
+    server_id = struct.unpack(">I", packet[1:5])[0]
+    epoch_time = struct.unpack(">Q", packet[5:13])[0]
+    system_status = packet[13]
+    tcp_connected = packet[14]
+    reply_value = struct.unpack(">I", packet[15:19])[0]
+    fs_status = struct.unpack(">i", packet[19:23])[0]
+    service_created = struct.unpack(">I", packet[23:27])[0]
+    rx_count = struct.unpack(">I", packet[27:31])[0]
+    init_status = struct.unpack(">i", packet[31:35])[0]
+
+    print(
+        "RX openamp-heartbeat: "
+        f"cmd={command}, "
+        f"id={server_id}, "
+        f"time={epoch_time}, "
+        f"status={system_status}, "
+        f"tcp={tcp_connected}, "
+        f"reply=0x{reply_value:08X}, "
+        f"fs_status={fs_status}, "
+        f"service_created={service_created}, "
+        f"rx_count={rx_count}, "
+        f"init_status={init_status}"
     )
 
 
@@ -330,6 +359,8 @@ def parse_packet(packet):
         parse_config_read(packet)
     elif command == 6:
         parse_cm4_heartbeat(packet)
+    elif command == 99:
+        parse_openamp_heartbeat(packet)
     else:
         pass
 
@@ -416,7 +447,7 @@ def main():
 
             while True:
                 try:
-                    user_input = input("Enter command (0=heartbeat, 1=write config, 2=dat count, 3=all file count, 4=read config, 5=read named file, 6=cm4 heartbeat, 9=test stream, q=quit): ").strip()
+                    user_input = input("Enter command (0=heartbeat, 1=write config, 2=dat count, 3=all file count, 4=read config, 5=read named file, 6=cm4 heartbeat, 9=test stream, 99=openamp heartbeat, q=quit): ").strip()
                 except (EOFError, KeyboardInterrupt):
                     print("\nExiting.")
                     break
@@ -424,8 +455,8 @@ def main():
                 if user_input.lower() == "q":
                     break
 
-                if user_input not in {"0", "1", "2", "3", "4", "5", "6", "9"}:
-                    print("Only commands 0, 1, 2, 3, 4, 5, 6, and 9 are implemented in this test.")
+                if user_input not in {"0", "1", "2", "3", "4", "5", "6", "9", "99"}:
+                    print("Only commands 0, 1, 2, 3, 4, 5, 6, 9, and 99 are implemented in this test.")
                     continue
 
                 command = int(user_input)
@@ -447,11 +478,14 @@ def main():
                         CONFIG_TEST_PAYLOAD
                     )
                     print(f"TX config payload: {CONFIG_TEST_PAYLOAD.hex()}")
-                elif command in {5, 9}:
+                elif command == 5:
                     print(f"TX file read request for: {READ_FILENAME.decode()}")
-                    if command == 9:
-                        print("TX test stream request")
                     file_read_in_progress = True
+                elif command == 9:
+                    print("TX test stream request")
+                    file_read_in_progress = True
+                elif command == 99:
+                    print("TX OpenAMP heartbeat request")
 
                 conn.sendall(packet)
                 print(f"TX: sent {len(packet)} bytes for command {command}")

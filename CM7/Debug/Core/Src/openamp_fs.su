@@ -1,8 +1,9 @@
 ../../Middlewares/Third_Party/OpenAMP/open-amp/lib/include/openamp/rpmsg.h:147:19:rpmsg_send	32	static
-../Core/Src/openamp_fs.c:47:9:OpenAmpFs_MasterInit	16	static
-../Core/Src/openamp_fs.c:69:9:OpenAmpFs_CountDatFiles	16	static
-../Core/Src/openamp_fs.c:74:9:OpenAmpFs_CountAllFiles	16	static
-../Core/Src/openamp_fs.c:79:16:OpenAmpFs_SendRequest	32	static
-../Core/Src/openamp_fs.c:134:12:OpenAmpFs_RxCallback	24	static
-../Core/Src/openamp_fs.c:153:13:OpenAmpFs_ServiceDestroyCb	16	static
-../Core/Src/openamp_fs.c:159:13:OpenAmpFs_NewServiceCb	32	static
+../Core/Src/openamp_fs.c:40:9:OpenAmpFs_MasterInit	16	static
+../Core/Src/openamp_fs.c:66:9:OpenAmpFs_Ping	32	static
+../Core/Src/openamp_fs.c:115:10:OpenAmpFs_GetServiceCreated	4	static
+../Core/Src/openamp_fs.c:120:10:OpenAmpFs_GetRxCount	4	static
+../Core/Src/openamp_fs.c:125:9:OpenAmpFs_GetInitStatus	4	static
+../Core/Src/openamp_fs.c:130:12:OpenAmpPing_RxCallback	24	static
+../Core/Src/openamp_fs.c:150:13:OpenAmpPing_ServiceDestroyCb	16	static
+../Core/Src/openamp_fs.c:156:13:OpenAmpPing_NewServiceCb	32	static

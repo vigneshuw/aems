@@ -133,7 +133,7 @@ void MX_FREERTOS_Init(void) {
 
   /* Create the thread(s) */
   /* definition and creation of defaultTask */
-  osThreadDef(defaultTask, StartDefaultTask, osPriorityHigh, 0, 256);
+  osThreadDef(defaultTask, StartDefaultTask, osPriorityHigh, 0, 1024);
   defaultTaskHandle = osThreadCreate(osThread(defaultTask), NULL);
 
   /* definition and creation of controllerTask */
@@ -158,9 +158,10 @@ void MX_FREERTOS_Init(void) {
 /* USER CODE END Header_StartDefaultTask */
 void StartDefaultTask(void const * argument)
 {
+  /* USER CODE BEGIN StartDefaultTask_Vars */
   TcpClientConfig_t tcpCfg;
   ip_addr_t tcpServerIp;
-
+  /* USER CODE END StartDefaultTask_Vars */
   /* init code for LWIP */
   MX_LWIP_Init();
   /* USER CODE BEGIN StartDefaultTask */
@@ -184,8 +185,9 @@ void StartDefaultTask(void const * argument)
 /* USER CODE END Header_ControllerTask */
 void ControllerTask(void const * argument)
 {
+  /* USER CODE BEGIN ControllerTask_Vars */
   ControlMessage_t msg;
-
+  /* USER CODE END ControllerTask_Vars */
   /* USER CODE BEGIN ControllerTask */
   for(;;)
   {
@@ -253,41 +255,42 @@ void ControllerTask(void const * argument)
         }
 
         case 2U:
+        case 3U:
         {
           uint8_t tx[TCP_FIXED_RESPONSE_LEN];
-          uint32_t dat_count = 0U;
-          int32_t fs_status;
-
-          fs_status = OpenAmpFs_CountDatFiles(&dat_count);
 
           memset(tx, 0, sizeof(tx));
           tx[0] = msg.command;
           WriteU32Be(&tx[1], msg.server_id);
           WriteU64Be(&tx[5], msg.epoch_time);
-          tx[13] = (fs_status == 0) ? 0U : 1U;
+          tx[13] = 1U;
           tx[14] = TcpClient_IsConnected();
-          WriteU32Be(&tx[15], dat_count);
-          WriteU32Be(&tx[19], (uint32_t)fs_status);
+          WriteU32Be(&tx[19], 0xFFFFFFF6U);
           (void)TcpClient_SendBuffer(tx, sizeof(tx));
           break;
         }
 
-        case 3U:
+        case 99U:
         {
           uint8_t tx[TCP_FIXED_RESPONSE_LEN];
-          uint32_t total_count = 0U;
-          int32_t fs_status;
+          uint32_t request_value;
+          uint32_t reply_value = 0U;
+          int32_t ping_status;
 
-          fs_status = OpenAmpFs_CountAllFiles(&total_count);
+          request_value = (uint32_t)msg.epoch_time ^ msg.server_id ^ 0x00000063U;
+          ping_status = OpenAmpFs_Ping(request_value, &reply_value);
 
           memset(tx, 0, sizeof(tx));
           tx[0] = msg.command;
           WriteU32Be(&tx[1], msg.server_id);
           WriteU64Be(&tx[5], msg.epoch_time);
-          tx[13] = (fs_status == 0) ? 0U : 1U;
+          tx[13] = (ping_status == 0) ? 0U : 1U;
           tx[14] = TcpClient_IsConnected();
-          WriteU32Be(&tx[15], total_count);
-          WriteU32Be(&tx[19], (uint32_t)fs_status);
+          WriteU32Be(&tx[15], reply_value);
+          WriteU32Be(&tx[19], (uint32_t)ping_status);
+          WriteU32Be(&tx[23], OpenAmpFs_GetServiceCreated());
+          WriteU32Be(&tx[27], OpenAmpFs_GetRxCount());
+          WriteU32Be(&tx[31], (uint32_t)OpenAmpFs_GetInitStatus());
           (void)TcpClient_SendBuffer(tx, sizeof(tx));
           break;
         }
