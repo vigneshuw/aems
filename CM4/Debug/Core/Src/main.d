@@ -33,13 +33,7 @@ Core/Src/main.o: ../Core/Src/main.c ../Core/Inc/main.h \
  ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_spi.h \
  ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_spi_ex.h \
  C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Common/Inc/hsem_lock.h \
- ../FATFS/App/fatfs.h ../../Middlewares/Third_Party/FatFs/src/ff.h \
- ../../Middlewares/Third_Party/FatFs/src/integer.h \
- ../FATFS/Target/ffconf.h \
- ../../Middlewares/Third_Party/FatFs/src/ff_gen_drv.h \
- ../../Middlewares/Third_Party/FatFs/src/diskio.h \
- ../../Middlewares/Third_Party/FatFs/src/ff.h \
- ../FATFS/Target/user_diskio.h ../OPENAMP/openamp.h \
+ ../OPENAMP/openamp.h \
  ../../Middlewares/Third_Party/OpenAMP/open-amp/lib/include/openamp/open_amp.h \
  ../../Middlewares/Third_Party/OpenAMP/open-amp/lib/include/openamp/rpmsg.h \
  ../../Middlewares/Third_Party/OpenAMP/open-amp/lib/include/openamp/compiler.h \
@@ -72,13 +66,8 @@ Core/Src/main.o: ../Core/Src/main.c ../Core/Inc/main.h \
  ../../Middlewares/Third_Party/OpenAMP/libmetal/lib/include/metal/spinlock.h \
  ../../Middlewares/Third_Party/OpenAMP/open-amp/lib/include/openamp/remoteproc.h \
  ../../Middlewares/Third_Party/OpenAMP/open-amp/lib/include/openamp/remoteproc_virtio.h \
- ../OPENAMP/openamp_conf.h ../OPENAMP/mbox_hsem.h ../Core/Inc/spi.h \
- ../Core/Inc/main.h ../Core/Inc/gpio.h \
- C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/CM4/Library/ads131m08/ads131m08.h \
- C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/CM4/Library/emmc_fs/emmc_fs.h \
- ../Core/Inc/mmc_diskio.h ../Core/Inc/daq_engine.h \
- C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Common/Inc/ipc_shared.h \
- ../Core/Inc/statemachine.h ../Core/Inc/openamp_fs.h
+ ../OPENAMP/openamp_conf.h ../OPENAMP/mbox_hsem.h ../Core/Inc/gpio.h \
+ ../Core/Inc/main.h ../Core/Inc/openamp_fs.h
 ../Core/Inc/main.h:
 ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal.h:
 ../Core/Inc/stm32h7xx_hal_conf.h:
@@ -114,14 +103,6 @@ Core/Src/main.o: ../Core/Src/main.c ../Core/Inc/main.h \
 ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_spi.h:
 ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_spi_ex.h:
 C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Common/Inc/hsem_lock.h:
-../FATFS/App/fatfs.h:
-../../Middlewares/Third_Party/FatFs/src/ff.h:
-../../Middlewares/Third_Party/FatFs/src/integer.h:
-../FATFS/Target/ffconf.h:
-../../Middlewares/Third_Party/FatFs/src/ff_gen_drv.h:
-../../Middlewares/Third_Party/FatFs/src/diskio.h:
-../../Middlewares/Third_Party/FatFs/src/ff.h:
-../FATFS/Target/user_diskio.h:
 ../OPENAMP/openamp.h:
 ../../Middlewares/Third_Party/OpenAMP/open-amp/lib/include/openamp/open_amp.h:
 ../../Middlewares/Third_Party/OpenAMP/open-amp/lib/include/openamp/rpmsg.h:
@@ -157,13 +138,6 @@ C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Common/Inc/hsem_lock.h:
 ../../Middlewares/Third_Party/OpenAMP/open-amp/lib/include/openamp/remoteproc_virtio.h:
 ../OPENAMP/openamp_conf.h:
 ../OPENAMP/mbox_hsem.h:
-../Core/Inc/spi.h:
-../Core/Inc/main.h:
 ../Core/Inc/gpio.h:
-C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/CM4/Library/ads131m08/ads131m08.h:
-C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/CM4/Library/emmc_fs/emmc_fs.h:
-../Core/Inc/mmc_diskio.h:
-../Core/Inc/daq_engine.h:
-C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Common/Inc/ipc_shared.h:
-../Core/Inc/statemachine.h:
+../Core/Inc/main.h:
 ../Core/Inc/openamp_fs.h:
