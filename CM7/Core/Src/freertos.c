@@ -67,6 +67,9 @@ typedef struct
 static QueueHandle_t gControlQueue;
 static uint8_t g_test_stream_chunk[TCP_FILE_STREAM_CHUNK_LEN];
 static TestStreamContext_t g_test_stream_ctx;
+static TcpClientConfig_t tcpCfg;
+static ip_addr_t tcpServerIp;
+static ControlMessage_t msg;
 extern struct netif gnetif;
 /* USER CODE END Variables */
 osThreadId defaultTaskHandle;
@@ -133,7 +136,7 @@ void MX_FREERTOS_Init(void) {
 
   /* Create the thread(s) */
   /* definition and creation of defaultTask */
-  osThreadDef(defaultTask, StartDefaultTask, osPriorityHigh, 0, 1024);
+  osThreadDef(defaultTask, StartDefaultTask, osPriorityHigh, 0, 256);
   defaultTaskHandle = osThreadCreate(osThread(defaultTask), NULL);
 
   /* definition and creation of controllerTask */
@@ -158,10 +161,6 @@ void MX_FREERTOS_Init(void) {
 /* USER CODE END Header_StartDefaultTask */
 void StartDefaultTask(void const * argument)
 {
-  /* USER CODE BEGIN StartDefaultTask_Vars */
-  TcpClientConfig_t tcpCfg;
-  ip_addr_t tcpServerIp;
-  /* USER CODE END StartDefaultTask_Vars */
   /* init code for LWIP */
   MX_LWIP_Init();
   /* USER CODE BEGIN StartDefaultTask */
@@ -185,9 +184,6 @@ void StartDefaultTask(void const * argument)
 /* USER CODE END Header_ControllerTask */
 void ControllerTask(void const * argument)
 {
-  /* USER CODE BEGIN ControllerTask_Vars */
-  ControlMessage_t msg;
-  /* USER CODE END ControllerTask_Vars */
   /* USER CODE BEGIN ControllerTask */
   for(;;)
   {

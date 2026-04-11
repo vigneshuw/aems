@@ -18,7 +18,9 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "fatfs.h"
 #include "openamp.h"
+#include "spi.h"
 #include "gpio.h"
 
 /* Private includes ----------------------------------------------------------*/
@@ -119,6 +121,8 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
+  MX_SPI4_Init();
+  MX_FATFS_Init();
   /* USER CODE BEGIN 2 */
 
   g_cm4_emmc_init_status = (int32_t)EmmcFs_Init();
