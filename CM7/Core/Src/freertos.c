@@ -251,17 +251,41 @@ void ControllerTask(void const * argument)
         }
 
         case 2U:
-        case 3U:
         {
           uint8_t tx[TCP_FIXED_RESPONSE_LEN];
+          uint32_t dat_count = 0U;
+          int32_t fs_status;
+
+          fs_status = OpenAmpFs_CountDatFiles(&dat_count);
 
           memset(tx, 0, sizeof(tx));
           tx[0] = msg.command;
           WriteU32Be(&tx[1], msg.server_id);
           WriteU64Be(&tx[5], msg.epoch_time);
-          tx[13] = 1U;
+          tx[13] = (fs_status == 0) ? 0U : 1U;
           tx[14] = TcpClient_IsConnected();
-          WriteU32Be(&tx[19], 0xFFFFFFF6U);
+          WriteU32Be(&tx[15], dat_count);
+          WriteU32Be(&tx[19], (uint32_t)fs_status);
+          (void)TcpClient_SendBuffer(tx, sizeof(tx));
+          break;
+        }
+
+        case 3U:
+        {
+          uint8_t tx[TCP_FIXED_RESPONSE_LEN];
+          uint32_t total_count = 0U;
+          int32_t fs_status;
+
+          fs_status = OpenAmpFs_CountAllFiles(&total_count);
+
+          memset(tx, 0, sizeof(tx));
+          tx[0] = msg.command;
+          WriteU32Be(&tx[1], msg.server_id);
+          WriteU64Be(&tx[5], msg.epoch_time);
+          tx[13] = (fs_status == 0) ? 0U : 1U;
+          tx[14] = TcpClient_IsConnected();
+          WriteU32Be(&tx[15], total_count);
+          WriteU32Be(&tx[19], (uint32_t)fs_status);
           (void)TcpClient_SendBuffer(tx, sizeof(tx));
           break;
         }

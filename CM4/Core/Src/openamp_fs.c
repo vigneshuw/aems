@@ -4,17 +4,25 @@
 
 #include "main.h"
 #include "openamp.h"
+#include "emmc_fs.h"
 
 #define OPENAMP_PING_CHAN_NAME "openamp_pingpong_demo"
 #define OPENAMP_PING_MAGIC     0x434D3401U
 
+// Operations for OpenAMP
+#define OPENAMP_OP_PING        99U
+#define OPENAMP_OP_COUNT_DAT   2U
+#define OPENAMP_OP_COUNT_ALL   3U
+
 typedef struct
 {
+  uint32_t op;
   uint32_t value;
 } OpenAmpPingRequest_t;
 
 typedef struct
 {
+  uint32_t op;
   int32_t status;
   uint32_t value;
   int32_t init_status;
@@ -76,6 +84,8 @@ static int OpenAmpPing_RxCallback(struct rpmsg_endpoint *ept,
 {
   const OpenAmpPingRequest_t *request = (const OpenAmpPingRequest_t *)data;
   OpenAmpPingResponse_t response;
+  EmmcFsDatSummary_t dat_summary;
+  uint32_t all_file_count = 0U;
 
   (void)src;
   (void)priv;
@@ -91,10 +101,34 @@ static int OpenAmpPing_RxCallback(struct rpmsg_endpoint *ept,
   }
 
   g_openamp_ping_rx_count++;
-  response.status = 0;
-  response.value = request->value + 1U + OPENAMP_PING_MAGIC;
+  response.op = request->op;
   response.init_status = CM4_GetEmmcInitStatus();
   response.mount_status = CM4_GetEmmcMountStatus();
+
+  switch (request->op)
+  {
+    case OPENAMP_OP_PING:
+      response.status = 0;
+      response.value = request->value + 1U + OPENAMP_PING_MAGIC;
+      break;
+
+    case OPENAMP_OP_COUNT_DAT:
+      memset(&dat_summary, 0, sizeof(dat_summary));
+      response.status = (int32_t)EmmcFs_CountDatFiles(&dat_summary);
+      response.value = dat_summary.dat_file_count;
+      break;
+
+    case OPENAMP_OP_COUNT_ALL:
+      response.status = (int32_t)EmmcFs_CountAllFiles(&all_file_count);
+      response.value = all_file_count;
+      break;
+
+    default:
+      response.status = -1;
+      response.value = 0U;
+      break;
+  }
+
   (void)OPENAMP_send(ept, &response, sizeof(response));
   return 0;
 }

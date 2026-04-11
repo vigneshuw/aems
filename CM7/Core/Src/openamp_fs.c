@@ -8,13 +8,19 @@
 #define OPENAMP_PING_CHAN_NAME "openamp_pingpong_demo"
 #define OPENAMP_PING_TIMEOUT_MS 3000U
 
+#define OPENAMP_OP_PING        99U
+#define OPENAMP_OP_COUNT_DAT   2U
+#define OPENAMP_OP_COUNT_ALL   3U
+
 typedef struct
 {
+  uint32_t op;
   uint32_t value;
 } OpenAmpPingRequest_t;
 
 typedef struct
 {
+  uint32_t op;
   int32_t status;
   uint32_t value;
   int32_t init_status;
@@ -38,6 +44,7 @@ static void OpenAmpPing_ServiceDestroyCb(struct rpmsg_endpoint *ept);
 static void OpenAmpPing_NewServiceCb(struct rpmsg_device *rdev,
                                      const char *name,
                                      uint32_t dest);
+static int32_t OpenAmpFs_SendRequest(uint32_t op, uint32_t request_value, uint32_t *reply_value);
 
 int32_t OpenAmpFs_MasterInit(void)
 {
@@ -67,6 +74,21 @@ int32_t OpenAmpFs_MasterInit(void)
 
 int32_t OpenAmpFs_Ping(uint32_t request_value, uint32_t *reply_value)
 {
+  return OpenAmpFs_SendRequest(OPENAMP_OP_PING, request_value, reply_value);
+}
+
+int32_t OpenAmpFs_CountDatFiles(uint32_t *dat_count)
+{
+  return OpenAmpFs_SendRequest(OPENAMP_OP_COUNT_DAT, 0U, dat_count);
+}
+
+int32_t OpenAmpFs_CountAllFiles(uint32_t *file_count)
+{
+  return OpenAmpFs_SendRequest(OPENAMP_OP_COUNT_ALL, 0U, file_count);
+}
+
+static int32_t OpenAmpFs_SendRequest(uint32_t op, uint32_t request_value, uint32_t *reply_value)
+{
   OpenAmpPingRequest_t request;
   uint32_t start_tick;
   int32_t status;
@@ -90,6 +112,7 @@ int32_t OpenAmpFs_Ping(uint32_t request_value, uint32_t *reply_value)
     return -3;
   }
 
+  request.op = op;
   request.value = request_value;
   g_response_ready = 0U;
 
@@ -108,6 +131,11 @@ int32_t OpenAmpFs_Ping(uint32_t request_value, uint32_t *reply_value)
       return -4;
     }
     osDelay(1);
+  }
+
+  if (g_last_response.op != op)
+  {
+    return -5;
   }
 
   *reply_value = g_last_response.value;
