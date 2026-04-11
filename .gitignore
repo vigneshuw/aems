@@ -1,6 +1,10 @@
-Debug/
-Release/
+# STM32CubeIDE build folders
+CM4/Debug/
+CM4/Release/
+CM7/Debug/
+CM7/Release/
 
+# Common build artifacts
 *.o
 *.d
 *.su
