@@ -124,6 +124,27 @@ def parse_total_file_count(packet):
     )
 
 
+def parse_file_size(packet):
+    command = packet[0]
+    server_id = struct.unpack(">I", packet[1:5])[0]
+    epoch_time = struct.unpack(">Q", packet[5:13])[0]
+    system_status = packet[13]
+    tcp_connected = packet[14]
+    file_size = struct.unpack(">I", packet[15:19])[0]
+    fs_status = struct.unpack(">i", packet[19:23])[0]
+
+    print(
+        "RX file-size: "
+        f"cmd={command}, "
+        f"id={server_id}, "
+        f"time={epoch_time}, "
+        f"status={system_status}, "
+        f"tcp={tcp_connected}, "
+        f"file_size={file_size}, "
+        f"fs_status={fs_status}"
+    )
+
+
 def parse_cm4_heartbeat(packet):
     command = packet[0]
     server_id = struct.unpack(">I", packet[1:5])[0]
@@ -361,6 +382,8 @@ def parse_packet(packet):
         parse_total_file_count(packet)
     elif command == 4:
         parse_config_read(packet)
+    elif command == 5:
+        parse_file_size(packet)
     elif command == 6:
         parse_cm4_heartbeat(packet)
     elif command == 99:
@@ -400,7 +423,7 @@ def recv_loop(conn):
 
                 command = rx_buffer[0]
 
-                if command in {5, 9}:
+                if command == 9:
                     if len(rx_buffer) < FILE_STREAM_HEADER_LEN:
                         break
 
@@ -483,8 +506,7 @@ def main():
                     )
                     print(f"TX config payload: {CONFIG_TEST_PAYLOAD.hex()}")
                 elif command == 5:
-                    print(f"TX file read request for: {READ_FILENAME.decode()}")
-                    file_read_in_progress = True
+                    print(f"TX file size request for: {READ_FILENAME.decode()}")
                 elif command == 9:
                     print("TX test stream request")
                     file_read_in_progress = True

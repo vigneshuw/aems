@@ -13,11 +13,14 @@
 #define OPENAMP_OP_PING        99U
 #define OPENAMP_OP_COUNT_DAT   2U
 #define OPENAMP_OP_COUNT_ALL   3U
+#define OPENAMP_OP_FILE_SIZE   5U
+#define OPENAMP_FILENAME_LEN   64U
 
 typedef struct
 {
   uint32_t op;
   uint32_t value;
+  char filename[OPENAMP_FILENAME_LEN];
 } OpenAmpPingRequest_t;
 
 typedef struct
@@ -82,17 +85,20 @@ static int OpenAmpPing_RxCallback(struct rpmsg_endpoint *ept,
                                   uint32_t src,
                                   void *priv)
 {
-  const OpenAmpPingRequest_t *request = (const OpenAmpPingRequest_t *)data;
+  OpenAmpPingRequest_t request_copy;
   OpenAmpPingResponse_t response;
   EmmcFsDatSummary_t dat_summary;
+  EmmcFsReadHandle_t read_handle;
   uint32_t all_file_count = 0U;
+  uint32_t file_size = 0U;
+  EmmcFsStatus_t fs_status;
 
   (void)src;
   (void)priv;
 
   memset(&response, 0, sizeof(response));
 
-  if ((ept == NULL) || (request == NULL) || (len < sizeof(OpenAmpPingRequest_t)))
+  if ((ept == NULL) || (data == NULL) || (len < sizeof(OpenAmpPingRequest_t)))
   {
     response.status = -1;
     response.value = 0U;
@@ -100,16 +106,19 @@ static int OpenAmpPing_RxCallback(struct rpmsg_endpoint *ept,
     return 0;
   }
 
+  memcpy(&request_copy, data, sizeof(request_copy));
+  request_copy.filename[OPENAMP_FILENAME_LEN - 1U] = '\0';
+
   g_openamp_ping_rx_count++;
-  response.op = request->op;
+  response.op = request_copy.op;
   response.init_status = CM4_GetEmmcInitStatus();
   response.mount_status = CM4_GetEmmcMountStatus();
 
-  switch (request->op)
+  switch (request_copy.op)
   {
     case OPENAMP_OP_PING:
       response.status = 0;
-      response.value = request->value + 1U + OPENAMP_PING_MAGIC;
+      response.value = request_copy.value + 1U + OPENAMP_PING_MAGIC;
       break;
 
     case OPENAMP_OP_COUNT_DAT:
@@ -121,6 +130,21 @@ static int OpenAmpPing_RxCallback(struct rpmsg_endpoint *ept,
     case OPENAMP_OP_COUNT_ALL:
       response.status = (int32_t)EmmcFs_CountAllFiles(&all_file_count);
       response.value = all_file_count;
+      break;
+
+    case OPENAMP_OP_FILE_SIZE:
+      memset(&read_handle, 0, sizeof(read_handle));
+      fs_status = EmmcFs_OpenFileRead(request_copy.filename, &read_handle, &file_size);
+      response.status = (int32_t)fs_status;
+      response.value = file_size;
+      if (fs_status == EMMC_FS_OK)
+      {
+        fs_status = EmmcFs_CloseFileRead(&read_handle);
+        if (fs_status != EMMC_FS_OK)
+        {
+          response.status = (int32_t)fs_status;
+        }
+      }
       break;
 
     default:

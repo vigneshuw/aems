@@ -11,11 +11,14 @@
 #define OPENAMP_OP_PING        99U
 #define OPENAMP_OP_COUNT_DAT   2U
 #define OPENAMP_OP_COUNT_ALL   3U
+#define OPENAMP_OP_FILE_SIZE   5U
+#define OPENAMP_FILENAME_LEN   64U
 
 typedef struct
 {
   uint32_t op;
   uint32_t value;
+  char filename[OPENAMP_FILENAME_LEN];
 } OpenAmpPingRequest_t;
 
 typedef struct
@@ -44,7 +47,10 @@ static void OpenAmpPing_ServiceDestroyCb(struct rpmsg_endpoint *ept);
 static void OpenAmpPing_NewServiceCb(struct rpmsg_device *rdev,
                                      const char *name,
                                      uint32_t dest);
-static int32_t OpenAmpFs_SendRequest(uint32_t op, uint32_t request_value, uint32_t *reply_value);
+static int32_t OpenAmpFs_SendRequest(uint32_t op,
+                                     uint32_t request_value,
+                                     const char *filename,
+                                     uint32_t *reply_value);
 
 int32_t OpenAmpFs_MasterInit(void)
 {
@@ -74,20 +80,33 @@ int32_t OpenAmpFs_MasterInit(void)
 
 int32_t OpenAmpFs_Ping(uint32_t request_value, uint32_t *reply_value)
 {
-  return OpenAmpFs_SendRequest(OPENAMP_OP_PING, request_value, reply_value);
+  return OpenAmpFs_SendRequest(OPENAMP_OP_PING, request_value, NULL, reply_value);
 }
 
 int32_t OpenAmpFs_CountDatFiles(uint32_t *dat_count)
 {
-  return OpenAmpFs_SendRequest(OPENAMP_OP_COUNT_DAT, 0U, dat_count);
+  return OpenAmpFs_SendRequest(OPENAMP_OP_COUNT_DAT, 0U, NULL, dat_count);
 }
 
 int32_t OpenAmpFs_CountAllFiles(uint32_t *file_count)
 {
-  return OpenAmpFs_SendRequest(OPENAMP_OP_COUNT_ALL, 0U, file_count);
+  return OpenAmpFs_SendRequest(OPENAMP_OP_COUNT_ALL, 0U, NULL, file_count);
 }
 
-static int32_t OpenAmpFs_SendRequest(uint32_t op, uint32_t request_value, uint32_t *reply_value)
+int32_t OpenAmpFs_GetFileSize(const char *filename, uint32_t *file_size)
+{
+  if ((filename == NULL) || (filename[0] == '\0'))
+  {
+    return -1;
+  }
+
+  return OpenAmpFs_SendRequest(OPENAMP_OP_FILE_SIZE, 0U, filename, file_size);
+}
+
+static int32_t OpenAmpFs_SendRequest(uint32_t op,
+                                     uint32_t request_value,
+                                     const char *filename,
+                                     uint32_t *reply_value)
 {
   OpenAmpPingRequest_t request;
   uint32_t start_tick;
@@ -114,6 +133,11 @@ static int32_t OpenAmpFs_SendRequest(uint32_t op, uint32_t request_value, uint32
 
   request.op = op;
   request.value = request_value;
+  if (filename != NULL)
+  {
+    (void)strncpy(request.filename, filename, sizeof(request.filename) - 1U);
+    request.filename[sizeof(request.filename) - 1U] = '\0';
+  }
   g_response_ready = 0U;
 
   status = OPENAMP_send(&g_openamp_ping_ept, &request, sizeof(request));

@@ -234,7 +234,6 @@ void ControllerTask(void const * argument)
 
         case 1U:
         case 4U:
-        case 5U:
         case 6U:
         {
           uint8_t tx[TCP_FIXED_RESPONSE_LEN];
@@ -246,6 +245,40 @@ void ControllerTask(void const * argument)
           tx[13] = 1U;
           tx[14] = TcpClient_IsConnected();
           WriteU32Be(&tx[19], 0xFFFFFFFFU);
+          (void)TcpClient_SendBuffer(tx, sizeof(tx));
+          break;
+        }
+
+        case 5U:
+        {
+          uint8_t tx[TCP_FIXED_RESPONSE_LEN];
+          char filename[65];
+          uint16_t filename_len;
+          uint32_t file_size = 0U;
+          int32_t fs_status;
+
+          memset(filename, 0, sizeof(filename));
+          filename_len = msg.payload_len;
+          if (filename_len >= sizeof(filename))
+          {
+            filename_len = (uint16_t)(sizeof(filename) - 1U);
+          }
+
+          if (filename_len > 0U)
+          {
+            memcpy(filename, msg.payload, filename_len);
+          }
+
+          fs_status = OpenAmpFs_GetFileSize(filename, &file_size);
+
+          memset(tx, 0, sizeof(tx));
+          tx[0] = msg.command;
+          WriteU32Be(&tx[1], msg.server_id);
+          WriteU64Be(&tx[5], msg.epoch_time);
+          tx[13] = (fs_status == 0) ? 0U : 1U;
+          tx[14] = TcpClient_IsConnected();
+          WriteU32Be(&tx[15], file_size);
+          WriteU32Be(&tx[19], (uint32_t)fs_status);
           (void)TcpClient_SendBuffer(tx, sizeof(tx));
           break;
         }
