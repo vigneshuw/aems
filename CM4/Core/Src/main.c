@@ -20,6 +20,7 @@
 #include "main.h"
 #include "fatfs.h"
 #include "openamp.h"
+#include "sdmmc.h"
 #include "spi.h"
 #include "gpio.h"
 
@@ -77,18 +78,6 @@ int main(void)
 {
 
   /* USER CODE BEGIN 1 */
-
-//  g_cm4_emmc_create_status = (int32_t)EmmcFs_CreatePatternFile(TEST_FILE_NAME, TEST_FILE_SIZE_BYTES, NULL, NULL);
-//  if (g_cm4_emmc_create_status != EMMC_FS_OK)
-//  {
-//	  Error_Handler();
-//  }
-
-//  g_cm4_emmc_readthrough_status = CM4_ReadThroughTestFile();
-//  if (g_cm4_emmc_readthrough_status != EMMC_FS_OK)
-//  {
-//	  Error_Handler();
-//  }
   /* USER CODE END 1 */
 
 /* USER CODE BEGIN Boot_Mode_Sequence_1 */
@@ -122,7 +111,7 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_SPI4_Init();
-  MX_FATFS_Init();
+  MX_SDMMC1_MMC_Init();
   /* USER CODE BEGIN 2 */
 
   g_cm4_emmc_init_status = (int32_t)EmmcFs_Init();
