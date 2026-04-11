@@ -1,6 +1,0 @@
-../../Middlewares/Third_Party/OpenAMP/open-amp/lib/include/openamp/rpmsg.h:147:19:rpmsg_send	32	static
-../Core/Src/openamp_fs.c:34:9:OpenAmpFs_RemoteInit	24	static
-../Core/Src/openamp_fs.c:56:6:OpenAmpFs_RemotePoll	8	static
-../Core/Src/openamp_fs.c:61:9:OpenAmpFs_GetRemoteInitStatus	4	static
-../Core/Src/openamp_fs.c:66:10:OpenAmpFs_GetRemoteRxCount	4	static
-../Core/Src/openamp_fs.c:71:12:OpenAmpPing_RxCallback	48	static

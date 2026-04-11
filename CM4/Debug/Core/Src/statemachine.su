@@ -1,3 +1,0 @@
-../Core/Src/statemachine.c:4:13:DAQ_SetError	16	static
-../Core/Src/statemachine.c:11:6:DAQ_ContextInit	4	static
-../Core/Src/statemachine.c:23:6:DAQ_StateMachine_Run	8	static

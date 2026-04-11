@@ -1,5 +1,0 @@
-../../Middlewares/Third_Party/OpenAMP/libmetal/lib/include/metal/list.h:45:20:metal_list_add_before	16	static
-../../Middlewares/Third_Party/OpenAMP/libmetal/lib/include/metal/list.h:69:20:metal_list_add_tail	16	static
-../../Middlewares/Third_Party/OpenAMP/libmetal/lib/include/metal/io.h:115:22:metal_io_region_size	16	static
-C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/OpenAMP/libmetal/lib/shmem.c:18:5:metal_shmem_register_generic	16	static
-C:/Users/vigne/STM32CubeIDE/workspace/AEMSv02-Firmware/Middlewares/Third_Party/OpenAMP/libmetal/lib/shmem.c:31:5:metal_shmem_open_generic	32	static
