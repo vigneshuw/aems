@@ -121,6 +121,9 @@ int main(void)
   }
 
   g_cm4_emmc_mount_status = (int32_t)EmmcFs_MountOrFormat();
+
+  g_cm4_emmc_create_status = (int32_t) EmmcFs_CreatePatternFile(TEST_FILE_NAME, TEST_FILE_SIZE_BYTES, NULL, NULL);
+
   if (OpenAmpFs_RemoteInit() != 0)
   {
     Error_Handler();
