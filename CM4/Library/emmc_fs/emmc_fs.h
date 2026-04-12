@@ -157,6 +157,9 @@ EmmcFsStatus_t EmmcFs_ReadFileNext(EmmcFsReadHandle_t *handle,
                                    uint16_t buffer_size,
                                    uint16_t *bytes_read);
 
+EmmcFsStatus_t EmmcFs_SeekFileRead(EmmcFsReadHandle_t *handle,
+                                   uint32_t offset);
+
 EmmcFsStatus_t EmmcFs_CloseFileRead(EmmcFsReadHandle_t *handle);
 
 /**

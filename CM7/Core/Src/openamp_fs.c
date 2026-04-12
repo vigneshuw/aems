@@ -13,6 +13,9 @@
 #define OPENAMP_OP_COUNT_ALL   3U
 #define OPENAMP_OP_FILE_SIZE   5U
 #define OPENAMP_OP_READ_CHUNK  7U
+#define OPENAMP_OP_STREAM_OPEN 80U
+#define OPENAMP_OP_STREAM_READ 81U
+#define OPENAMP_OP_STREAM_CLOSE 82U
 #define OPENAMP_FILENAME_LEN   64U
 #define OPENAMP_CHUNK_LEN      1024U
 
@@ -167,6 +170,69 @@ int32_t OpenAmpFs_ReadFileChunk(const char *filename,
   return status;
 }
 
+int32_t OpenAmpFs_OpenFileStream(const char *filename, uint32_t offset, uint32_t *file_size)
+{
+  if ((filename == NULL) || (filename[0] == '\0') || (file_size == NULL))
+  {
+    return -1;
+  }
+
+  return OpenAmpFs_SendRequest(OPENAMP_OP_STREAM_OPEN, offset, 0U, filename, file_size);
+}
+
+int32_t OpenAmpFs_ReadFileStream(uint8_t *buffer,
+                                 uint16_t buffer_size,
+                                 uint16_t *bytes_read,
+                                 uint32_t *offset,
+                                 uint32_t *total_size)
+{
+  uint32_t reply_value = 0U;
+  int32_t status;
+  uint32_t copy_len;
+
+  if ((buffer == NULL) || (bytes_read == NULL) || (offset == NULL) || (total_size == NULL))
+  {
+    return -1;
+  }
+
+  *bytes_read = 0U;
+  *offset = 0U;
+  *total_size = 0U;
+
+  status = OpenAmpFs_SendRequest(OPENAMP_OP_STREAM_READ,
+                                 0U,
+                                 buffer_size,
+                                 NULL,
+                                 &reply_value);
+  *total_size = reply_value;
+  *offset = g_last_response.offset;
+  if (status != 0)
+  {
+    return status;
+  }
+
+  copy_len = g_last_response.length;
+  if (copy_len > buffer_size)
+  {
+    copy_len = buffer_size;
+  }
+  if (copy_len > OPENAMP_CHUNK_LEN)
+  {
+    copy_len = OPENAMP_CHUNK_LEN;
+  }
+
+  memcpy(buffer, g_last_response.data, copy_len);
+  *bytes_read = (uint16_t)copy_len;
+  return status;
+}
+
+int32_t OpenAmpFs_CloseFileStream(void)
+{
+  uint32_t reply_value = 0U;
+
+  return OpenAmpFs_SendRequest(OPENAMP_OP_STREAM_CLOSE, 0U, 0U, NULL, &reply_value);
+}
+
 static int32_t OpenAmpFs_SendRequest(uint32_t op,
                                      uint32_t request_value,
                                      uint32_t request_length,
@@ -196,6 +262,7 @@ static int32_t OpenAmpFs_SendRequest(uint32_t op,
     return -3;
   }
 
+  memset(&request, 0, sizeof(request));
   request.op = op;
   request.value = request_value;
   request.length = request_length;

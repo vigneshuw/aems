@@ -18,6 +18,13 @@ int32_t OpenAmpFs_ReadFileChunk(const char *filename,
                                 uint16_t buffer_size,
                                 uint16_t *bytes_read,
                                 uint32_t *total_size);
+int32_t OpenAmpFs_OpenFileStream(const char *filename, uint32_t offset, uint32_t *file_size);
+int32_t OpenAmpFs_ReadFileStream(uint8_t *buffer,
+                                 uint16_t buffer_size,
+                                 uint16_t *bytes_read,
+                                 uint32_t *offset,
+                                 uint32_t *total_size);
+int32_t OpenAmpFs_CloseFileStream(void);
 uint32_t OpenAmpFs_GetServiceCreated(void);
 uint32_t OpenAmpFs_GetRxCount(void);
 int32_t OpenAmpFs_GetInitStatus(void);

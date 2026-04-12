@@ -551,6 +551,28 @@ EmmcFsStatus_t EmmcFs_ReadFileNext(EmmcFsReadHandle_t *handle,
     return EMMC_FS_OK;
 }
 
+EmmcFsStatus_t EmmcFs_SeekFileRead(EmmcFsReadHandle_t *handle,
+                                   uint32_t offset)
+{
+    FRESULT result;
+
+    if ((handle == NULL) || (handle->is_open == 0U) || (offset > handle->total_size))
+    {
+        return EMMC_FS_ERR_PARAM;
+    }
+
+    EmmcFs_Lock();
+    result = f_lseek(&handle->file, offset);
+    EmmcFs_Unlock();
+
+    if (result != FR_OK)
+    {
+        return EMMC_FS_ERR_READ_FILE;
+    }
+
+    return EMMC_FS_OK;
+}
+
 EmmcFsStatus_t EmmcFs_CloseFileRead(EmmcFsReadHandle_t *handle)
 {
     FRESULT result;

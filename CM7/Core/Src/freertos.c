@@ -277,7 +277,9 @@ void ControllerTask(void const * argument)
                                     sizeof(g_openamp_file_stream_ctx.filename));
           }
 
-          fs_status = OpenAmpFs_GetFileSize(g_openamp_file_stream_ctx.filename, &file_size);
+          fs_status = OpenAmpFs_OpenFileStream(g_openamp_file_stream_ctx.filename,
+                                               start_offset,
+                                               &file_size);
           if ((fs_status == 0) && (start_offset < file_size))
           {
             stream_size = file_size - start_offset;
@@ -287,6 +289,7 @@ void ControllerTask(void const * argument)
           else
           {
             fs_status = (fs_status == 0) ? -1 : fs_status;
+            (void)OpenAmpFs_CloseFileStream();
           }
 
           memset(header, 0, sizeof(header));
@@ -307,6 +310,7 @@ void ControllerTask(void const * argument)
             if (stream_status != 0)
             {
               g_openamp_file_stream_ctx.last_status = stream_status;
+              (void)OpenAmpFs_CloseFileStream();
             }
           }
           else
@@ -679,6 +683,7 @@ static int32_t OpenAmpFileStreamRead(void *context, uint8_t *buffer, uint16_t ma
   uint16_t request_len;
   uint16_t bytes_read = 0U;
   uint32_t total_size = 0U;
+  uint32_t read_offset = 0U;
   uint32_t remaining;
   int32_t status;
 
@@ -700,19 +705,18 @@ static int32_t OpenAmpFileStreamRead(void *context, uint8_t *buffer, uint16_t ma
     request_len = OPENAMP_FILE_CHUNK_LEN;
   }
 
-  status = OpenAmpFs_ReadFileChunk(stream_ctx->filename,
-                                   stream_ctx->offset,
-                                   buffer,
-                                   request_len,
-                                   &bytes_read,
-                                   &total_size);
+  status = OpenAmpFs_ReadFileStream(buffer,
+                                    request_len,
+                                    &bytes_read,
+                                    &read_offset,
+                                    &total_size);
   stream_ctx->last_status = status;
   if ((status != 0) || (bytes_read == 0U))
   {
     return -1;
   }
 
-  stream_ctx->offset += bytes_read;
+  stream_ctx->offset = read_offset + bytes_read;
   *out_len = bytes_read;
   return 0;
 }
@@ -725,6 +729,8 @@ static void OpenAmpFileStreamDone(void *context)
   {
     stream_ctx->offset = stream_ctx->total_size;
   }
+
+  (void)OpenAmpFs_CloseFileStream();
 }
 /* USER CODE END Helpers */
 

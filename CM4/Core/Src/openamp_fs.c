@@ -15,6 +15,9 @@
 #define OPENAMP_OP_COUNT_ALL   3U
 #define OPENAMP_OP_FILE_SIZE   5U
 #define OPENAMP_OP_READ_CHUNK  7U
+#define OPENAMP_OP_STREAM_OPEN 80U
+#define OPENAMP_OP_STREAM_READ 81U
+#define OPENAMP_OP_STREAM_CLOSE 82U
 #define OPENAMP_FILENAME_LEN   64U
 #define OPENAMP_CHUNK_LEN      1024U
 
@@ -52,6 +55,9 @@ typedef struct
 static struct rpmsg_endpoint g_openamp_ping_ept;
 static volatile uint32_t g_openamp_ping_rx_count;
 static volatile int32_t g_openamp_ping_init_status;
+static EmmcFsReadHandle_t g_stream_handle;
+static uint32_t g_stream_offset;
+static uint32_t g_stream_total_size;
 
 static int OpenAmpPing_RxCallback(struct rpmsg_endpoint *ept,
                                   void *data,
@@ -193,6 +199,89 @@ static int OpenAmpPing_RxCallback(struct rpmsg_endpoint *ept,
       chunk_response.length = bytes_read;
       (void)OPENAMP_send(ept, &chunk_response, sizeof(chunk_response));
       return 0;
+
+    case OPENAMP_OP_STREAM_OPEN:
+      if (g_stream_handle.is_open != 0U)
+      {
+        (void)EmmcFs_CloseFileRead(&g_stream_handle);
+      }
+
+      memset(&g_stream_handle, 0, sizeof(g_stream_handle));
+      g_stream_offset = 0U;
+      g_stream_total_size = 0U;
+
+      fs_status = EmmcFs_OpenFileRead(request_copy.filename,
+                                      &g_stream_handle,
+                                      &g_stream_total_size);
+      if ((fs_status == EMMC_FS_OK) && (request_copy.value > g_stream_total_size))
+      {
+        fs_status = EMMC_FS_ERR_PARAM;
+      }
+      if ((fs_status == EMMC_FS_OK) && (request_copy.value > 0U))
+      {
+        fs_status = EmmcFs_SeekFileRead(&g_stream_handle, request_copy.value);
+      }
+      if (fs_status != EMMC_FS_OK)
+      {
+        (void)EmmcFs_CloseFileRead(&g_stream_handle);
+        g_stream_offset = 0U;
+        g_stream_total_size = 0U;
+      }
+      else
+      {
+        g_stream_offset = request_copy.value;
+      }
+
+      response.status = (int32_t)fs_status;
+      response.value = g_stream_total_size;
+      response.offset = g_stream_offset;
+      break;
+
+    case OPENAMP_OP_STREAM_READ:
+      requested_len = (request_copy.length > OPENAMP_CHUNK_LEN) ?
+                      OPENAMP_CHUNK_LEN :
+                      (uint16_t)request_copy.length;
+      if (requested_len == 0U)
+      {
+        requested_len = OPENAMP_CHUNK_LEN;
+      }
+
+      memset(&chunk_response, 0, sizeof(chunk_response));
+      chunk_response.op = request_copy.op;
+      chunk_response.init_status = CM4_GetEmmcInitStatus();
+      chunk_response.mount_status = CM4_GetEmmcMountStatus();
+      chunk_response.value = g_stream_total_size;
+      chunk_response.offset = g_stream_offset;
+
+      if (g_stream_handle.is_open == 0U)
+      {
+        chunk_response.status = (int32_t)EMMC_FS_ERR_PARAM;
+      }
+      else
+      {
+        fs_status = EmmcFs_ReadFileNext(&g_stream_handle,
+                                        chunk_response.data,
+                                        requested_len,
+                                        &bytes_read);
+        chunk_response.status = (int32_t)fs_status;
+        chunk_response.length = bytes_read;
+        if (fs_status == EMMC_FS_OK)
+        {
+          g_stream_offset += bytes_read;
+        }
+      }
+
+      (void)OPENAMP_send(ept, &chunk_response, sizeof(chunk_response));
+      return 0;
+
+    case OPENAMP_OP_STREAM_CLOSE:
+      fs_status = EmmcFs_CloseFileRead(&g_stream_handle);
+      response.status = (int32_t)fs_status;
+      response.value = g_stream_total_size;
+      response.offset = g_stream_offset;
+      g_stream_offset = 0U;
+      g_stream_total_size = 0U;
+      break;
 
     default:
       response.status = -1;
