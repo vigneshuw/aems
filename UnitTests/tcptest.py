@@ -388,7 +388,15 @@ def parse_file_stream_data(data):
         print(f"Named file read complete: received {active_file_stream['bytes_received']} bytes.")
         if active_file_stream["command"] == 8:
             print("Stream pattern verification passed.")
-        transfer_metrics.pop(active_file_stream["server_id"], None)
+
+        start_time = transfer_metrics.pop(active_file_stream["server_id"], None)
+        if start_time is not None:
+            elapsed = max(time.time() - start_time, 1e-6)
+            throughput_mib_s = (active_file_stream["bytes_received"] / elapsed) / (1024 * 1024)
+            print(
+                f"Average throughput: {throughput_mib_s:.2f} MiB/s "
+                f"over {elapsed:.3f} s"
+            )
 
         active_file_stream = None
         file_read_in_progress = False
