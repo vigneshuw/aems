@@ -19,6 +19,7 @@ transfer_metrics = {}
 file_read_in_progress = False
 active_file_stream = None
 read_chunk_offset = 0
+stream_read_offset = 0
 chunk_response_condition = threading.Condition()
 chunk_responses = {}
 
@@ -37,6 +38,8 @@ def build_packet(command, server_id, epoch_time):
         useful_payload = READ_FILENAME
     elif command == 7:
         useful_payload = struct.pack(">I", read_chunk_offset) + READ_FILENAME
+    elif command == 8:
+        useful_payload = struct.pack(">I", stream_read_offset) + READ_FILENAME
     elif command == 9:
         useful_payload = b""
     elif command == 99:
@@ -319,6 +322,7 @@ def parse_config_read(packet):
 def parse_file_stream_header(packet):
     global active_file_stream
     global file_read_in_progress
+    global stream_read_offset
 
     command = packet[0]
     system_status = packet[1]
@@ -342,6 +346,7 @@ def parse_file_stream_header(packet):
         "epoch_time": epoch_time,
         "total_size": total_size,
         "bytes_received": 0,
+        "file_offset": stream_read_offset if command == 8 else 0,
         "next_progress_mark": 16 * 1024,
         "first_data_reported": False,
     }
@@ -353,6 +358,19 @@ def parse_file_stream_data(data):
 
     if active_file_stream is None:
         return
+
+    if active_file_stream["command"] == 8:
+        absolute_offset = active_file_stream["file_offset"] + active_file_stream["bytes_received"]
+        valid, bad_index, expected, actual = verify_pattern_chunk(absolute_offset, data)
+        if not valid:
+            print(
+                "Stream pattern verification FAILED: "
+                f"offset={absolute_offset}, index={bad_index}, "
+                f"expected=0x{expected:02X}, actual=0x{actual:02X}"
+            )
+            active_file_stream = None
+            file_read_in_progress = False
+            return
 
     active_file_stream["bytes_received"] += len(data)
 
@@ -368,6 +386,8 @@ def parse_file_stream_data(data):
 
     if active_file_stream["bytes_received"] >= active_file_stream["total_size"]:
         print(f"Named file read complete: received {active_file_stream['bytes_received']} bytes.")
+        if active_file_stream["command"] == 8:
+            print("Stream pattern verification passed.")
         transfer_metrics.pop(active_file_stream["server_id"], None)
 
         active_file_stream = None
@@ -467,7 +487,7 @@ def recv_loop(conn):
 
                 command = rx_buffer[0]
 
-                if command == 9:
+                if command in {8, 9}:
                     if len(rx_buffer) < FILE_STREAM_HEADER_LEN:
                         break
 
@@ -613,6 +633,7 @@ def main():
     global expected_config_file
     global file_read_in_progress
     global read_chunk_offset
+    global stream_read_offset
 
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server:
         server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -631,7 +652,7 @@ def main():
 
             while True:
                 try:
-                    user_input = input("Enter command (0=heartbeat, 1=write config, 2=dat count, 3=all file count, 4=read config, 5=file size, 6=cm4 heartbeat, 7=read one chunk, 9=test stream, 99=openamp heartbeat, q=quit): ").strip()
+                    user_input = input("Enter command (0=heartbeat, 1=write config, 2=dat count, 3=all file count, 4=read config, 5=file size, 6=cm4 heartbeat, 7=read one chunk, 8=stream file, 9=test stream, 99=openamp heartbeat, q=quit): ").strip()
                 except (EOFError, KeyboardInterrupt):
                     print("\nExiting.")
                     break
@@ -639,8 +660,8 @@ def main():
                 if user_input.lower() == "q":
                     break
 
-                if user_input not in {"0", "1", "2", "3", "4", "5", "6", "7", "9", "99"}:
-                    print("Only commands 0, 1, 2, 3, 4, 5, 6, 7, 9, and 99 are implemented in this test.")
+                if user_input not in {"0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "99"}:
+                    print("Only commands 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, and 99 are implemented in this test.")
                     continue
 
                 command = int(user_input)
@@ -656,11 +677,22 @@ def main():
                         except ValueError:
                             print("Invalid offset. Use decimal or 0x-prefixed hex.")
                             continue
+                elif command == 8:
+                    offset_text = input(f"Stream offset bytes [{stream_read_offset}]: ").strip()
+                    if offset_text:
+                        try:
+                            stream_read_offset = int(offset_text, 0)
+                        except ValueError:
+                            print("Invalid offset. Use decimal or 0x-prefixed hex.")
+                            continue
 
                 if (command == 5) and file_read_in_progress:
                     print("File read already in progress. Wait for completion.")
                     continue
                 if (command == 9) and file_read_in_progress:
+                    print("File stream already in progress. Wait for completion.")
+                    continue
+                if (command == 8) and file_read_in_progress:
                     print("File stream already in progress. Wait for completion.")
                     continue
 
@@ -677,6 +709,9 @@ def main():
                     print(f"TX file size request for: {READ_FILENAME.decode()}")
                 elif command == 7:
                     print(f"TX one-chunk read request for: {READ_FILENAME.decode()} offset={read_chunk_offset}")
+                elif command == 8:
+                    print(f"TX file stream request for: {READ_FILENAME.decode()} offset={stream_read_offset}")
+                    file_read_in_progress = True
                 elif command == 9:
                     print("TX test stream request")
                     file_read_in_progress = True

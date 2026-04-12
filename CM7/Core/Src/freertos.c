@@ -47,6 +47,14 @@ typedef struct
 {
   uint32_t bytes_remaining;
 } TestStreamContext_t;
+
+typedef struct
+{
+  char filename[65];
+  uint32_t total_size;
+  uint32_t offset;
+  int32_t last_status;
+} OpenAmpFileStreamContext_t;
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
@@ -54,6 +62,7 @@ typedef struct
 #define TCP_FIXED_RESPONSE_LEN      100U
 #define TCP_FILE_STREAM_HEADER_LEN  18U
 #define TCP_FILE_STREAM_CHUNK_LEN   1400U
+#define OPENAMP_FILE_CHUNK_LEN      1024U
 #define TCP_TEST_STREAM_TOTAL_SIZE  (1UL * 1024UL * 1024UL)
 /* USER CODE END PD */
 
@@ -67,6 +76,7 @@ typedef struct
 static QueueHandle_t gControlQueue;
 static uint8_t g_test_stream_chunk[TCP_FILE_STREAM_CHUNK_LEN];
 static TestStreamContext_t g_test_stream_ctx;
+static OpenAmpFileStreamContext_t g_openamp_file_stream_ctx;
 static TcpClientConfig_t tcpCfg;
 static ip_addr_t tcpServerIp;
 static ControlMessage_t msg;
@@ -87,6 +97,13 @@ static void ProcessTcpData(const char *data, uint16_t length);
 static void InitTestStreamChunk(void);
 static int32_t TestStreamRead(void *context, uint8_t *buffer, uint16_t max_len, uint16_t *out_len);
 static void TestStreamDone(void *context);
+static int32_t OpenAmpFileStreamRead(void *context, uint8_t *buffer, uint16_t max_len, uint16_t *out_len);
+static void OpenAmpFileStreamDone(void *context);
+static void CopyFilenameFromPayload(const uint8_t *payload,
+                                    uint16_t payload_len,
+                                    uint16_t payload_offset,
+                                    char *filename,
+                                    uint16_t filename_size);
 /* USER CODE END FunctionPrototypes */
 
 void StartDefaultTask(void const * argument);
@@ -228,6 +245,73 @@ void ControllerTask(void const * argument)
           if (stream_status != 0)
           {
             g_test_stream_ctx.bytes_remaining = 0U;
+          }
+          break;
+        }
+
+        case 8U:
+        {
+          uint8_t header[TCP_FILE_STREAM_HEADER_LEN];
+          uint32_t file_size = 0U;
+          uint32_t start_offset = 0U;
+          uint32_t stream_size = 0U;
+          int32_t fs_status;
+          int32_t stream_status;
+
+          memset(&g_openamp_file_stream_ctx, 0, sizeof(g_openamp_file_stream_ctx));
+          if (msg.payload_len >= 4U)
+          {
+            start_offset = ReadU32Be(msg.payload);
+            CopyFilenameFromPayload(msg.payload,
+                                    msg.payload_len,
+                                    4U,
+                                    g_openamp_file_stream_ctx.filename,
+                                    sizeof(g_openamp_file_stream_ctx.filename));
+          }
+          else
+          {
+            CopyFilenameFromPayload(msg.payload,
+                                    msg.payload_len,
+                                    0U,
+                                    g_openamp_file_stream_ctx.filename,
+                                    sizeof(g_openamp_file_stream_ctx.filename));
+          }
+
+          fs_status = OpenAmpFs_GetFileSize(g_openamp_file_stream_ctx.filename, &file_size);
+          if ((fs_status == 0) && (start_offset < file_size))
+          {
+            stream_size = file_size - start_offset;
+            g_openamp_file_stream_ctx.total_size = file_size;
+            g_openamp_file_stream_ctx.offset = start_offset;
+          }
+          else
+          {
+            fs_status = (fs_status == 0) ? -1 : fs_status;
+          }
+
+          memset(header, 0, sizeof(header));
+          header[0] = msg.command;
+          header[1] = (fs_status == 0) ? 0U : 1U;
+          WriteU32Be(&header[2], msg.server_id);
+          WriteU64Be(&header[6], msg.epoch_time);
+          WriteU32Be(&header[14], stream_size);
+
+          if (fs_status == 0)
+          {
+            stream_status = TcpClient_StartStream(header,
+                                                  sizeof(header),
+                                                  stream_size,
+                                                  OpenAmpFileStreamRead,
+                                                  OpenAmpFileStreamDone,
+                                                  &g_openamp_file_stream_ctx);
+            if (stream_status != 0)
+            {
+              g_openamp_file_stream_ctx.last_status = stream_status;
+            }
+          }
+          else
+          {
+            (void)TcpClient_SendBuffer(header, sizeof(header));
           }
           break;
         }
@@ -521,6 +605,37 @@ static void ProcessTcpData(const char *data, uint16_t length)
   (void)xQueueSend(gControlQueue, &msg, 0U);
 }
 
+static void CopyFilenameFromPayload(const uint8_t *payload,
+                                    uint16_t payload_len,
+                                    uint16_t payload_offset,
+                                    char *filename,
+                                    uint16_t filename_size)
+{
+  uint16_t filename_len;
+
+  if ((payload == NULL) || (filename == NULL) || (filename_size == 0U))
+  {
+    return;
+  }
+
+  memset(filename, 0, filename_size);
+  if (payload_offset >= payload_len)
+  {
+    return;
+  }
+
+  filename_len = (uint16_t)(payload_len - payload_offset);
+  if (filename_len >= filename_size)
+  {
+    filename_len = (uint16_t)(filename_size - 1U);
+  }
+
+  if (filename_len > 0U)
+  {
+    memcpy(filename, &payload[payload_offset], filename_len);
+  }
+}
+
 static void InitTestStreamChunk(void)
 {
   uint32_t index;
@@ -555,6 +670,60 @@ static void TestStreamDone(void *context)
   if (stream_ctx != NULL)
   {
     stream_ctx->bytes_remaining = 0U;
+  }
+}
+
+static int32_t OpenAmpFileStreamRead(void *context, uint8_t *buffer, uint16_t max_len, uint16_t *out_len)
+{
+  OpenAmpFileStreamContext_t *stream_ctx = (OpenAmpFileStreamContext_t *)context;
+  uint16_t request_len;
+  uint16_t bytes_read = 0U;
+  uint32_t total_size = 0U;
+  uint32_t remaining;
+  int32_t status;
+
+  if ((stream_ctx == NULL) || (buffer == NULL) || (out_len == NULL))
+  {
+    return -1;
+  }
+
+  *out_len = 0U;
+  if (stream_ctx->offset >= stream_ctx->total_size)
+  {
+    return -1;
+  }
+
+  remaining = stream_ctx->total_size - stream_ctx->offset;
+  request_len = (remaining > max_len) ? max_len : (uint16_t)remaining;
+  if (request_len > OPENAMP_FILE_CHUNK_LEN)
+  {
+    request_len = OPENAMP_FILE_CHUNK_LEN;
+  }
+
+  status = OpenAmpFs_ReadFileChunk(stream_ctx->filename,
+                                   stream_ctx->offset,
+                                   buffer,
+                                   request_len,
+                                   &bytes_read,
+                                   &total_size);
+  stream_ctx->last_status = status;
+  if ((status != 0) || (bytes_read == 0U))
+  {
+    return -1;
+  }
+
+  stream_ctx->offset += bytes_read;
+  *out_len = bytes_read;
+  return 0;
+}
+
+static void OpenAmpFileStreamDone(void *context)
+{
+  OpenAmpFileStreamContext_t *stream_ctx = (OpenAmpFileStreamContext_t *)context;
+
+  if (stream_ctx != NULL)
+  {
+    stream_ctx->offset = stream_ctx->total_size;
   }
 }
 /* USER CODE END Helpers */
