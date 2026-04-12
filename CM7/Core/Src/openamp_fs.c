@@ -72,6 +72,12 @@ static int32_t OpenAmpFs_SendRequest(uint32_t op,
                                      uint32_t request_length,
                                      const char *filename,
                                      uint32_t *reply_value);
+static int32_t OpenAmpFs_SendRequestEx(uint32_t op,
+                                       uint32_t request_value,
+                                       uint32_t request_length,
+                                       const char *filename,
+                                       uint32_t *reply_value,
+                                       uint8_t fast_wait);
 
 int32_t OpenAmpFs_MasterInit(void)
 {
@@ -199,11 +205,12 @@ int32_t OpenAmpFs_ReadFileStream(uint8_t *buffer,
   *offset = 0U;
   *total_size = 0U;
 
-  status = OpenAmpFs_SendRequest(OPENAMP_OP_STREAM_READ,
-                                 0U,
-                                 buffer_size,
-                                 NULL,
-                                 &reply_value);
+  status = OpenAmpFs_SendRequestEx(OPENAMP_OP_STREAM_READ,
+                                   0U,
+                                   buffer_size,
+                                   NULL,
+                                   &reply_value,
+                                   1U);
   *total_size = reply_value;
   *offset = g_last_response.offset;
   if (status != 0)
@@ -239,8 +246,19 @@ static int32_t OpenAmpFs_SendRequest(uint32_t op,
                                      const char *filename,
                                      uint32_t *reply_value)
 {
+  return OpenAmpFs_SendRequestEx(op, request_value, request_length, filename, reply_value, 0U);
+}
+
+static int32_t OpenAmpFs_SendRequestEx(uint32_t op,
+                                       uint32_t request_value,
+                                       uint32_t request_length,
+                                       const char *filename,
+                                       uint32_t *reply_value,
+                                       uint8_t fast_wait)
+{
   OpenAmpPingRequest_t request;
   uint32_t start_tick;
+  uint32_t spin_count = 0U;
   int32_t status;
 
   if (reply_value == NULL)
@@ -287,7 +305,19 @@ static int32_t OpenAmpFs_SendRequest(uint32_t op,
     {
       return -4;
     }
-    osDelay(1);
+
+    if (fast_wait == 0U)
+    {
+      osDelay(1);
+    }
+    else
+    {
+      spin_count++;
+      if ((spin_count & 0x3FU) == 0U)
+      {
+        osDelay(0);
+      }
+    }
   }
 
   if (g_last_response.op != op)
