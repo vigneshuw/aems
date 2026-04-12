@@ -19,6 +19,8 @@ transfer_metrics = {}
 file_read_in_progress = False
 active_file_stream = None
 read_chunk_offset = 0
+chunk_response_condition = threading.Condition()
+chunk_responses = {}
 
 
 def build_packet(command, server_id, epoch_time):
@@ -373,6 +375,8 @@ def parse_file_stream_data(data):
 
 
 def parse_file_chunk(packet):
+    global read_chunk_offset
+
     command = packet[0]
     system_status = packet[1]
     server_id = struct.unpack(">I", packet[2:6])[0]
@@ -393,6 +397,20 @@ def parse_file_chunk(packet):
         f"chunk_len={chunk_len}, "
         f"first16={chunk[:16].hex()}"
     )
+
+    with chunk_response_condition:
+        chunk_responses[offset] = {
+            "command": command,
+            "server_id": server_id,
+            "epoch_time": epoch_time,
+            "status": system_status,
+            "total_size": total_size,
+            "offset": offset,
+            "chunk_len": chunk_len,
+            "chunk": chunk,
+        }
+        read_chunk_offset = offset + chunk_len
+        chunk_response_condition.notify_all()
 
 
 def parse_packet(packet):
@@ -491,6 +509,106 @@ def recv_loop(conn):
         print(f"Receive loop stopped: {exc}")
 
 
+def send_packet(conn, command, epoch_time=None):
+    if epoch_time is None:
+        epoch_time = int(time.time())
+    packet = build_packet(command, SERVER_ID, epoch_time)
+    conn.sendall(packet)
+    print(f"TX: sent {len(packet)} bytes for command {command}")
+    return epoch_time
+
+
+def wait_for_chunk(offset, timeout_s=5.0):
+    deadline = time.monotonic() + timeout_s
+    with chunk_response_condition:
+        while offset not in chunk_responses:
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                return None
+            chunk_response_condition.wait(remaining)
+
+        return chunk_responses.pop(offset)
+
+
+def verify_pattern_chunk(offset, chunk):
+    for index, value in enumerate(chunk):
+        expected = (((offset + index) * 37) + 11) & 0xFF
+        if value != expected:
+            return False, index, expected, value
+
+    return True, 0, 0, 0
+
+
+def read_file_repeated_chunks(conn):
+    global read_chunk_offset
+
+    offset = 0
+    total_size = None
+    bytes_received = 0
+    start_time = time.time()
+
+    with chunk_response_condition:
+        chunk_responses.clear()
+
+    print(f"TX repeated chunk read for: {READ_FILENAME.decode()}")
+
+    while True:
+        read_chunk_offset = offset
+        print(f"TX chunk request offset={offset}")
+        send_packet(conn, 7)
+
+        response = wait_for_chunk(offset)
+        if response is None:
+            print(f"Timed out waiting for chunk at offset {offset}.")
+            return
+
+        if response["status"] != 0:
+            print(f"Chunk read failed at offset {offset}: status={response['status']}")
+            return
+
+        chunk_len = response["chunk_len"]
+        if total_size is None:
+            total_size = response["total_size"]
+            print(f"Repeated read total_size={total_size}")
+
+        if response["total_size"] != total_size:
+            print(
+                "Total size changed during read: "
+                f"old={total_size}, new={response['total_size']}"
+            )
+            return
+
+        if chunk_len == 0:
+            print(f"Zero-length chunk at offset {offset}; stopping.")
+            return
+
+        valid, bad_index, expected, actual = verify_pattern_chunk(offset, response["chunk"])
+        if not valid:
+            print(
+                "Pattern verification FAILED: "
+                f"offset={offset}, index={bad_index}, "
+                f"expected=0x{expected:02X}, actual=0x{actual:02X}"
+            )
+            return
+
+        bytes_received += chunk_len
+        offset += chunk_len
+
+        if (bytes_received % (64 * 1024) == 0) or (offset >= total_size):
+            print(f"Repeated read progress: {bytes_received}/{total_size} bytes")
+
+        if offset >= total_size:
+            elapsed = max(time.time() - start_time, 1e-6)
+            throughput_mib_s = (bytes_received / elapsed) / (1024 * 1024)
+            print(
+                "Repeated chunk read complete: "
+                f"{bytes_received} bytes, "
+                f"{throughput_mib_s:.2f} MiB/s over {elapsed:.3f} s"
+            )
+            read_chunk_offset = 0
+            return
+
+
 def main():
     global expected_config_file
     global file_read_in_progress
@@ -528,7 +646,10 @@ def main():
                 command = int(user_input)
 
                 if command == 7:
-                    offset_text = input(f"Offset bytes [{read_chunk_offset}]: ").strip()
+                    offset_text = input(f"Offset bytes [{read_chunk_offset}] or all: ").strip()
+                    if offset_text.lower() in {"all", "full"}:
+                        read_file_repeated_chunks(conn)
+                        continue
                     if offset_text:
                         try:
                             read_chunk_offset = int(offset_text, 0)
@@ -544,7 +665,6 @@ def main():
                     continue
 
                 epoch_time = int(time.time())
-                packet = build_packet(command, SERVER_ID, epoch_time)
 
                 if command == 1:
                     expected_config_file = (
@@ -563,8 +683,7 @@ def main():
                 elif command == 99:
                     print("TX OpenAMP heartbeat request")
 
-                conn.sendall(packet)
-                print(f"TX: sent {len(packet)} bytes for command {command}")
+                send_packet(conn, command, epoch_time)
 
 
 if __name__ == "__main__":
