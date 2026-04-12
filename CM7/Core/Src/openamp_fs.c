@@ -12,12 +12,15 @@
 #define OPENAMP_OP_COUNT_DAT   2U
 #define OPENAMP_OP_COUNT_ALL   3U
 #define OPENAMP_OP_FILE_SIZE   5U
+#define OPENAMP_OP_READ_CHUNK  7U
 #define OPENAMP_FILENAME_LEN   64U
+#define OPENAMP_CHUNK_LEN      1024U
 
 typedef struct
 {
   uint32_t op;
   uint32_t value;
+  uint32_t length;
   char filename[OPENAMP_FILENAME_LEN];
 } OpenAmpPingRequest_t;
 
@@ -26,16 +29,30 @@ typedef struct
   uint32_t op;
   int32_t status;
   uint32_t value;
+  uint32_t offset;
+  uint32_t length;
   int32_t init_status;
   int32_t mount_status;
-} OpenAmpPingResponse_t;
+} OpenAmpSmallResponse_t;
+
+typedef struct
+{
+  uint32_t op;
+  int32_t status;
+  uint32_t value;
+  uint32_t offset;
+  uint32_t length;
+  int32_t init_status;
+  int32_t mount_status;
+  uint8_t data[OPENAMP_CHUNK_LEN];
+} OpenAmpChunkResponse_t;
 
 static volatile uint8_t g_service_created;
 static volatile uint8_t g_response_ready;
 static volatile uint32_t g_openamp_rx_count;
 static int32_t g_openamp_init_status;
 static uint8_t g_openamp_initialized;
-static OpenAmpPingResponse_t g_last_response;
+static OpenAmpChunkResponse_t g_last_response;
 static struct rpmsg_endpoint g_openamp_ping_ept;
 
 static int OpenAmpPing_RxCallback(struct rpmsg_endpoint *ept,
@@ -49,6 +66,7 @@ static void OpenAmpPing_NewServiceCb(struct rpmsg_device *rdev,
                                      uint32_t dest);
 static int32_t OpenAmpFs_SendRequest(uint32_t op,
                                      uint32_t request_value,
+                                     uint32_t request_length,
                                      const char *filename,
                                      uint32_t *reply_value);
 
@@ -80,17 +98,17 @@ int32_t OpenAmpFs_MasterInit(void)
 
 int32_t OpenAmpFs_Ping(uint32_t request_value, uint32_t *reply_value)
 {
-  return OpenAmpFs_SendRequest(OPENAMP_OP_PING, request_value, NULL, reply_value);
+  return OpenAmpFs_SendRequest(OPENAMP_OP_PING, request_value, 0U, NULL, reply_value);
 }
 
 int32_t OpenAmpFs_CountDatFiles(uint32_t *dat_count)
 {
-  return OpenAmpFs_SendRequest(OPENAMP_OP_COUNT_DAT, 0U, NULL, dat_count);
+  return OpenAmpFs_SendRequest(OPENAMP_OP_COUNT_DAT, 0U, 0U, NULL, dat_count);
 }
 
 int32_t OpenAmpFs_CountAllFiles(uint32_t *file_count)
 {
-  return OpenAmpFs_SendRequest(OPENAMP_OP_COUNT_ALL, 0U, NULL, file_count);
+  return OpenAmpFs_SendRequest(OPENAMP_OP_COUNT_ALL, 0U, 0U, NULL, file_count);
 }
 
 int32_t OpenAmpFs_GetFileSize(const char *filename, uint32_t *file_size)
@@ -100,11 +118,58 @@ int32_t OpenAmpFs_GetFileSize(const char *filename, uint32_t *file_size)
     return -1;
   }
 
-  return OpenAmpFs_SendRequest(OPENAMP_OP_FILE_SIZE, 0U, filename, file_size);
+  return OpenAmpFs_SendRequest(OPENAMP_OP_FILE_SIZE, 0U, 0U, filename, file_size);
+}
+
+int32_t OpenAmpFs_ReadFileChunk(const char *filename,
+                                uint32_t offset,
+                                uint8_t *buffer,
+                                uint16_t buffer_size,
+                                uint16_t *bytes_read,
+                                uint32_t *total_size)
+{
+  uint32_t reply_value = 0U;
+  int32_t status;
+  uint32_t copy_len;
+
+  if ((filename == NULL) || (filename[0] == '\0') ||
+      (buffer == NULL) || (bytes_read == NULL) || (total_size == NULL))
+  {
+    return -1;
+  }
+
+  *bytes_read = 0U;
+  *total_size = 0U;
+
+  status = OpenAmpFs_SendRequest(OPENAMP_OP_READ_CHUNK,
+                                 offset,
+                                 buffer_size,
+                                 filename,
+                                 &reply_value);
+  *total_size = reply_value;
+  if (status != 0)
+  {
+    return status;
+  }
+
+  copy_len = g_last_response.length;
+  if (copy_len > buffer_size)
+  {
+    copy_len = buffer_size;
+  }
+  if (copy_len > OPENAMP_CHUNK_LEN)
+  {
+    copy_len = OPENAMP_CHUNK_LEN;
+  }
+
+  memcpy(buffer, g_last_response.data, copy_len);
+  *bytes_read = (uint16_t)copy_len;
+  return status;
 }
 
 static int32_t OpenAmpFs_SendRequest(uint32_t op,
                                      uint32_t request_value,
+                                     uint32_t request_length,
                                      const char *filename,
                                      uint32_t *reply_value)
 {
@@ -133,6 +198,7 @@ static int32_t OpenAmpFs_SendRequest(uint32_t op,
 
   request.op = op;
   request.value = request_value;
+  request.length = request_length;
   if (filename != NULL)
   {
     (void)strncpy(request.filename, filename, sizeof(request.filename) - 1U);
@@ -201,11 +267,21 @@ static int OpenAmpPing_RxCallback(struct rpmsg_endpoint *ept,
   (void)src;
   (void)priv;
 
-  if ((data != NULL) && (len >= sizeof(OpenAmpPingResponse_t)))
+  if (data != NULL)
   {
-    memcpy(&g_last_response, data, sizeof(g_last_response));
-    g_openamp_rx_count++;
-    g_response_ready = 1U;
+    memset(&g_last_response, 0, sizeof(g_last_response));
+    if (len >= sizeof(OpenAmpChunkResponse_t))
+    {
+      memcpy(&g_last_response, data, sizeof(OpenAmpChunkResponse_t));
+      g_openamp_rx_count++;
+      g_response_ready = 1U;
+    }
+    else if (len >= sizeof(OpenAmpSmallResponse_t))
+    {
+      memcpy(&g_last_response, data, sizeof(OpenAmpSmallResponse_t));
+      g_openamp_rx_count++;
+      g_response_ready = 1U;
+    }
   }
 
   return 0;

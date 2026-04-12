@@ -283,6 +283,47 @@ void ControllerTask(void const * argument)
           break;
         }
 
+        case 7U:
+        {
+          uint8_t tx[24U + 1024U];
+          char filename[65];
+          uint16_t filename_len;
+          uint16_t bytes_read = 0U;
+          uint32_t total_size = 0U;
+          int32_t fs_status;
+
+          memset(filename, 0, sizeof(filename));
+          filename_len = msg.payload_len;
+          if (filename_len >= sizeof(filename))
+          {
+            filename_len = (uint16_t)(sizeof(filename) - 1U);
+          }
+
+          if (filename_len > 0U)
+          {
+            memcpy(filename, msg.payload, filename_len);
+          }
+
+          memset(tx, 0, sizeof(tx));
+          fs_status = OpenAmpFs_ReadFileChunk(filename,
+                                              0U,
+                                              &tx[24],
+                                              1024U,
+                                              &bytes_read,
+                                              &total_size);
+
+          tx[0] = msg.command;
+          tx[1] = (fs_status == 0) ? 0U : 1U;
+          WriteU32Be(&tx[2], msg.server_id);
+          WriteU64Be(&tx[6], msg.epoch_time);
+          WriteU32Be(&tx[14], total_size);
+          WriteU32Be(&tx[18], 0U);
+          tx[22] = (uint8_t)(bytes_read >> 8);
+          tx[23] = (uint8_t)bytes_read;
+          (void)TcpClient_SendBuffer(tx, (uint16_t)(24U + bytes_read));
+          break;
+        }
+
         case 2U:
         {
           uint8_t tx[TCP_FIXED_RESPONSE_LEN];

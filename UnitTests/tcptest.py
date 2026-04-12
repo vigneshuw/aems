@@ -32,6 +32,8 @@ def build_packet(command, server_id, epoch_time):
         useful_payload = CONFIG_TEST_PAYLOAD
     elif command == 5:
         useful_payload = READ_FILENAME
+    elif command == 7:
+        useful_payload = READ_FILENAME
     elif command == 9:
         useful_payload = b""
     elif command == 99:
@@ -369,6 +371,29 @@ def parse_file_stream_data(data):
         file_read_in_progress = False
 
 
+def parse_file_chunk(packet):
+    command = packet[0]
+    system_status = packet[1]
+    server_id = struct.unpack(">I", packet[2:6])[0]
+    epoch_time = struct.unpack(">Q", packet[6:14])[0]
+    total_size = struct.unpack(">I", packet[14:18])[0]
+    offset = struct.unpack(">I", packet[18:22])[0]
+    chunk_len = struct.unpack(">H", packet[22:24])[0]
+    chunk = packet[24:24 + chunk_len]
+
+    print(
+        "RX file-chunk: "
+        f"cmd={command}, "
+        f"id={server_id}, "
+        f"time={epoch_time}, "
+        f"status={system_status}, "
+        f"total_size={total_size}, "
+        f"offset={offset}, "
+        f"chunk_len={chunk_len}, "
+        f"first16={chunk[:16].hex()}"
+    )
+
+
 def parse_packet(packet):
     command = packet[0]
 
@@ -442,6 +467,18 @@ def recv_loop(conn):
                     packet = bytes(rx_buffer[:frame_len])
                     del rx_buffer[:frame_len]
                     parse_packet(packet)
+                elif command == 7:
+                    if len(rx_buffer) < CONFIG_READ_HEADER_LEN:
+                        break
+
+                    chunk_len = struct.unpack(">H", rx_buffer[22:24])[0]
+                    frame_len = CONFIG_READ_HEADER_LEN + chunk_len
+                    if len(rx_buffer) < frame_len:
+                        break
+
+                    packet = bytes(rx_buffer[:frame_len])
+                    del rx_buffer[:frame_len]
+                    parse_file_chunk(packet)
                 else:
                     if len(rx_buffer) < PACKET_LEN:
                         break
@@ -474,7 +511,7 @@ def main():
 
             while True:
                 try:
-                    user_input = input("Enter command (0=heartbeat, 1=write config, 2=dat count, 3=all file count, 4=read config, 5=read named file, 6=cm4 heartbeat, 9=test stream, 99=openamp heartbeat, q=quit): ").strip()
+                    user_input = input("Enter command (0=heartbeat, 1=write config, 2=dat count, 3=all file count, 4=read config, 5=file size, 6=cm4 heartbeat, 7=read one chunk, 9=test stream, 99=openamp heartbeat, q=quit): ").strip()
                 except (EOFError, KeyboardInterrupt):
                     print("\nExiting.")
                     break
@@ -482,8 +519,8 @@ def main():
                 if user_input.lower() == "q":
                     break
 
-                if user_input not in {"0", "1", "2", "3", "4", "5", "6", "9", "99"}:
-                    print("Only commands 0, 1, 2, 3, 4, 5, 6, 9, and 99 are implemented in this test.")
+                if user_input not in {"0", "1", "2", "3", "4", "5", "6", "7", "9", "99"}:
+                    print("Only commands 0, 1, 2, 3, 4, 5, 6, 7, 9, and 99 are implemented in this test.")
                     continue
 
                 command = int(user_input)
@@ -507,6 +544,8 @@ def main():
                     print(f"TX config payload: {CONFIG_TEST_PAYLOAD.hex()}")
                 elif command == 5:
                     print(f"TX file size request for: {READ_FILENAME.decode()}")
+                elif command == 7:
+                    print(f"TX one-chunk read request for: {READ_FILENAME.decode()}")
                 elif command == 9:
                     print("TX test stream request")
                     file_read_in_progress = True

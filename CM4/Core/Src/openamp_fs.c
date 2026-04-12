@@ -14,12 +14,15 @@
 #define OPENAMP_OP_COUNT_DAT   2U
 #define OPENAMP_OP_COUNT_ALL   3U
 #define OPENAMP_OP_FILE_SIZE   5U
+#define OPENAMP_OP_READ_CHUNK  7U
 #define OPENAMP_FILENAME_LEN   64U
+#define OPENAMP_CHUNK_LEN      1024U
 
 typedef struct
 {
   uint32_t op;
   uint32_t value;
+  uint32_t length;
   char filename[OPENAMP_FILENAME_LEN];
 } OpenAmpPingRequest_t;
 
@@ -28,9 +31,23 @@ typedef struct
   uint32_t op;
   int32_t status;
   uint32_t value;
+  uint32_t offset;
+  uint32_t length;
   int32_t init_status;
   int32_t mount_status;
-} OpenAmpPingResponse_t;
+} OpenAmpSmallResponse_t;
+
+typedef struct
+{
+  uint32_t op;
+  int32_t status;
+  uint32_t value;
+  uint32_t offset;
+  uint32_t length;
+  int32_t init_status;
+  int32_t mount_status;
+  uint8_t data[OPENAMP_CHUNK_LEN];
+} OpenAmpChunkResponse_t;
 
 static struct rpmsg_endpoint g_openamp_ping_ept;
 static volatile uint32_t g_openamp_ping_rx_count;
@@ -86,11 +103,14 @@ static int OpenAmpPing_RxCallback(struct rpmsg_endpoint *ept,
                                   void *priv)
 {
   OpenAmpPingRequest_t request_copy;
-  OpenAmpPingResponse_t response;
+  OpenAmpSmallResponse_t response;
+  OpenAmpChunkResponse_t chunk_response;
   EmmcFsDatSummary_t dat_summary;
   EmmcFsReadHandle_t read_handle;
   uint32_t all_file_count = 0U;
   uint32_t file_size = 0U;
+  uint16_t bytes_read = 0U;
+  uint16_t requested_len = 0U;
   EmmcFsStatus_t fs_status;
 
   (void)src;
@@ -146,6 +166,33 @@ static int OpenAmpPing_RxCallback(struct rpmsg_endpoint *ept,
         }
       }
       break;
+
+    case OPENAMP_OP_READ_CHUNK:
+      requested_len = (request_copy.length > OPENAMP_CHUNK_LEN) ?
+                      OPENAMP_CHUNK_LEN :
+                      (uint16_t)request_copy.length;
+      if (requested_len == 0U)
+      {
+        requested_len = OPENAMP_CHUNK_LEN;
+      }
+
+      memset(&chunk_response, 0, sizeof(chunk_response));
+      chunk_response.op = request_copy.op;
+      chunk_response.init_status = CM4_GetEmmcInitStatus();
+      chunk_response.mount_status = CM4_GetEmmcMountStatus();
+
+      fs_status = EmmcFs_ReadFileChunk(request_copy.filename,
+                                       request_copy.value,
+                                       chunk_response.data,
+                                       requested_len,
+                                       &bytes_read,
+                                       &file_size);
+      chunk_response.status = (int32_t)fs_status;
+      chunk_response.value = file_size;
+      chunk_response.offset = request_copy.value;
+      chunk_response.length = bytes_read;
+      (void)OPENAMP_send(ept, &chunk_response, sizeof(chunk_response));
+      return 0;
 
     default:
       response.status = -1;
