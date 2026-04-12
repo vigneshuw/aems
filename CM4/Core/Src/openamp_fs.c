@@ -19,7 +19,7 @@
 #define OPENAMP_OP_STREAM_READ 81U
 #define OPENAMP_OP_STREAM_CLOSE 82U
 #define OPENAMP_FILENAME_LEN   64U
-#define OPENAMP_CHUNK_LEN      1024U
+#define OPENAMP_CHUNK_LEN      3072U
 
 typedef struct
 {

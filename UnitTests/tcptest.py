@@ -470,7 +470,7 @@ def recv_loop(conn):
 
     try:
         while True:
-            data = conn.recv(1024)
+            data = conn.recv(16384)
             if not data:
                 print("Client disconnected.")
                 break
