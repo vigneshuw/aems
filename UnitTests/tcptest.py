@@ -18,6 +18,7 @@ expected_config_file = None
 transfer_metrics = {}
 file_read_in_progress = False
 active_file_stream = None
+read_chunk_offset = 0
 
 
 def build_packet(command, server_id, epoch_time):
@@ -33,7 +34,7 @@ def build_packet(command, server_id, epoch_time):
     elif command == 5:
         useful_payload = READ_FILENAME
     elif command == 7:
-        useful_payload = READ_FILENAME
+        useful_payload = struct.pack(">I", read_chunk_offset) + READ_FILENAME
     elif command == 9:
         useful_payload = b""
     elif command == 99:
@@ -493,6 +494,7 @@ def recv_loop(conn):
 def main():
     global expected_config_file
     global file_read_in_progress
+    global read_chunk_offset
 
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server:
         server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -525,6 +527,15 @@ def main():
 
                 command = int(user_input)
 
+                if command == 7:
+                    offset_text = input(f"Offset bytes [{read_chunk_offset}]: ").strip()
+                    if offset_text:
+                        try:
+                            read_chunk_offset = int(offset_text, 0)
+                        except ValueError:
+                            print("Invalid offset. Use decimal or 0x-prefixed hex.")
+                            continue
+
                 if (command == 5) and file_read_in_progress:
                     print("File read already in progress. Wait for completion.")
                     continue
@@ -545,7 +556,7 @@ def main():
                 elif command == 5:
                     print(f"TX file size request for: {READ_FILENAME.decode()}")
                 elif command == 7:
-                    print(f"TX one-chunk read request for: {READ_FILENAME.decode()}")
+                    print(f"TX one-chunk read request for: {READ_FILENAME.decode()} offset={read_chunk_offset}")
                 elif command == 9:
                     print("TX test stream request")
                     file_read_in_progress = True

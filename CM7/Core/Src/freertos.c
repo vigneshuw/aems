@@ -288,25 +288,43 @@ void ControllerTask(void const * argument)
           uint8_t tx[24U + 1024U];
           char filename[65];
           uint16_t filename_len;
+          uint32_t read_offset = 0U;
           uint16_t bytes_read = 0U;
           uint32_t total_size = 0U;
           int32_t fs_status;
 
           memset(filename, 0, sizeof(filename));
-          filename_len = msg.payload_len;
-          if (filename_len >= sizeof(filename))
+          if (msg.payload_len >= 4U)
           {
-            filename_len = (uint16_t)(sizeof(filename) - 1U);
-          }
+            read_offset = ReadU32Be(msg.payload);
+            filename_len = (uint16_t)(msg.payload_len - 4U);
+            if (filename_len >= sizeof(filename))
+            {
+              filename_len = (uint16_t)(sizeof(filename) - 1U);
+            }
 
-          if (filename_len > 0U)
+            if (filename_len > 0U)
+            {
+              memcpy(filename, &msg.payload[4], filename_len);
+            }
+          }
+          else
           {
-            memcpy(filename, msg.payload, filename_len);
+            filename_len = msg.payload_len;
+            if (filename_len >= sizeof(filename))
+            {
+              filename_len = (uint16_t)(sizeof(filename) - 1U);
+            }
+
+            if (filename_len > 0U)
+            {
+              memcpy(filename, msg.payload, filename_len);
+            }
           }
 
           memset(tx, 0, sizeof(tx));
           fs_status = OpenAmpFs_ReadFileChunk(filename,
-                                              0U,
+                                              read_offset,
                                               &tx[24],
                                               1024U,
                                               &bytes_read,
@@ -317,7 +335,7 @@ void ControllerTask(void const * argument)
           WriteU32Be(&tx[2], msg.server_id);
           WriteU64Be(&tx[6], msg.epoch_time);
           WriteU32Be(&tx[14], total_size);
-          WriteU32Be(&tx[18], 0U);
+          WriteU32Be(&tx[18], read_offset);
           tx[22] = (uint8_t)(bytes_read >> 8);
           tx[23] = (uint8_t)bytes_read;
           (void)TcpClient_SendBuffer(tx, (uint16_t)(24U + bytes_read));
