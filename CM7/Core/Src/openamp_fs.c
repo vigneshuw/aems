@@ -4,6 +4,7 @@
 
 #include "cmsis_os.h"
 #include "openamp.h"
+#include "file_shmem.h"
 
 #define OPENAMP_PING_CHAN_NAME "openamp_pingpong_demo"
 #define OPENAMP_PING_TIMEOUT_MS 3000U
@@ -16,8 +17,11 @@
 #define OPENAMP_OP_STREAM_OPEN 80U
 #define OPENAMP_OP_STREAM_READ 81U
 #define OPENAMP_OP_STREAM_CLOSE 82U
+#define OPENAMP_OP_STREAM_READ_SHMEM 83U
+#define OPENAMP_OP_SHMEM_PROBE 84U
 #define OPENAMP_FILENAME_LEN   64U
 #define OPENAMP_CHUNK_LEN      3072U
+#define OPENAMP_SHMEM_PROBE_MAGIC 0x53484D31U
 
 typedef struct
 {
@@ -238,6 +242,109 @@ int32_t OpenAmpFs_CloseFileStream(void)
   uint32_t reply_value = 0U;
 
   return OpenAmpFs_SendRequest(OPENAMP_OP_STREAM_CLOSE, 0U, 0U, NULL, &reply_value);
+}
+
+int32_t OpenAmpFs_ReadFileStreamShared(uint8_t **buffer,
+                                       uint16_t buffer_size,
+                                       uint16_t *bytes_read,
+                                       uint32_t *offset,
+                                       uint32_t *total_size)
+{
+  uint32_t reply_value = 0U;
+  int32_t status;
+  uint32_t copy_len;
+
+  if ((buffer == NULL) || (bytes_read == NULL) || (offset == NULL) || (total_size == NULL))
+  {
+    return -1;
+  }
+
+  *buffer = FILE_SHMEM_DATA_PTR;
+  *bytes_read = 0U;
+  *offset = 0U;
+  *total_size = 0U;
+
+  if (buffer_size > FILE_SHMEM_DATA_LEN)
+  {
+    buffer_size = (uint16_t)FILE_SHMEM_DATA_LEN;
+  }
+
+  status = OpenAmpFs_SendRequestEx(OPENAMP_OP_STREAM_READ_SHMEM,
+                                   0U,
+                                   buffer_size,
+                                   NULL,
+                                   &reply_value,
+                                   1U);
+  *total_size = reply_value;
+  *offset = g_last_response.offset;
+  if (status != 0)
+  {
+    return status;
+  }
+
+  copy_len = g_last_response.length;
+  if (copy_len > buffer_size)
+  {
+    copy_len = buffer_size;
+  }
+  if (copy_len > FILE_SHMEM_DATA_LEN)
+  {
+    copy_len = FILE_SHMEM_DATA_LEN;
+  }
+
+  *bytes_read = (uint16_t)copy_len;
+  return status;
+}
+
+int32_t OpenAmpFs_ProbeSharedMemory(uint32_t *probe_len, uint32_t *bad_index)
+{
+  uint32_t reply_value = 0U;
+  uint32_t index;
+  uint32_t length;
+  int32_t status;
+
+  if ((probe_len == NULL) || (bad_index == NULL))
+  {
+    return -1;
+  }
+
+  *probe_len = 0U;
+  *bad_index = 0xFFFFFFFFU;
+
+  status = OpenAmpFs_SendRequestEx(OPENAMP_OP_SHMEM_PROBE,
+                                   0U,
+                                   0U,
+                                   NULL,
+                                   &reply_value,
+                                   1U);
+  if (status != 0)
+  {
+    return status;
+  }
+  if (reply_value != OPENAMP_SHMEM_PROBE_MAGIC)
+  {
+    return -6;
+  }
+
+  length = g_last_response.length;
+  if (length > FILE_SHMEM_DATA_LEN)
+  {
+    length = FILE_SHMEM_DATA_LEN;
+  }
+
+  for (index = 0U; index < length; index++)
+  {
+    if (FILE_SHMEM_DATA_PTR[index] != (uint8_t)(((index * 17U) + 0x5AU) & 0xFFU))
+    {
+      *probe_len = length;
+      *bad_index = index;
+      return -7;
+    }
+  }
+
+  *probe_len = length;
+  *bad_index = 0xFFFFFFFFU;
+  return 0;
 }
 
 static int32_t OpenAmpFs_SendRequest(uint32_t op,

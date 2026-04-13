@@ -5,6 +5,7 @@
 #include "main.h"
 #include "openamp.h"
 #include "emmc_fs.h"
+#include "file_shmem.h"
 
 #define OPENAMP_PING_CHAN_NAME "openamp_pingpong_demo"
 #define OPENAMP_PING_MAGIC     0x434D3401U
@@ -18,8 +19,12 @@
 #define OPENAMP_OP_STREAM_OPEN 80U
 #define OPENAMP_OP_STREAM_READ 81U
 #define OPENAMP_OP_STREAM_CLOSE 82U
+#define OPENAMP_OP_STREAM_READ_SHMEM 83U
+#define OPENAMP_OP_SHMEM_PROBE 84U
 #define OPENAMP_FILENAME_LEN   64U
 #define OPENAMP_CHUNK_LEN      3072U
+#define OPENAMP_SHMEM_PROBE_LEN 256U
+#define OPENAMP_SHMEM_PROBE_MAGIC 0x53484D31U
 
 typedef struct
 {
@@ -117,6 +122,7 @@ static int OpenAmpPing_RxCallback(struct rpmsg_endpoint *ept,
   uint32_t file_size = 0U;
   uint16_t bytes_read = 0U;
   uint16_t requested_len = 0U;
+  uint32_t index;
   EmmcFsStatus_t fs_status;
 
   (void)src;
@@ -273,6 +279,49 @@ static int OpenAmpPing_RxCallback(struct rpmsg_endpoint *ept,
 
       (void)OPENAMP_send(ept, &chunk_response, sizeof(chunk_response));
       return 0;
+
+    case OPENAMP_OP_STREAM_READ_SHMEM:
+      requested_len = (request_copy.length > FILE_SHMEM_DATA_LEN) ?
+                      (uint16_t)FILE_SHMEM_DATA_LEN :
+                      (uint16_t)request_copy.length;
+      if (requested_len == 0U)
+      {
+        requested_len = (uint16_t)FILE_SHMEM_DATA_LEN;
+      }
+
+      response.value = g_stream_total_size;
+      response.offset = g_stream_offset;
+
+      if (g_stream_handle.is_open == 0U)
+      {
+        response.status = (int32_t)EMMC_FS_ERR_PARAM;
+      }
+      else
+      {
+        fs_status = EmmcFs_ReadFileNext(&g_stream_handle,
+                                        FILE_SHMEM_DATA_PTR,
+                                        requested_len,
+                                        &bytes_read);
+        response.status = (int32_t)fs_status;
+        response.length = bytes_read;
+        if (fs_status == EMMC_FS_OK)
+        {
+          g_stream_offset += bytes_read;
+        }
+      }
+      break;
+
+    case OPENAMP_OP_SHMEM_PROBE:
+      for (index = 0U; index < OPENAMP_SHMEM_PROBE_LEN; index++)
+      {
+        FILE_SHMEM_DATA_PTR[index] = (uint8_t)(((index * 17U) + 0x5AU) & 0xFFU);
+      }
+
+      response.status = 0;
+      response.value = OPENAMP_SHMEM_PROBE_MAGIC;
+      response.offset = FILE_SHMEM_DATA_ADDR;
+      response.length = OPENAMP_SHMEM_PROBE_LEN;
+      break;
 
     case OPENAMP_OP_STREAM_CLOSE:
       fs_status = EmmcFs_CloseFileRead(&g_stream_handle);

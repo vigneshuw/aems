@@ -211,6 +211,12 @@ def parse_openamp_heartbeat(packet):
     init_status = struct.unpack(">i", packet[31:35])[0]
     remote_init_status = struct.unpack(">i", packet[35:39])[0]
     remote_mount_status = struct.unpack(">i", packet[39:43])[0]
+    shmem_probe_status = struct.unpack(">i", packet[43:47])[0]
+    shmem_probe_len = struct.unpack(">I", packet[47:51])[0]
+    shmem_probe_bad_index = struct.unpack(">I", packet[51:55])[0]
+    stream_open_status = struct.unpack(">i", packet[55:59])[0]
+    stream_prefetch_status = struct.unpack(">i", packet[59:63])[0]
+    stream_prefetch_len = struct.unpack(">I", packet[63:67])[0]
 
     print(
         "RX openamp-heartbeat: "
@@ -225,7 +231,13 @@ def parse_openamp_heartbeat(packet):
         f"rx_count={rx_count}, "
         f"init_status={init_status}, "
         f"remote_init_status={remote_init_status}, "
-        f"remote_mount_status={remote_mount_status}"
+        f"remote_mount_status={remote_mount_status}, "
+        f"shmem_probe_status={shmem_probe_status}, "
+        f"shmem_probe_len={shmem_probe_len}, "
+        f"shmem_probe_bad_index=0x{shmem_probe_bad_index:08X}, "
+        f"stream_open_status={stream_open_status}, "
+        f"stream_prefetch_status={stream_prefetch_status}, "
+        f"stream_prefetch_len={stream_prefetch_len}"
     )
 
 

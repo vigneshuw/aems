@@ -47,7 +47,8 @@ MEMORY
   RAM_D1 (xrw)     : ORIGIN = 0x24000000, LENGTH =  512K
   FLASH  (rx)      : ORIGIN = 0x08000000, LENGTH = 1024K    /* Memory is divided. Actual start is 0x08000000 and actual length is 2048K */
   DTCMRAM (xrw)    : ORIGIN = 0x20000000, LENGTH = 128K
-  RAM_D2 (xrw)     : ORIGIN = 0x30000000, LENGTH = 256K
+  SHARED_RAM (xrw) : ORIGIN = 0x30000000, LENGTH = 32K
+  RAM_D2 (xrw)     : ORIGIN = 0x30008000, LENGTH = 224K
   RAM_D2_ETH (xrw) : ORIGIN = 0x30040000, LENGTH = 32K
 /*  RAM_D3 (xrw)     : ORIGIN = 0x38000000, LENGTH = 64K */
   ITCMRAM (xrw)    : ORIGIN = 0x00000000, LENGTH = 64K
@@ -190,6 +191,14 @@ SECTIONS
     . = ALIGN(32);
     *(.Rx_PoolSection) 
   } >RAM_D2_ETH
+
+  .shared_ram (NOLOAD) :
+  {
+    . = ALIGN(32);
+    *(.shared_ram)
+    *(.shared_ram*)
+    . = ALIGN(32);
+  } >SHARED_RAM
   
    .openamp_section (NOLOAD) : {
      . = ABSOLUTE(0x38000000);

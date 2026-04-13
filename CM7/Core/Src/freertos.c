@@ -30,6 +30,7 @@
 #include <string.h>
 #include "tcpclient.h"
 #include "openamp_fs.h"
+#include "file_shmem.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -53,6 +54,9 @@ typedef struct
   char filename[65];
   uint32_t total_size;
   uint32_t offset;
+  uint32_t prefetch_offset;
+  uint16_t prefetch_len;
+  uint8_t prefetch_valid;
   int32_t last_status;
 } OpenAmpFileStreamContext_t;
 /* USER CODE END PTD */
@@ -62,7 +66,7 @@ typedef struct
 #define TCP_FIXED_RESPONSE_LEN      100U
 #define TCP_FILE_STREAM_HEADER_LEN  18U
 #define TCP_FILE_STREAM_CHUNK_LEN   1400U
-#define OPENAMP_FILE_CHUNK_LEN      3072U
+#define OPENAMP_FILE_CHUNK_LEN      FILE_SHMEM_DATA_LEN
 #define TCP_TEST_STREAM_TOTAL_SIZE  (1UL * 1024UL * 1024UL)
 /* USER CODE END PD */
 
@@ -77,6 +81,9 @@ static QueueHandle_t gControlQueue;
 static uint8_t g_test_stream_chunk[TCP_FILE_STREAM_CHUNK_LEN];
 static TestStreamContext_t g_test_stream_ctx;
 static OpenAmpFileStreamContext_t g_openamp_file_stream_ctx;
+static int32_t g_last_stream_open_status;
+static int32_t g_last_stream_prefetch_status;
+static uint16_t g_last_stream_prefetch_len;
 static TcpClientConfig_t tcpCfg;
 static ip_addr_t tcpServerIp;
 static ControlMessage_t msg;
@@ -255,6 +262,10 @@ void ControllerTask(void const * argument)
           uint32_t file_size = 0U;
           uint32_t start_offset = 0U;
           uint32_t stream_size = 0U;
+          uint32_t read_offset = 0U;
+          uint32_t read_total_size = 0U;
+          uint16_t prefetch_len = 0U;
+          uint8_t *shared_buffer = NULL;
           int32_t fs_status;
           int32_t stream_status;
 
@@ -280,6 +291,7 @@ void ControllerTask(void const * argument)
           fs_status = OpenAmpFs_OpenFileStream(g_openamp_file_stream_ctx.filename,
                                                start_offset,
                                                &file_size);
+          g_last_stream_open_status = fs_status;
           if ((fs_status == 0) && (start_offset < file_size))
           {
             stream_size = file_size - start_offset;
@@ -290,6 +302,31 @@ void ControllerTask(void const * argument)
           {
             fs_status = (fs_status == 0) ? -1 : fs_status;
             (void)OpenAmpFs_CloseFileStream();
+          }
+
+          if (fs_status == 0)
+          {
+            fs_status = OpenAmpFs_ReadFileStreamShared(&shared_buffer,
+                                                       OPENAMP_FILE_CHUNK_LEN,
+                                                       &prefetch_len,
+                                                       &read_offset,
+                                                       &read_total_size);
+            g_last_stream_prefetch_status = fs_status;
+            g_last_stream_prefetch_len = prefetch_len;
+            if ((fs_status == 0) && (prefetch_len > 0U) && (shared_buffer != NULL))
+            {
+              g_openamp_file_stream_ctx.prefetch_valid = 1U;
+              g_openamp_file_stream_ctx.prefetch_len = prefetch_len;
+              g_openamp_file_stream_ctx.prefetch_offset = read_offset;
+              g_openamp_file_stream_ctx.offset = read_offset + prefetch_len;
+            }
+            else
+            {
+              fs_status = (fs_status == 0) ? -1 : fs_status;
+              g_openamp_file_stream_ctx.last_status = fs_status;
+              stream_size = 0U;
+              (void)OpenAmpFs_CloseFileStream();
+            }
           }
 
           memset(header, 0, sizeof(header));
@@ -475,10 +512,14 @@ void ControllerTask(void const * argument)
           uint8_t tx[TCP_FIXED_RESPONSE_LEN];
           uint32_t request_value;
           uint32_t reply_value = 0U;
+          uint32_t shmem_probe_len = 0U;
+          uint32_t shmem_probe_bad_index = 0U;
           int32_t ping_status;
+          int32_t shmem_probe_status;
 
           request_value = (uint32_t)msg.epoch_time ^ msg.server_id ^ 0x00000063U;
           ping_status = OpenAmpFs_Ping(request_value, &reply_value);
+          shmem_probe_status = OpenAmpFs_ProbeSharedMemory(&shmem_probe_len, &shmem_probe_bad_index);
 
           memset(tx, 0, sizeof(tx));
           tx[0] = msg.command;
@@ -493,6 +534,12 @@ void ControllerTask(void const * argument)
           WriteU32Be(&tx[31], (uint32_t)OpenAmpFs_GetInitStatus());
           WriteU32Be(&tx[35], (uint32_t)OpenAmpFs_GetRemoteInitStatus());
           WriteU32Be(&tx[39], (uint32_t)OpenAmpFs_GetRemoteMountStatus());
+          WriteU32Be(&tx[43], (uint32_t)shmem_probe_status);
+          WriteU32Be(&tx[47], shmem_probe_len);
+          WriteU32Be(&tx[51], shmem_probe_bad_index);
+          WriteU32Be(&tx[55], (uint32_t)g_last_stream_open_status);
+          WriteU32Be(&tx[59], (uint32_t)g_last_stream_prefetch_status);
+          WriteU32Be(&tx[63], (uint32_t)g_last_stream_prefetch_len);
           (void)TcpClient_SendBuffer(tx, sizeof(tx));
           break;
         }
@@ -682,6 +729,7 @@ static int32_t OpenAmpFileStreamRead(void *context, uint8_t *buffer, uint16_t ma
   OpenAmpFileStreamContext_t *stream_ctx = (OpenAmpFileStreamContext_t *)context;
   uint16_t request_len;
   uint16_t bytes_read = 0U;
+  uint8_t *shared_buffer = NULL;
   uint32_t total_size = 0U;
   uint32_t read_offset = 0U;
   uint32_t remaining;
@@ -695,7 +743,24 @@ static int32_t OpenAmpFileStreamRead(void *context, uint8_t *buffer, uint16_t ma
   *out_len = 0U;
   if (stream_ctx->offset >= stream_ctx->total_size)
   {
-    return -1;
+    if (stream_ctx->prefetch_valid == 0U)
+    {
+      return -1;
+    }
+  }
+
+  if (stream_ctx->prefetch_valid != 0U)
+  {
+    if (stream_ctx->prefetch_len > max_len)
+    {
+      stream_ctx->last_status = -1;
+      return -1;
+    }
+
+    memcpy(buffer, FILE_SHMEM_DATA_PTR, stream_ctx->prefetch_len);
+    *out_len = stream_ctx->prefetch_len;
+    stream_ctx->prefetch_valid = 0U;
+    return 0;
   }
 
   remaining = stream_ctx->total_size - stream_ctx->offset;
@@ -705,17 +770,18 @@ static int32_t OpenAmpFileStreamRead(void *context, uint8_t *buffer, uint16_t ma
     request_len = OPENAMP_FILE_CHUNK_LEN;
   }
 
-  status = OpenAmpFs_ReadFileStream(buffer,
-                                    request_len,
-                                    &bytes_read,
-                                    &read_offset,
-                                    &total_size);
+  status = OpenAmpFs_ReadFileStreamShared(&shared_buffer,
+                                          request_len,
+                                          &bytes_read,
+                                          &read_offset,
+                                          &total_size);
   stream_ctx->last_status = status;
-  if ((status != 0) || (bytes_read == 0U))
+  if ((status != 0) || (bytes_read == 0U) || (shared_buffer == NULL))
   {
     return -1;
   }
 
+  memcpy(buffer, shared_buffer, bytes_read);
   stream_ctx->offset = read_offset + bytes_read;
   *out_len = bytes_read;
   return 0;

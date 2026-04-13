@@ -24,6 +24,12 @@ int32_t OpenAmpFs_ReadFileStream(uint8_t *buffer,
                                  uint16_t *bytes_read,
                                  uint32_t *offset,
                                  uint32_t *total_size);
+int32_t OpenAmpFs_ReadFileStreamShared(uint8_t **buffer,
+                                       uint16_t buffer_size,
+                                       uint16_t *bytes_read,
+                                       uint32_t *offset,
+                                       uint32_t *total_size);
+int32_t OpenAmpFs_ProbeSharedMemory(uint32_t *probe_len, uint32_t *bad_index);
 int32_t OpenAmpFs_CloseFileStream(void);
 uint32_t OpenAmpFs_GetServiceCreated(void);
 uint32_t OpenAmpFs_GetRxCount(void);
