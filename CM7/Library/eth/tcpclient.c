@@ -30,6 +30,7 @@ typedef struct
     uint32_t total_size;
     uint32_t bytes_sent;
     TcpClientStreamReadFn read_fn;
+    TcpClientStreamReadPtrFn read_ptr_fn;
     TcpClientStreamDoneFn done_fn;
     void *context;
     uint8_t header[TCPCLIENT_TX_MSG_MAX_LEN];
@@ -258,6 +259,7 @@ static void TcpClient_FinishStream(void)
 static int32_t TcpClient_ProcessStream(void)
 {
     uint16_t chunk_len;
+    const uint8_t *chunk_ptr;
     int32_t read_status;
 
     if (gTcpClient.stream.active == 0U)
@@ -285,24 +287,35 @@ static int32_t TcpClient_ProcessStream(void)
         return 0;
     }
 
-    if (gTcpClient.stream.read_fn == NULL)
+    if ((gTcpClient.stream.read_fn == NULL) && (gTcpClient.stream.read_ptr_fn == NULL))
     {
         TcpClient_FinishStream();
         return -1;
     }
 
     chunk_len = 0U;
-    read_status = gTcpClient.stream.read_fn(gTcpClient.stream.context,
-                                            gTcpClient.stream.chunk,
-                                            sizeof(gTcpClient.stream.chunk),
-                                            &chunk_len);
+    chunk_ptr = gTcpClient.stream.chunk;
+    if (gTcpClient.stream.read_ptr_fn != NULL)
+    {
+        read_status = gTcpClient.stream.read_ptr_fn(gTcpClient.stream.context,
+                                                    &chunk_ptr,
+                                                    sizeof(gTcpClient.stream.chunk),
+                                                    &chunk_len);
+    }
+    else
+    {
+        read_status = gTcpClient.stream.read_fn(gTcpClient.stream.context,
+                                                gTcpClient.stream.chunk,
+                                                sizeof(gTcpClient.stream.chunk),
+                                                &chunk_len);
+    }
     if ((read_status != 0) || (chunk_len == 0U))
     {
         TcpClient_FinishStream();
         return -1;
     }
 
-    if (TcpClient_SendSocketBuffer(gTcpClient.stream.chunk, chunk_len) != 0)
+    if ((chunk_ptr == NULL) || (TcpClient_SendSocketBuffer(chunk_ptr, chunk_len) != 0))
     {
         TcpClient_FinishStream();
         return -1;
@@ -569,6 +582,42 @@ int32_t TcpClient_StartStream(const uint8_t *header,
     gTcpClient.stream.header_len = header_len;
     gTcpClient.stream.total_size = total_size;
     gTcpClient.stream.read_fn = read_fn;
+    gTcpClient.stream.done_fn = done_fn;
+    gTcpClient.stream.context = context;
+    sys_mutex_unlock(&gTcpClient.tx_mutex);
+
+    return 0;
+}
+
+int32_t TcpClient_StartStreamPtr(const uint8_t *header,
+                                 uint16_t header_len,
+                                 uint32_t total_size,
+                                 TcpClientStreamReadPtrFn read_ptr_fn,
+                                 TcpClientStreamDoneFn done_fn,
+                                 void *context)
+{
+    if ((gTcpClient.initialized == 0U) ||
+        (header == NULL) ||
+        (header_len == 0U) ||
+        (header_len > TCPCLIENT_TX_MSG_MAX_LEN) ||
+        (read_ptr_fn == NULL))
+    {
+        return -1;
+    }
+
+    sys_mutex_lock(&gTcpClient.tx_mutex);
+    if (gTcpClient.stream.active != 0U)
+    {
+        sys_mutex_unlock(&gTcpClient.tx_mutex);
+        return -2;
+    }
+
+    memset(&gTcpClient.stream, 0, sizeof(gTcpClient.stream));
+    memcpy(gTcpClient.stream.header, header, header_len);
+    gTcpClient.stream.active = 1U;
+    gTcpClient.stream.header_len = header_len;
+    gTcpClient.stream.total_size = total_size;
+    gTcpClient.stream.read_ptr_fn = read_ptr_fn;
     gTcpClient.stream.done_fn = done_fn;
     gTcpClient.stream.context = context;
     sys_mutex_unlock(&gTcpClient.tx_mutex);

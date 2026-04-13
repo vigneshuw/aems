@@ -31,6 +31,7 @@ extern "C" {
 
 typedef void (*TcpClientRxHandler_t)(const char *data, uint16_t length);
 typedef int32_t (*TcpClientStreamReadFn)(void *context, uint8_t *buffer, uint16_t max_len, uint16_t *out_len);
+typedef int32_t (*TcpClientStreamReadPtrFn)(void *context, const uint8_t **out_data, uint16_t max_len, uint16_t *out_len);
 typedef void (*TcpClientStreamDoneFn)(void *context);
 
 typedef struct
@@ -83,6 +84,13 @@ int32_t TcpClient_StartStream(const uint8_t *header,
                               TcpClientStreamReadFn read_fn,
                               TcpClientStreamDoneFn done_fn,
                               void *context);
+
+int32_t TcpClient_StartStreamPtr(const uint8_t *header,
+                                 uint16_t header_len,
+                                 uint32_t total_size,
+                                 TcpClientStreamReadPtrFn read_ptr_fn,
+                                 TcpClientStreamDoneFn done_fn,
+                                 void *context);
 
 /**
  * @brief Queue a null-terminated text message for transmission to the connected TCP server.
