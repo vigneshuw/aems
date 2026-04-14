@@ -23,6 +23,7 @@ static uint8_t write_q_head = 0U;
 static uint8_t write_q_tail = 0U;
 static uint8_t write_q_count = 0U;
 
+
 static uint8_t DAQ_ValidateConfig(const DaqConfig_t *cfg)
 {
   if (cfg == NULL)
@@ -53,6 +54,7 @@ static uint8_t DAQ_ValidateConfig(const DaqConfig_t *cfg)
   return 1U;
 }
 
+
 static uint8_t DAQ_QueuePush(const DaqWriteBlock_t *blk)
 {
   /* Fixed-depth ring queue to decouple sampling from storage latency. */
@@ -67,6 +69,7 @@ static uint8_t DAQ_QueuePush(const DaqWriteBlock_t *blk)
   g_daq_ctx.bytes_queued += (uint64_t)(blk->sample_count * sizeof(DaqSampleFrame_t));
   return 1U;
 }
+
 
 static uint8_t DAQ_QueuePop(DaqWriteBlock_t *blk)
 {
