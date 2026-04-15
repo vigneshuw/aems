@@ -230,6 +230,7 @@ def parse_openamp_heartbeat(packet):
     stream_open_status = struct.unpack(">i", packet[55:59])[0]
     stream_prefetch_status = struct.unpack(">i", packet[59:63])[0]
     stream_prefetch_len = struct.unpack(">I", packet[63:67])[0]
+    adc_device_id = struct.unpack(">I", packet[67:71])[0]
 
     print(
         "RX openamp-heartbeat: "
@@ -250,7 +251,8 @@ def parse_openamp_heartbeat(packet):
         f"shmem_probe_bad_index=0x{shmem_probe_bad_index:08X}, "
         f"stream_open_status={stream_open_status}, "
         f"stream_prefetch_status={stream_prefetch_status}, "
-        f"stream_prefetch_len={stream_prefetch_len}"
+        f"stream_prefetch_len={stream_prefetch_len}, "
+        f"adc_device_id=0x{adc_device_id:04X}"
     )
 
 

@@ -77,6 +77,7 @@ static volatile uint8_t g_response_ready;
 static volatile uint32_t g_openamp_rx_count;
 static int32_t g_openamp_init_status;
 static uint8_t g_openamp_initialized;
+static uint32_t g_remote_adc_device_id;
 static OpenAmpChunkResponse_t g_last_response;
 static struct rpmsg_endpoint g_openamp_ping_ept;
 
@@ -120,6 +121,7 @@ int32_t OpenAmpFs_MasterInit(void)
   g_openamp_rx_count = 0U;
   g_openamp_init_status = 0;
   memset(&g_last_response, 0, sizeof(g_last_response));
+  g_remote_adc_device_id = 0U;
 
   MAILBOX_Init();
   OPENAMP_init_ept(&g_openamp_ping_ept);
@@ -632,6 +634,11 @@ int32_t OpenAmpFs_GetRemoteMountStatus(void)
   return g_last_response.mount_status;
 }
 
+uint32_t OpenAmpFs_GetRemoteAdcDeviceId(void)
+{
+  return g_remote_adc_device_id;
+}
+
 static int OpenAmpPing_RxCallback(struct rpmsg_endpoint *ept,
                                   void *data,
                                   size_t len,
@@ -648,12 +655,14 @@ static int OpenAmpPing_RxCallback(struct rpmsg_endpoint *ept,
     if (len >= sizeof(OpenAmpChunkResponse_t))
     {
       memcpy(&g_last_response, data, sizeof(OpenAmpChunkResponse_t));
+      g_remote_adc_device_id = g_last_response.arg0;
       g_openamp_rx_count++;
       g_response_ready = 1U;
     }
     else if (len >= sizeof(OpenAmpSmallResponse_t))
     {
       memcpy(&g_last_response, data, sizeof(OpenAmpSmallResponse_t));
+      g_remote_adc_device_id = g_last_response.arg0;
       g_openamp_rx_count++;
       g_response_ready = 1U;
     }

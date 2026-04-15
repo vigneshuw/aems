@@ -168,6 +168,7 @@ static int OpenAmpPing_RxCallback(struct rpmsg_endpoint *ept,
   response.op = request_copy.op;
   response.init_status = CM4_GetEmmcInitStatus();
   response.mount_status = CM4_GetEmmcMountStatus();
+  response.arg0 = (uint32_t)CM4_GetAdcDeviceId();
 
   switch (request_copy.op)
   {
@@ -215,6 +216,7 @@ static int OpenAmpPing_RxCallback(struct rpmsg_endpoint *ept,
       chunk_response.op = request_copy.op;
       chunk_response.init_status = CM4_GetEmmcInitStatus();
       chunk_response.mount_status = CM4_GetEmmcMountStatus();
+      chunk_response.arg0 = (uint32_t)CM4_GetAdcDeviceId();
 
       fs_status = EmmcFs_ReadFileChunk(request_copy.filename,
                                        request_copy.value,
@@ -279,6 +281,7 @@ static int OpenAmpPing_RxCallback(struct rpmsg_endpoint *ept,
       chunk_response.op = request_copy.op;
       chunk_response.init_status = CM4_GetEmmcInitStatus();
       chunk_response.mount_status = CM4_GetEmmcMountStatus();
+      chunk_response.arg0 = (uint32_t)CM4_GetAdcDeviceId();
       chunk_response.value = g_stream_total_size;
       chunk_response.offset = g_stream_offset;
 

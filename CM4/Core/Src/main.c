@@ -64,6 +64,7 @@ uint16_t SYNC_RESET_Pin = ADS_SYNC_RESET_Pin;
 static int32_t g_cm4_emmc_init_status = 0;
 static int32_t g_cm4_emmc_mount_status = 0;
 static int32_t g_cm4_emmc_create_status = 0;
+static uint16_t g_cm4_adc_device_id = 0U;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -123,6 +124,11 @@ int main(void)
   ads.cs_port = ADS_CS_GPIO_Port;
   ads.cs_pin = ADS_CS_Pin;
 
+  adcMaster_Startup();
+  HAL_Delay(10U);
+  g_cm4_adc_device_id = getDeviceIdPattern();
+  adcMaster_Shutdown();
+
   DAQ_ContextInit();
   DAQ_EngineInit();
 
@@ -167,6 +173,10 @@ int32_t CM4_GetEmmcMountStatus(void)
   return g_cm4_emmc_mount_status;
 }
 
+uint16_t CM4_GetAdcDeviceId(void)
+{
+  return g_cm4_adc_device_id;
+}
 
 /*
  * Helper Functions

@@ -678,6 +678,7 @@ void ControllerTask(void const * argument)
           WriteU32Be(&tx[55], (uint32_t)g_last_stream_open_status);
           WriteU32Be(&tx[59], (uint32_t)g_last_stream_prefetch_status);
           WriteU32Be(&tx[63], (uint32_t)g_last_stream_prefetch_len);
+          WriteU32Be(&tx[67], OpenAmpFs_GetRemoteAdcDeviceId());
           (void)TcpClient_SendBuffer(tx, sizeof(tx));
           break;
         }

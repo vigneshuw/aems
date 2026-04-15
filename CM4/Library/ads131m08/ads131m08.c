@@ -25,7 +25,8 @@ uint8_t     getWordByteLength(void);
 
 
 uint16_t getDeviceIdPattern(){
-	return readSingleRegister(ID_ADDRESS);
+	uint16_t response =  readSingleRegister(ID_ADDRESS);
+	return (((response & 0xFF00) >> 8) | ((response & 0x00FF) << 8)) & 0xFF00;
 }
 
 
