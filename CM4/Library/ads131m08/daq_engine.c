@@ -198,7 +198,7 @@ uint8_t DAQ_StartLogging(const DaqConfig_t *cfg)
   g_daq_ctx.dropped_buffers = 0U;
   g_daq_ctx.bytes_written = 0U;
   g_daq_ctx.last_error = 0U;
-  g_daq_ctx.events |= DAQ_EVT_CMD_START;
+  g_daq_ctx.events = DAQ_EVT_CMD_START;
   return 1U;
 }
 
@@ -220,13 +220,22 @@ uint8_t DAQ_StartStreaming(const DaqConfig_t *cfg)
   g_daq_ctx.dropped_buffers = 0U;
   g_daq_ctx.bytes_written = 0U;
   g_daq_ctx.last_error = 0U;
-  g_daq_ctx.events |= DAQ_EVT_CMD_START;
+  g_daq_ctx.events = DAQ_EVT_CMD_START;
   return 1U;
 }
 
 void DAQ_Stop(void)
 {
-  g_daq_ctx.events |= DAQ_EVT_CMD_STOP;
+  if ((g_daq_ctx.state == DAQ_STATE_IDLE) || (g_daq_ctx.state == DAQ_STATE_ERROR))
+  {
+    DAQ_ResetSoftwareBuffers();
+    g_daq_ctx.events = 0U;
+    g_daq_ctx.is_adc_armed = 0U;
+    g_daq_mode = DAQ_MODE_IDLE;
+    return;
+  }
+
+  g_daq_ctx.events = DAQ_EVT_CMD_STOP;
 }
 
 void DAQ_GetStatus(DaqStatus_t *status)

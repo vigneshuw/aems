@@ -31,6 +31,10 @@ void DAQ_StateMachine_Run(void)
         g_daq_ctx.events &= ~DAQ_EVT_CMD_START;
         g_daq_ctx.state = DAQ_STATE_PREPARING;
       }
+      else
+      {
+        g_daq_ctx.events = 0U;
+      }
       break;
 
     case DAQ_STATE_PREPARING:

@@ -65,6 +65,7 @@ typedef struct
   uint32_t bytes_remaining;
   uint32_t samples_requested;
   int32_t last_status;
+  uint8_t had_data;
 } OpenAmpDaqStreamContext_t;
 /* USER CODE END PTD */
 
@@ -1049,6 +1050,7 @@ static int32_t OpenAmpDaqStreamReadPtr(void *context, const uint8_t **out_data, 
   uint32_t samples_captured = 0U;
   uint16_t request_len;
   uint32_t attempts;
+  uint32_t max_attempts;
   int32_t status = -11;
 
   if ((stream_ctx == NULL) || (out_data == NULL) || (out_len == NULL))
@@ -1070,7 +1072,8 @@ static int32_t OpenAmpDaqStreamReadPtr(void *context, const uint8_t **out_data, 
     request_len = FILE_SHMEM_DATA_LEN;
   }
 
-  for (attempts = 0U; attempts < 50U; attempts++)
+  max_attempts = (stream_ctx->had_data == 0U) ? 2000U : 250U;
+  for (attempts = 0U; attempts < max_attempts; attempts++)
   {
     status = OpenAmpFs_DaqReadStreamShared(&shared_buffer,
                                            request_len,
@@ -1090,6 +1093,7 @@ static int32_t OpenAmpDaqStreamReadPtr(void *context, const uint8_t **out_data, 
       }
 
       stream_ctx->bytes_remaining -= bytes_read;
+      stream_ctx->had_data = 1U;
       *out_data = shared_buffer;
       *out_len = bytes_read;
       return 0;

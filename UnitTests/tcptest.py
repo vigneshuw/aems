@@ -20,6 +20,7 @@ DAQ_CHANNEL_MASK = 0x3F
 DAQ_BLOCK_SAMPLES = 64
 DAQ_STREAM_SAMPLES = 0
 DAQ_STREAM_CSV = "stream_data.csv"
+DAQ_DISCARD_STREAM_DATA = True
 DAQ_FRAME_LEN = 36
 DAQ_STREAM_CHANNELS = 6
 INT24_MAX = 0x7FFFFF
@@ -504,11 +505,18 @@ def parse_file_stream_header(packet):
     print(f"RX stream start: cmd={command}, total_size={total_size}")
     if command == 13:
         daq_stream_stop_requested = False
-        open_daq_csv()
-        print(
-            f"DAQ CSV capture started: {DAQ_STREAM_CSV}, "
-            f"sample_rate={DAQ_SAMPLE_RATE_HZ}Hz, channel_mask=0x{DAQ_CHANNEL_MASK:02X}"
-        )
+        if DAQ_DISCARD_STREAM_DATA:
+            close_daq_csv()
+            print(
+                "DAQ discard capture started: "
+                f"sample_rate={DAQ_SAMPLE_RATE_HZ}Hz, channel_mask=0x{DAQ_CHANNEL_MASK:02X}"
+            )
+        else:
+            open_daq_csv()
+            print(
+                f"DAQ CSV capture started: {DAQ_STREAM_CSV}, "
+                f"sample_rate={DAQ_SAMPLE_RATE_HZ}Hz, channel_mask=0x{DAQ_CHANNEL_MASK:02X}"
+            )
 
     transfer_metrics[server_id] = time.time()
     active_file_stream = {
@@ -544,7 +552,8 @@ def parse_file_stream_data(data):
             file_read_in_progress = False
             return
     elif active_file_stream["command"] == 13:
-        write_daq_stream_csv(data)
+        if not DAQ_DISCARD_STREAM_DATA:
+            write_daq_stream_csv(data)
 
     active_file_stream["bytes_received"] += len(data)
 
@@ -569,8 +578,9 @@ def parse_file_stream_data(data):
             print("Stream pattern verification passed.")
         elif active_file_stream["command"] == 13:
             print(f"DAQ stream complete: received {active_file_stream['bytes_received'] // 36} frames.")
-            close_daq_csv()
-            print(f"DAQ CSV saved: {DAQ_STREAM_CSV}")
+            if not DAQ_DISCARD_STREAM_DATA:
+                close_daq_csv()
+                print(f"DAQ CSV saved: {DAQ_STREAM_CSV}")
 
         start_time = transfer_metrics.pop(active_file_stream["server_id"], None)
         if start_time is not None:
@@ -611,8 +621,9 @@ def finish_daq_stream_from_stop_marker():
     else:
         print(f"DAQ stream stopped: received {frames} frames.")
 
-    close_daq_csv()
-    print(f"DAQ CSV saved: {DAQ_STREAM_CSV}")
+    if not DAQ_DISCARD_STREAM_DATA:
+        close_daq_csv()
+        print(f"DAQ CSV saved: {DAQ_STREAM_CSV}")
     active_file_stream = None
     file_read_in_progress = False
     daq_stream_stop_requested = False
