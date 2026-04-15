@@ -13,8 +13,8 @@ static DaqConfig_t g_daq_cfg;
 static DaqMode_t g_daq_mode = DAQ_MODE_IDLE;
 static EmmcFsWriteHandle_t g_daq_write_handle;
 
-#define DAQ_AGGR_SAMPLES_PER_BLOCK   (32U)
-#define DAQ_WRITE_QUEUE_DEPTH        (4U)
+#define DAQ_AGGR_SAMPLES_PER_BLOCK   (64U)
+#define DAQ_WRITE_QUEUE_DEPTH        (16U)
 #define DAQ_ERROR_WRITE_OPEN         (10U)
 #define DAQ_ERROR_WRITE_DATA         (11U)
 
