@@ -6,6 +6,8 @@
 #include "openamp.h"
 #include "emmc_fs.h"
 #include "file_shmem.h"
+#include "daq_engine.h"
+#include "daq_shared.h"
 
 #define OPENAMP_PING_CHAN_NAME "openamp_pingpong_demo"
 #define OPENAMP_PING_MAGIC     0x434D3401U
@@ -21,6 +23,11 @@
 #define OPENAMP_OP_STREAM_CLOSE 82U
 #define OPENAMP_OP_STREAM_READ_SHMEM 83U
 #define OPENAMP_OP_SHMEM_PROBE 84U
+#define OPENAMP_OP_DAQ_STATUS  90U
+#define OPENAMP_OP_DAQ_START_LOG 91U
+#define OPENAMP_OP_DAQ_START_STREAM 92U
+#define OPENAMP_OP_DAQ_READ_SHMEM 93U
+#define OPENAMP_OP_DAQ_STOP 94U
 #define OPENAMP_FILENAME_LEN   64U
 #define OPENAMP_CHUNK_LEN      3072U
 #define OPENAMP_SHMEM_PROBE_LEN 256U
@@ -31,6 +38,10 @@ typedef struct
   uint32_t op;
   uint32_t value;
   uint32_t length;
+  uint32_t arg0;
+  uint32_t arg1;
+  uint32_t arg2;
+  uint32_t arg3;
   char filename[OPENAMP_FILENAME_LEN];
 } OpenAmpPingRequest_t;
 
@@ -43,6 +54,10 @@ typedef struct
   uint32_t length;
   int32_t init_status;
   int32_t mount_status;
+  uint32_t arg0;
+  uint32_t arg1;
+  uint32_t arg2;
+  uint32_t arg3;
 } OpenAmpSmallResponse_t;
 
 typedef struct
@@ -54,6 +69,10 @@ typedef struct
   uint32_t length;
   int32_t init_status;
   int32_t mount_status;
+  uint32_t arg0;
+  uint32_t arg1;
+  uint32_t arg2;
+  uint32_t arg3;
   uint8_t data[OPENAMP_CHUNK_LEN];
 } OpenAmpChunkResponse_t;
 
@@ -124,6 +143,10 @@ static int OpenAmpPing_RxCallback(struct rpmsg_endpoint *ept,
   uint16_t requested_len = 0U;
   uint32_t index;
   EmmcFsStatus_t fs_status;
+  DaqConfig_t daq_cfg;
+  DaqStatus_t daq_status;
+  uint8_t *daq_buffer = NULL;
+  uint32_t daq_samples_read = 0U;
 
   (void)src;
   (void)priv;
@@ -321,6 +344,74 @@ static int OpenAmpPing_RxCallback(struct rpmsg_endpoint *ept,
       response.value = OPENAMP_SHMEM_PROBE_MAGIC;
       response.offset = FILE_SHMEM_DATA_ADDR;
       response.length = OPENAMP_SHMEM_PROBE_LEN;
+      break;
+
+    case OPENAMP_OP_DAQ_STATUS:
+      memset(&daq_status, 0, sizeof(daq_status));
+      DAQ_GetStatus(&daq_status);
+      response.status = 0;
+      response.value = daq_status.state;
+      response.offset = daq_status.samples_captured;
+      response.length = daq_status.dropped_buffers;
+      response.arg0 = daq_status.mode;
+      response.arg1 = daq_status.last_error;
+      response.arg2 = (uint32_t)daq_status.bytes_written;
+      response.arg3 = (uint32_t)(daq_status.bytes_written >> 32);
+      break;
+
+    // Start and Start logging has the same starting point
+    case OPENAMP_OP_DAQ_START_LOG:
+    case OPENAMP_OP_DAQ_START_STREAM:
+      // Parse DAQ parameters
+      memset(&daq_cfg, 0, sizeof(daq_cfg));
+      daq_cfg.sample_rate_hz = request_copy.value;
+      daq_cfg.block_samples = request_copy.length;
+      daq_cfg.channel_mask = request_copy.arg0;
+      daq_cfg.flags = request_copy.arg1;
+      (void)strncpy(daq_cfg.filename, request_copy.filename, sizeof(daq_cfg.filename) - 1U);
+      daq_cfg.filename[sizeof(daq_cfg.filename) - 1U] = '\0';
+
+      // Decide on the logging process
+      if (request_copy.op == OPENAMP_OP_DAQ_START_LOG)
+      {
+        response.status = (DAQ_StartLogging(&daq_cfg) != 0U) ? 0 : -10;
+      }
+      else
+      {
+        response.status = (DAQ_StartStreaming(&daq_cfg) != 0U) ? 0 : -10;
+      }
+      response.value = (uint32_t)g_daq_ctx.state;
+      break;
+
+    case OPENAMP_OP_DAQ_READ_SHMEM:
+      requested_len = (request_copy.length > FILE_SHMEM_DATA_LEN) ?
+                      (uint16_t)FILE_SHMEM_DATA_LEN :
+                      (uint16_t)request_copy.length;
+      if (requested_len == 0U)
+      {
+        requested_len = (uint16_t)FILE_SHMEM_DATA_LEN;
+      }
+
+      if (DAQ_ReadStreamBlockShared(&daq_buffer,
+                                    requested_len,
+                                    &bytes_read,
+                                    &daq_samples_read) == 0U)
+      {
+        response.status = -11;
+      }
+      else
+      {
+        response.status = 0;
+      }
+      response.value = daq_samples_read;
+      response.offset = g_daq_ctx.samples_captured;
+      response.length = bytes_read;
+      break;
+
+    case OPENAMP_OP_DAQ_STOP:
+      DAQ_Stop();
+      response.status = 0;
+      response.value = (uint32_t)g_daq_ctx.state;
       break;
 
     case OPENAMP_OP_STREAM_CLOSE:

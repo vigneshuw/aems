@@ -2,6 +2,7 @@
 #define OPENAMP_FS_H
 
 #include <stdint.h>
+#include "daq_shared.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -31,6 +32,15 @@ int32_t OpenAmpFs_ReadFileStreamShared(uint8_t **buffer,
                                        uint32_t *total_size);
 int32_t OpenAmpFs_ProbeSharedMemory(uint32_t *probe_len, uint32_t *bad_index);
 int32_t OpenAmpFs_CloseFileStream(void);
+int32_t OpenAmpFs_DaqGetStatus(DaqStatus_t *status);
+int32_t OpenAmpFs_DaqStartLog(const DaqConfig_t *config);
+int32_t OpenAmpFs_DaqStartStream(const DaqConfig_t *config);
+int32_t OpenAmpFs_DaqReadStreamShared(uint8_t **buffer,
+                                      uint16_t buffer_size,
+                                      uint16_t *bytes_read,
+                                      uint32_t *samples_read,
+                                      uint32_t *samples_captured);
+int32_t OpenAmpFs_DaqStop(void);
 uint32_t OpenAmpFs_GetServiceCreated(void);
 uint32_t OpenAmpFs_GetRxCount(void);
 int32_t OpenAmpFs_GetInitStatus(void);

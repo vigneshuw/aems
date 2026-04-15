@@ -59,6 +59,13 @@ typedef struct
   uint8_t prefetch_valid;
   int32_t last_status;
 } OpenAmpFileStreamContext_t;
+
+typedef struct
+{
+  uint32_t bytes_remaining;
+  uint32_t samples_requested;
+  int32_t last_status;
+} OpenAmpDaqStreamContext_t;
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
@@ -81,6 +88,7 @@ static QueueHandle_t gControlQueue;
 static uint8_t g_test_stream_chunk[TCP_FILE_STREAM_CHUNK_LEN];
 static TestStreamContext_t g_test_stream_ctx;
 static OpenAmpFileStreamContext_t g_openamp_file_stream_ctx;
+static OpenAmpDaqStreamContext_t g_openamp_daq_stream_ctx;
 static int32_t g_last_stream_open_status;
 static int32_t g_last_stream_prefetch_status;
 static uint16_t g_last_stream_prefetch_len;
@@ -107,11 +115,17 @@ static void TestStreamDone(void *context);
 static int32_t OpenAmpFileStreamRead(void *context, uint8_t *buffer, uint16_t max_len, uint16_t *out_len);
 static int32_t OpenAmpFileStreamReadPtr(void *context, const uint8_t **out_data, uint16_t max_len, uint16_t *out_len);
 static void OpenAmpFileStreamDone(void *context);
+static int32_t OpenAmpDaqStreamReadPtr(void *context, const uint8_t **out_data, uint16_t max_len, uint16_t *out_len);
+static void OpenAmpDaqStreamDone(void *context);
 static void CopyFilenameFromPayload(const uint8_t *payload,
                                     uint16_t payload_len,
                                     uint16_t payload_offset,
                                     char *filename,
                                     uint16_t filename_size);
+static void DaqConfigFromPayload(const uint8_t *payload,
+                                 uint16_t payload_len,
+                                 DaqConfig_t *config,
+                                 uint32_t *sample_count);
 /* USER CODE END FunctionPrototypes */
 
 void StartDefaultTask(void const * argument);
@@ -508,6 +522,129 @@ void ControllerTask(void const * argument)
           break;
         }
 
+        case 10U:
+        {
+          uint8_t tx[TCP_FIXED_RESPONSE_LEN];
+          DaqStatus_t daq_status;
+          int32_t op_status;
+
+          memset(&daq_status, 0, sizeof(daq_status));
+          op_status = OpenAmpFs_DaqGetStatus(&daq_status);
+
+          memset(tx, 0, sizeof(tx));
+          tx[0] = msg.command;
+          WriteU32Be(&tx[1], msg.server_id);
+          WriteU64Be(&tx[5], msg.epoch_time);
+          tx[13] = (op_status == 0) ? 0U : 1U;
+          tx[14] = TcpClient_IsConnected();
+          WriteU32Be(&tx[15], (uint32_t)op_status);
+          WriteU32Be(&tx[19], daq_status.state);
+          WriteU32Be(&tx[23], daq_status.mode);
+          WriteU32Be(&tx[27], daq_status.last_error);
+          WriteU32Be(&tx[31], daq_status.samples_captured);
+          WriteU32Be(&tx[35], daq_status.dropped_buffers);
+          WriteU32Be(&tx[39], (uint32_t)daq_status.bytes_written);
+          WriteU32Be(&tx[43], (uint32_t)(daq_status.bytes_written >> 32));
+          (void)TcpClient_SendBuffer(tx, sizeof(tx));
+          break;
+        }
+
+        // DAQ Start Logging to a file in eMMC
+        case 11U:
+        {
+          uint8_t tx[TCP_FIXED_RESPONSE_LEN];
+          DaqConfig_t daq_config;
+          uint32_t sample_count;
+          int32_t op_status;
+
+          // Get the configuration from TCP Payload, if present
+          DaqConfigFromPayload(msg.payload, msg.payload_len, &daq_config, &sample_count);
+          (void)sample_count;
+          op_status = OpenAmpFs_DaqStartLog(&daq_config);
+
+          // Send acknowledgment over TCP
+          memset(tx, 0, sizeof(tx));
+          tx[0] = msg.command;
+          WriteU32Be(&tx[1], msg.server_id);
+          WriteU64Be(&tx[5], msg.epoch_time);
+          tx[13] = (op_status == 0) ? 0U : 1U;
+          tx[14] = TcpClient_IsConnected();
+          WriteU32Be(&tx[15], (uint32_t)op_status);
+          WriteU32Be(&tx[19], daq_config.sample_rate_hz);
+          WriteU32Be(&tx[23], daq_config.channel_mask);
+          WriteU32Be(&tx[27], daq_config.block_samples);
+          (void)TcpClient_SendBuffer(tx, sizeof(tx));
+          break;
+        }
+
+        case 12U:
+        {
+          uint8_t tx[TCP_FIXED_RESPONSE_LEN];
+          int32_t op_status;
+
+          op_status = OpenAmpFs_DaqStop();
+
+          memset(tx, 0, sizeof(tx));
+          tx[0] = msg.command;
+          WriteU32Be(&tx[1], msg.server_id);
+          WriteU64Be(&tx[5], msg.epoch_time);
+          tx[13] = (op_status == 0) ? 0U : 1U;
+          tx[14] = TcpClient_IsConnected();
+          WriteU32Be(&tx[15], (uint32_t)op_status);
+          (void)TcpClient_SendBuffer(tx, sizeof(tx));
+          break;
+        }
+
+        case 13U:
+        {
+          uint8_t header[TCP_FILE_STREAM_HEADER_LEN];
+          DaqConfig_t daq_config;
+          uint32_t sample_count;
+          uint32_t stream_size;
+          int32_t op_status;
+          int32_t stream_status;
+
+          DaqConfigFromPayload(msg.payload, msg.payload_len, &daq_config, &sample_count);
+          if (sample_count == 0U)
+          {
+            sample_count = daq_config.block_samples * 32U;
+          }
+          sample_count = (sample_count / daq_config.block_samples) * daq_config.block_samples;
+          stream_size = sample_count * DAQ_SAMPLE_FRAME_SIZE;
+
+          op_status = OpenAmpFs_DaqStartStream(&daq_config);
+
+          memset(header, 0, sizeof(header));
+          header[0] = msg.command;
+          header[1] = (op_status == 0) ? 0U : 1U;
+          WriteU32Be(&header[2], msg.server_id);
+          WriteU64Be(&header[6], msg.epoch_time);
+          WriteU32Be(&header[14], (op_status == 0) ? stream_size : 0U);
+
+          if ((op_status == 0) && (stream_size > 0U))
+          {
+            memset(&g_openamp_daq_stream_ctx, 0, sizeof(g_openamp_daq_stream_ctx));
+            g_openamp_daq_stream_ctx.bytes_remaining = stream_size;
+            g_openamp_daq_stream_ctx.samples_requested = sample_count;
+            stream_status = TcpClient_StartStreamPtr(header,
+                                                     sizeof(header),
+                                                     stream_size,
+                                                     OpenAmpDaqStreamReadPtr,
+                                                     OpenAmpDaqStreamDone,
+                                                     &g_openamp_daq_stream_ctx);
+            if (stream_status != 0)
+            {
+              g_openamp_daq_stream_ctx.last_status = stream_status;
+              (void)OpenAmpFs_DaqStop();
+            }
+          }
+          else
+          {
+            (void)TcpClient_SendBuffer(header, sizeof(header));
+          }
+          break;
+        }
+
         case 99U:
         {
           uint8_t tx[TCP_FIXED_RESPONSE_LEN];
@@ -688,6 +825,38 @@ static void CopyFilenameFromPayload(const uint8_t *payload,
   }
 }
 
+static void DaqConfigFromPayload(const uint8_t *payload,
+                                 uint16_t payload_len,
+                                 DaqConfig_t *config,
+                                 uint32_t *sample_count)
+{
+  if ((config == NULL) || (sample_count == NULL))
+  {
+    return;
+  }
+
+  memset(config, 0, sizeof(*config));
+  config->sample_rate_hz = DAQ_DEFAULT_SAMPLE_RATE_HZ;
+  config->channel_mask = DAQ_DEFAULT_CHANNEL_MASK;
+  config->block_samples = DAQ_DEFAULT_BLOCK_SAMPLES;
+  config->flags = 0U;
+  (void)strncpy(config->filename, "daq.bin", sizeof(config->filename) - 1U);
+  *sample_count = 0U;
+
+  if ((payload != NULL) && (payload_len >= 16U))
+  {
+    config->sample_rate_hz = ReadU32Be(&payload[0]);
+    config->channel_mask = ReadU32Be(&payload[4]);
+    config->block_samples = ReadU32Be(&payload[8]);
+    *sample_count = ReadU32Be(&payload[12]);
+    CopyFilenameFromPayload(payload,
+                            payload_len,
+                            16U,
+                            config->filename,
+                            sizeof(config->filename));
+  }
+}
+
 static void InitTestStreamChunk(void)
 {
   uint32_t index;
@@ -863,6 +1032,79 @@ static void OpenAmpFileStreamDone(void *context)
   }
 
   (void)OpenAmpFs_CloseFileStream();
+}
+
+static int32_t OpenAmpDaqStreamReadPtr(void *context, const uint8_t **out_data, uint16_t max_len, uint16_t *out_len)
+{
+  OpenAmpDaqStreamContext_t *stream_ctx = (OpenAmpDaqStreamContext_t *)context;
+  uint8_t *shared_buffer = NULL;
+  uint16_t bytes_read = 0U;
+  uint32_t samples_read = 0U;
+  uint32_t samples_captured = 0U;
+  uint16_t request_len;
+  uint32_t attempts;
+  int32_t status = -11;
+
+  if ((stream_ctx == NULL) || (out_data == NULL) || (out_len == NULL))
+  {
+    return -1;
+  }
+
+  *out_data = NULL;
+  *out_len = 0U;
+
+  if (stream_ctx->bytes_remaining == 0U)
+  {
+    return -1;
+  }
+
+  request_len = (stream_ctx->bytes_remaining > max_len) ? max_len : (uint16_t)stream_ctx->bytes_remaining;
+  if (request_len > FILE_SHMEM_DATA_LEN)
+  {
+    request_len = FILE_SHMEM_DATA_LEN;
+  }
+
+  for (attempts = 0U; attempts < 50U; attempts++)
+  {
+    status = OpenAmpFs_DaqReadStreamShared(&shared_buffer,
+                                           request_len,
+                                           &bytes_read,
+                                           &samples_read,
+                                           &samples_captured);
+    stream_ctx->last_status = status;
+    (void)samples_read;
+    (void)samples_captured;
+
+    if ((status == 0) && (bytes_read > 0U) && (shared_buffer != NULL))
+    {
+      if (bytes_read > stream_ctx->bytes_remaining)
+      {
+        stream_ctx->last_status = -12;
+        return -1;
+      }
+
+      stream_ctx->bytes_remaining -= bytes_read;
+      *out_data = shared_buffer;
+      *out_len = bytes_read;
+      return 0;
+    }
+
+    osDelay(1);
+  }
+
+  return -1;
+}
+
+static void OpenAmpDaqStreamDone(void *context)
+{
+  OpenAmpDaqStreamContext_t *stream_ctx = (OpenAmpDaqStreamContext_t *)context;
+
+  if (stream_ctx != NULL)
+  {
+    stream_ctx->bytes_remaining = 0U;
+  }
+
+  (void)OpenAmpFs_DaqStop();
 }
 /* USER CODE END Helpers */
 

@@ -44,6 +44,13 @@ typedef struct
     uint8_t is_open;
 } EmmcFsReadHandle_t;
 
+typedef struct
+{
+    FIL file;
+    uint32_t bytes_written;
+    uint8_t is_open;
+} EmmcFsWriteHandle_t;
+
 /**
  * @brief Link the eMMC FatFs driver for the current core.
  * @return `EMMC_FS_OK` on success.
@@ -161,6 +168,16 @@ EmmcFsStatus_t EmmcFs_SeekFileRead(EmmcFsReadHandle_t *handle,
                                    uint32_t offset);
 
 EmmcFsStatus_t EmmcFs_CloseFileRead(EmmcFsReadHandle_t *handle);
+
+EmmcFsStatus_t EmmcFs_OpenFileWrite(const char *filename,
+                                    EmmcFsWriteHandle_t *handle);
+
+EmmcFsStatus_t EmmcFs_WriteFileNext(EmmcFsWriteHandle_t *handle,
+                                    const uint8_t *buffer,
+                                    uint32_t buffer_size,
+                                    uint32_t *bytes_written);
+
+EmmcFsStatus_t EmmcFs_CloseFileWrite(EmmcFsWriteHandle_t *handle);
 
 /**
  * @brief Count files ending with `.dat` in the eMMC root directory.

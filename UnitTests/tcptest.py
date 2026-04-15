@@ -13,6 +13,11 @@ SERVER_ID = 1
 MAX_USEFUL_PAYLOAD_LEN = PACKET_LEN - 15
 CONFIG_TEST_PAYLOAD = bytes(((index * 3) + 1) & 0xFF for index in range(MAX_USEFUL_PAYLOAD_LEN))
 READ_FILENAME = b"test.dat"
+DAQ_FILENAME = b"daq.bin"
+DAQ_SAMPLE_RATE_HZ = 4000
+DAQ_CHANNEL_MASK = 0xFF
+DAQ_BLOCK_SAMPLES = 32
+DAQ_STREAM_SAMPLES = 1024
 config_rx_state = {}
 expected_config_file = None
 transfer_metrics = {}
@@ -40,6 +45,14 @@ def build_packet(command, server_id, epoch_time):
         useful_payload = struct.pack(">I", read_chunk_offset) + READ_FILENAME
     elif command == 8:
         useful_payload = struct.pack(">I", stream_read_offset) + READ_FILENAME
+    elif command in {11, 13}:
+        useful_payload = (
+            struct.pack(">I", DAQ_SAMPLE_RATE_HZ) +
+            struct.pack(">I", DAQ_CHANNEL_MASK) +
+            struct.pack(">I", DAQ_BLOCK_SAMPLES) +
+            struct.pack(">I", DAQ_STREAM_SAMPLES) +
+            DAQ_FILENAME
+        )
     elif command == 9:
         useful_payload = b""
     elif command == 99:
@@ -241,6 +254,64 @@ def parse_openamp_heartbeat(packet):
     )
 
 
+def parse_daq_status(packet):
+    command = packet[0]
+    server_id = struct.unpack(">I", packet[1:5])[0]
+    epoch_time = struct.unpack(">Q", packet[5:13])[0]
+    system_status = packet[13]
+    tcp_connected = packet[14]
+    op_status = struct.unpack(">i", packet[15:19])[0]
+    state = struct.unpack(">I", packet[19:23])[0]
+    mode = struct.unpack(">I", packet[23:27])[0]
+    last_error = struct.unpack(">I", packet[27:31])[0]
+    samples_captured = struct.unpack(">I", packet[31:35])[0]
+    dropped_buffers = struct.unpack(">I", packet[35:39])[0]
+    bytes_written = (
+        struct.unpack(">I", packet[43:47])[0] << 32
+    ) | struct.unpack(">I", packet[39:43])[0]
+
+    print(
+        "RX daq-status: "
+        f"cmd={command}, "
+        f"id={server_id}, "
+        f"time={epoch_time}, "
+        f"status={system_status}, "
+        f"tcp={tcp_connected}, "
+        f"op_status={op_status}, "
+        f"state={state}, "
+        f"mode={mode}, "
+        f"last_error={last_error}, "
+        f"samples={samples_captured}, "
+        f"dropped={dropped_buffers}, "
+        f"bytes_written={bytes_written}"
+    )
+
+
+def parse_daq_ack(packet):
+    command = packet[0]
+    server_id = struct.unpack(">I", packet[1:5])[0]
+    epoch_time = struct.unpack(">Q", packet[5:13])[0]
+    system_status = packet[13]
+    tcp_connected = packet[14]
+    op_status = struct.unpack(">i", packet[15:19])[0]
+    sample_rate_hz = struct.unpack(">I", packet[19:23])[0]
+    channel_mask = struct.unpack(">I", packet[23:27])[0]
+    block_samples = struct.unpack(">I", packet[27:31])[0]
+
+    print(
+        "RX daq-ack: "
+        f"cmd={command}, "
+        f"id={server_id}, "
+        f"time={epoch_time}, "
+        f"status={system_status}, "
+        f"tcp={tcp_connected}, "
+        f"op_status={op_status}, "
+        f"sample_rate={sample_rate_hz}, "
+        f"channel_mask=0x{channel_mask:08X}, "
+        f"block_samples={block_samples}"
+    )
+
+
 def parse_config_read(packet):
     global expected_config_file
     global file_read_in_progress
@@ -400,6 +471,8 @@ def parse_file_stream_data(data):
         print(f"Named file read complete: received {active_file_stream['bytes_received']} bytes.")
         if active_file_stream["command"] == 8:
             print("Stream pattern verification passed.")
+        elif active_file_stream["command"] == 13:
+            print(f"DAQ stream complete: received {active_file_stream['bytes_received'] // 36} frames.")
 
         start_time = transfer_metrics.pop(active_file_stream["server_id"], None)
         if start_time is not None:
@@ -470,6 +543,10 @@ def parse_packet(packet):
         parse_file_size(packet)
     elif command == 6:
         parse_cm4_heartbeat(packet)
+    elif command == 10:
+        parse_daq_status(packet)
+    elif command in {11, 12}:
+        parse_daq_ack(packet)
     elif command == 99:
         parse_openamp_heartbeat(packet)
     else:
@@ -507,7 +584,7 @@ def recv_loop(conn):
 
                 command = rx_buffer[0]
 
-                if command in {8, 9}:
+                if command in {8, 9, 13}:
                     if len(rx_buffer) < FILE_STREAM_HEADER_LEN:
                         break
 
@@ -672,7 +749,7 @@ def main():
 
             while True:
                 try:
-                    user_input = input("Enter command (0=heartbeat, 1=write config, 2=dat count, 3=all file count, 4=read config, 5=file size, 6=cm4 heartbeat, 7=read one chunk, 8=stream file, 9=test stream, 99=openamp heartbeat, q=quit): ").strip()
+                    user_input = input("Enter command (0=heartbeat, 1=write config, 2=dat count, 3=all file count, 4=read config, 5=file size, 6=cm4 heartbeat, 7=read one chunk, 8=stream file, 9=test stream, 10=daq status, 11=daq log, 12=daq stop, 13=daq stream, 99=openamp heartbeat, q=quit): ").strip()
                 except (EOFError, KeyboardInterrupt):
                     print("\nExiting.")
                     break
@@ -680,8 +757,8 @@ def main():
                 if user_input.lower() == "q":
                     break
 
-                if user_input not in {"0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "99"}:
-                    print("Only commands 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, and 99 are implemented in this test.")
+                if user_input not in {"0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "99"}:
+                    print("Only commands 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, and 99 are implemented in this test.")
                     continue
 
                 command = int(user_input)
@@ -715,6 +792,9 @@ def main():
                 if (command == 8) and file_read_in_progress:
                     print("File stream already in progress. Wait for completion.")
                     continue
+                if (command == 13) and file_read_in_progress:
+                    print("Stream already in progress. Wait for completion.")
+                    continue
 
                 epoch_time = int(time.time())
 
@@ -734,6 +814,13 @@ def main():
                     file_read_in_progress = True
                 elif command == 9:
                     print("TX test stream request")
+                    file_read_in_progress = True
+                elif command == 11:
+                    print(f"TX DAQ log request for: {DAQ_FILENAME.decode()}")
+                elif command == 12:
+                    print("TX DAQ stop request")
+                elif command == 13:
+                    print(f"TX DAQ stream request: {DAQ_STREAM_SAMPLES} samples")
                     file_read_in_progress = True
                 elif command == 99:
                     print("TX OpenAMP heartbeat request")

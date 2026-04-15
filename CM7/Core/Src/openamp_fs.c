@@ -5,6 +5,7 @@
 #include "cmsis_os.h"
 #include "openamp.h"
 #include "file_shmem.h"
+#include "daq_shared.h"
 
 #define OPENAMP_PING_CHAN_NAME "openamp_pingpong_demo"
 #define OPENAMP_PING_TIMEOUT_MS 3000U
@@ -19,6 +20,11 @@
 #define OPENAMP_OP_STREAM_CLOSE 82U
 #define OPENAMP_OP_STREAM_READ_SHMEM 83U
 #define OPENAMP_OP_SHMEM_PROBE 84U
+#define OPENAMP_OP_DAQ_STATUS  90U
+#define OPENAMP_OP_DAQ_START_LOG 91U
+#define OPENAMP_OP_DAQ_START_STREAM 92U
+#define OPENAMP_OP_DAQ_READ_SHMEM 93U
+#define OPENAMP_OP_DAQ_STOP 94U
 #define OPENAMP_FILENAME_LEN   64U
 #define OPENAMP_CHUNK_LEN      3072U
 #define OPENAMP_SHMEM_PROBE_MAGIC 0x53484D31U
@@ -28,6 +34,10 @@ typedef struct
   uint32_t op;
   uint32_t value;
   uint32_t length;
+  uint32_t arg0;
+  uint32_t arg1;
+  uint32_t arg2;
+  uint32_t arg3;
   char filename[OPENAMP_FILENAME_LEN];
 } OpenAmpPingRequest_t;
 
@@ -40,6 +50,10 @@ typedef struct
   uint32_t length;
   int32_t init_status;
   int32_t mount_status;
+  uint32_t arg0;
+  uint32_t arg1;
+  uint32_t arg2;
+  uint32_t arg3;
 } OpenAmpSmallResponse_t;
 
 typedef struct
@@ -51,6 +65,10 @@ typedef struct
   uint32_t length;
   int32_t init_status;
   int32_t mount_status;
+  uint32_t arg0;
+  uint32_t arg1;
+  uint32_t arg2;
+  uint32_t arg3;
   uint8_t data[OPENAMP_CHUNK_LEN];
 } OpenAmpChunkResponse_t;
 
@@ -82,6 +100,16 @@ static int32_t OpenAmpFs_SendRequestEx(uint32_t op,
                                        const char *filename,
                                        uint32_t *reply_value,
                                        uint8_t fast_wait);
+static int32_t OpenAmpFs_SendRequestEx2(uint32_t op,
+                                        uint32_t request_value,
+                                        uint32_t request_length,
+                                        uint32_t arg0,
+                                        uint32_t arg1,
+                                        uint32_t arg2,
+                                        uint32_t arg3,
+                                        const char *filename,
+                                        uint32_t *reply_value,
+                                        uint8_t fast_wait);
 
 int32_t OpenAmpFs_MasterInit(void)
 {
@@ -347,6 +375,122 @@ int32_t OpenAmpFs_ProbeSharedMemory(uint32_t *probe_len, uint32_t *bad_index)
   return 0;
 }
 
+int32_t OpenAmpFs_DaqGetStatus(DaqStatus_t *status)
+{
+  uint32_t reply_value = 0U;
+  int32_t result;
+
+  if (status == NULL)
+  {
+    return -1;
+  }
+
+  memset(status, 0, sizeof(*status));
+  result = OpenAmpFs_SendRequestEx(OPENAMP_OP_DAQ_STATUS,
+                                   0U,
+                                   0U,
+                                   NULL,
+                                   &reply_value,
+                                   1U);
+  if (result != 0)
+  {
+    return result;
+  }
+
+  status->state = g_last_response.value;
+  status->mode = g_last_response.arg0;
+  status->last_error = g_last_response.arg1;
+  status->samples_captured = g_last_response.offset;
+  status->dropped_buffers = g_last_response.length;
+  status->bytes_written = ((uint64_t)g_last_response.arg3 << 32) | g_last_response.arg2;
+  return 0;
+}
+
+int32_t OpenAmpFs_DaqStartLog(const DaqConfig_t *config)
+{
+  uint32_t reply_value = 0U;
+
+  if (config == NULL)
+  {
+    return -1;
+  }
+
+  return OpenAmpFs_SendRequestEx2(OPENAMP_OP_DAQ_START_LOG,
+                                  config->sample_rate_hz,
+                                  config->block_samples,
+                                  config->channel_mask,
+                                  config->flags,
+                                  0U,
+                                  0U,
+                                  config->filename,
+                                  &reply_value,
+                                  0U);
+}
+
+int32_t OpenAmpFs_DaqStartStream(const DaqConfig_t *config)
+{
+  uint32_t reply_value = 0U;
+
+  if (config == NULL)
+  {
+    return -1;
+  }
+
+  return OpenAmpFs_SendRequestEx2(OPENAMP_OP_DAQ_START_STREAM,
+                                  config->sample_rate_hz,
+                                  config->block_samples,
+                                  config->channel_mask,
+                                  config->flags,
+                                  0U,
+                                  0U,
+                                  config->filename,
+                                  &reply_value,
+                                  0U);
+}
+
+int32_t OpenAmpFs_DaqReadStreamShared(uint8_t **buffer,
+                                      uint16_t buffer_size,
+                                      uint16_t *bytes_read,
+                                      uint32_t *samples_read,
+                                      uint32_t *samples_captured)
+{
+  uint32_t reply_value = 0U;
+  int32_t result;
+
+  if ((buffer == NULL) || (bytes_read == NULL) || (samples_read == NULL) || (samples_captured == NULL))
+  {
+    return -1;
+  }
+
+  *buffer = FILE_SHMEM_DATA_PTR;
+  *bytes_read = 0U;
+  *samples_read = 0U;
+  *samples_captured = 0U;
+
+  result = OpenAmpFs_SendRequestEx(OPENAMP_OP_DAQ_READ_SHMEM,
+                                   0U,
+                                   buffer_size,
+                                   NULL,
+                                   &reply_value,
+                                   1U);
+  if (result != 0)
+  {
+    return result;
+  }
+
+  *samples_read = g_last_response.value;
+  *samples_captured = g_last_response.offset;
+  *bytes_read = (uint16_t)g_last_response.length;
+  return 0;
+}
+
+int32_t OpenAmpFs_DaqStop(void)
+{
+  uint32_t reply_value = 0U;
+
+  return OpenAmpFs_SendRequest(OPENAMP_OP_DAQ_STOP, 0U, 0U, NULL, &reply_value);
+}
+
 static int32_t OpenAmpFs_SendRequest(uint32_t op,
                                      uint32_t request_value,
                                      uint32_t request_length,
@@ -362,6 +506,29 @@ static int32_t OpenAmpFs_SendRequestEx(uint32_t op,
                                        const char *filename,
                                        uint32_t *reply_value,
                                        uint8_t fast_wait)
+{
+  return OpenAmpFs_SendRequestEx2(op,
+                                  request_value,
+                                  request_length,
+                                  0U,
+                                  0U,
+                                  0U,
+                                  0U,
+                                  filename,
+                                  reply_value,
+                                  fast_wait);
+}
+
+static int32_t OpenAmpFs_SendRequestEx2(uint32_t op,
+                                        uint32_t request_value,
+                                        uint32_t request_length,
+                                        uint32_t arg0,
+                                        uint32_t arg1,
+                                        uint32_t arg2,
+                                        uint32_t arg3,
+                                        const char *filename,
+                                        uint32_t *reply_value,
+                                        uint8_t fast_wait)
 {
   OpenAmpPingRequest_t request;
   uint32_t start_tick;
@@ -391,6 +558,10 @@ static int32_t OpenAmpFs_SendRequestEx(uint32_t op,
   request.op = op;
   request.value = request_value;
   request.length = request_length;
+  request.arg0 = arg0;
+  request.arg1 = arg1;
+  request.arg2 = arg2;
+  request.arg3 = arg3;
   if (filename != NULL)
   {
     (void)strncpy(request.filename, filename, sizeof(request.filename) - 1U);

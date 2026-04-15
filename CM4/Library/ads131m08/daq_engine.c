@@ -3,13 +3,20 @@
 #include <string.h>
 #include "main.h"
 #include "ads131m08.h"
+#include "emmc_fs.h"
+#include "file_shmem.h"
+#include "statemachine.h"
 
 static uint32_t calibration_values[6] = {-3838, -7481, -7500, -491, -4160, 4890};
 static DaqSampleFrame_t last_sample;
 static DaqConfig_t g_daq_cfg;
+static DaqMode_t g_daq_mode = DAQ_MODE_IDLE;
+static EmmcFsWriteHandle_t g_daq_write_handle;
 
 #define DAQ_AGGR_SAMPLES_PER_BLOCK   (32U)
 #define DAQ_WRITE_QUEUE_DEPTH        (4U)
+#define DAQ_ERROR_WRITE_OPEN         (10U)
+#define DAQ_ERROR_WRITE_DATA         (11U)
 
 typedef struct
 {
@@ -46,7 +53,7 @@ static uint8_t DAQ_ValidateConfig(const DaqConfig_t *cfg)
     return 0U;
   }
 
-  if (cfg->filename[IPC_FILENAME_LEN - 1U] != '\0')
+  if (cfg->filename[DAQ_FILENAME_LEN - 1U] != '\0')
   {
     return 0U;
   }
@@ -101,6 +108,8 @@ void DAQ_Shutdown(void)
 
   /* Update DAQ context */
   g_daq_ctx.is_adc_armed = 0U;
+
+  /* Keep the writer open until FINALIZING drains queued blocks. */
 }
 
 void DAQ_Startup(void)
@@ -138,6 +147,8 @@ void DAQ_EngineInit(void)
   g_daq_cfg.block_samples = DAQ_AGGR_SAMPLES_PER_BLOCK;
   g_daq_cfg.flags = 0U;
   (void)strcpy(g_daq_cfg.filename, "daq.bin");
+  g_daq_mode = DAQ_MODE_IDLE;
+  memset(&g_daq_write_handle, 0, sizeof(g_daq_write_handle));
   adcMaster_Shutdown();
 }
 
@@ -155,6 +166,130 @@ uint8_t DAQ_ApplyConfig(const DaqConfig_t *cfg)
 const DaqConfig_t *DAQ_GetConfig(void)
 {
   return &g_daq_cfg;
+}
+
+uint8_t DAQ_StartLogging(const DaqConfig_t *cfg)
+{
+  if (DAQ_ApplyConfig(cfg) == 0U)
+  {
+    return 0U;
+  }
+
+  if (g_daq_write_handle.is_open != 0U)
+  {
+    (void)EmmcFs_CloseFileWrite(&g_daq_write_handle);
+  }
+
+  memset(&g_daq_write_handle, 0, sizeof(g_daq_write_handle));
+  if (EmmcFs_OpenFileWrite(g_daq_cfg.filename, &g_daq_write_handle) != EMMC_FS_OK)
+  {
+    g_daq_ctx.last_error = DAQ_ERROR_WRITE_OPEN;
+    return 0U;
+  }
+
+  g_daq_mode = DAQ_MODE_LOG_TO_EMMC;
+  g_daq_ctx.samples_captured = 0U;
+  g_daq_ctx.dropped_buffers = 0U;
+  g_daq_ctx.bytes_queued = 0U;
+  g_daq_ctx.bytes_written = 0U;
+  g_daq_ctx.last_error = 0U;
+  g_daq_ctx.events |= DAQ_EVT_CMD_START;
+  return 1U;
+}
+
+uint8_t DAQ_StartStreaming(const DaqConfig_t *cfg)
+{
+  if (DAQ_ApplyConfig(cfg) == 0U)
+  {
+    return 0U;
+  }
+
+  if (g_daq_write_handle.is_open != 0U)
+  {
+    (void)EmmcFs_CloseFileWrite(&g_daq_write_handle);
+  }
+
+  g_daq_mode = DAQ_MODE_STREAM_TO_SHMEM;
+  g_daq_ctx.samples_captured = 0U;
+  g_daq_ctx.dropped_buffers = 0U;
+  g_daq_ctx.bytes_queued = 0U;
+  g_daq_ctx.bytes_written = 0U;
+  g_daq_ctx.last_error = 0U;
+  g_daq_ctx.events |= DAQ_EVT_CMD_START;
+  return 1U;
+}
+
+void DAQ_Stop(void)
+{
+  g_daq_ctx.events |= DAQ_EVT_CMD_STOP;
+}
+
+void DAQ_GetStatus(DaqStatus_t *status)
+{
+  if (status == NULL)
+  {
+    return;
+  }
+
+  memset(status, 0, sizeof(*status));
+  status->state = (uint32_t)g_daq_ctx.state;
+  status->mode = (uint32_t)g_daq_mode;
+  status->last_error = g_daq_ctx.last_error;
+  status->samples_captured = g_daq_ctx.samples_captured;
+  status->dropped_buffers = g_daq_ctx.dropped_buffers;
+  status->bytes_queued = g_daq_ctx.bytes_queued;
+  status->bytes_written = g_daq_ctx.bytes_written;
+}
+
+uint8_t DAQ_ReadStreamBlockShared(uint8_t **buffer,
+                                  uint16_t max_len,
+                                  uint16_t *bytes_read,
+                                  uint32_t *samples_read)
+{
+  DaqWriteBlock_t blk;
+  uint32_t block_bytes;
+
+  if ((buffer == NULL) || (bytes_read == NULL) || (samples_read == NULL) ||
+      (max_len < sizeof(DaqSampleFrame_t)))
+  {
+    return 0U;
+  }
+
+  *buffer = FILE_SHMEM_DATA_PTR;
+  *bytes_read = 0U;
+  *samples_read = 0U;
+
+  if (g_daq_mode != DAQ_MODE_STREAM_TO_SHMEM)
+  {
+    return 0U;
+  }
+
+  if (DAQ_QueuePop(&blk) == 0U)
+  {
+    return 0U;
+  }
+
+  block_bytes = (uint32_t)(blk.sample_count * sizeof(DaqSampleFrame_t));
+  if ((block_bytes > max_len) || (block_bytes > FILE_SHMEM_DATA_LEN))
+  {
+    g_daq_ctx.dropped_buffers++;
+    return 0U;
+  }
+
+  memcpy(FILE_SHMEM_DATA_PTR, blk.sample, block_bytes);
+  if (g_daq_ctx.bytes_queued >= block_bytes)
+  {
+    g_daq_ctx.bytes_queued -= block_bytes;
+  }
+  else
+  {
+    g_daq_ctx.bytes_queued = 0U;
+  }
+  g_daq_ctx.bytes_written += block_bytes;
+
+  *bytes_read = (uint16_t)block_bytes;
+  *samples_read = blk.sample_count;
+  return 1U;
 }
 
 void adcMaster_Startup(void)
@@ -240,14 +375,31 @@ void DAQ_ServicePendingWrites(void)
 {
   DaqWriteBlock_t blk;
   uint64_t blk_bytes;
+  uint32_t bytes_written;
+
+  if (g_daq_mode != DAQ_MODE_LOG_TO_EMMC)
+  {
+    return;
+  }
 
   if (DAQ_QueuePop(&blk) == 0U)
   {
     return;
   }
 
-  /* Placeholder write path: update accounting until eMMC/FatFs writer is wired in. */
   blk_bytes = (uint64_t)(blk.sample_count * sizeof(DaqSampleFrame_t));
+  if ((g_daq_write_handle.is_open == 0U) ||
+      (EmmcFs_WriteFileNext(&g_daq_write_handle,
+                            (const uint8_t *)blk.sample,
+                            (uint32_t)blk_bytes,
+                            &bytes_written) != EMMC_FS_OK) ||
+      (bytes_written != (uint32_t)blk_bytes))
+  {
+    g_daq_ctx.last_error = DAQ_ERROR_WRITE_DATA;
+    g_daq_ctx.dropped_buffers++;
+    return;
+  }
+
   if (g_daq_ctx.bytes_queued >= blk_bytes)
   {
     g_daq_ctx.bytes_queued -= blk_bytes;
@@ -261,5 +413,19 @@ void DAQ_ServicePendingWrites(void)
 
 uint8_t DAQ_HasPendingWrites(void)
 {
-  return (uint8_t)((write_q_count != 0U) || (aggr_block.sample_count != 0U));
+  uint8_t pending = (uint8_t)((write_q_count != 0U) || (aggr_block.sample_count != 0U));
+
+  if ((pending == 0U) && (g_daq_ctx.is_adc_armed == 0U))
+  {
+    if (g_daq_write_handle.is_open != 0U)
+    {
+      if (EmmcFs_CloseFileWrite(&g_daq_write_handle) != EMMC_FS_OK)
+      {
+        g_daq_ctx.last_error = DAQ_ERROR_WRITE_DATA;
+      }
+    }
+    g_daq_mode = DAQ_MODE_IDLE;
+  }
+
+  return pending;
 }

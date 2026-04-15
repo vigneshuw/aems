@@ -24,6 +24,11 @@ uint16_t    enforce_selected_device_modes(uint16_t data);
 uint8_t     getWordByteLength(void);
 
 
+uint16_t getDeviceIdPattern(){
+	return readSingleRegister(ID_ADDRESS);
+}
+
+
 uint16_t getRegisterValue(uint8_t address)
 {
     return registerMap[address];

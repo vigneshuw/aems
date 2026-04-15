@@ -602,6 +602,110 @@ EmmcFsStatus_t EmmcFs_CloseFileRead(EmmcFsReadHandle_t *handle)
     return EMMC_FS_OK;
 }
 
+EmmcFsStatus_t EmmcFs_OpenFileWrite(const char *filename,
+                                    EmmcFsWriteHandle_t *handle)
+{
+    FRESULT result;
+    EmmcFsStatus_t status;
+    char path[EMMC_FS_FILEPATH_LEN];
+
+    if ((filename == NULL) || (handle == NULL))
+    {
+        return EMMC_FS_ERR_PARAM;
+    }
+
+    memset(handle, 0, sizeof(*handle));
+
+    EmmcFs_Lock();
+
+    status = EmmcFs_EnsureMounted();
+    if (status != EMMC_FS_OK)
+    {
+        EmmcFs_Unlock();
+        return status;
+    }
+
+    memset(path, 0, sizeof(path));
+    EmmcFs_BuildPath(filename, path, sizeof(path));
+
+    result = f_open(&handle->file, path, FA_CREATE_ALWAYS | FA_WRITE);
+    EmmcFs_Unlock();
+    if (result != FR_OK)
+    {
+        return EMMC_FS_ERR_OPEN_FILE;
+    }
+
+    handle->bytes_written = 0U;
+    handle->is_open = 1U;
+    return EMMC_FS_OK;
+}
+
+EmmcFsStatus_t EmmcFs_WriteFileNext(EmmcFsWriteHandle_t *handle,
+                                    const uint8_t *buffer,
+                                    uint32_t buffer_size,
+                                    uint32_t *bytes_written)
+{
+    FRESULT result;
+    UINT fatfs_bytes_written;
+
+    if ((handle == NULL) || (buffer == NULL) || (bytes_written == NULL) ||
+        (buffer_size == 0U) || (handle->is_open == 0U))
+    {
+        return EMMC_FS_ERR_PARAM;
+    }
+
+    *bytes_written = 0U;
+
+    EmmcFs_Lock();
+    result = f_write(&handle->file, buffer, buffer_size, &fatfs_bytes_written);
+    EmmcFs_Unlock();
+
+    if ((result != FR_OK) || (fatfs_bytes_written != buffer_size))
+    {
+        return EMMC_FS_ERR_READ_FILE;
+    }
+
+    handle->bytes_written += fatfs_bytes_written;
+    *bytes_written = fatfs_bytes_written;
+    return EMMC_FS_OK;
+}
+
+EmmcFsStatus_t EmmcFs_CloseFileWrite(EmmcFsWriteHandle_t *handle)
+{
+    FRESULT result;
+
+    if (handle == NULL)
+    {
+        return EMMC_FS_ERR_PARAM;
+    }
+
+    if (handle->is_open == 0U)
+    {
+        return EMMC_FS_OK;
+    }
+
+    EmmcFs_Lock();
+    result = f_sync(&handle->file);
+    if (result == FR_OK)
+    {
+        result = f_close(&handle->file);
+    }
+    else
+    {
+        (void)f_close(&handle->file);
+    }
+    EmmcFs_Unlock();
+
+    handle->is_open = 0U;
+
+    if (result != FR_OK)
+    {
+        return EMMC_FS_ERR_READ_FILE;
+    }
+
+    return EMMC_FS_OK;
+}
+
 EmmcFsStatus_t EmmcFs_CountDatFiles(EmmcFsDatSummary_t *summary)
 {
     DIR dir;

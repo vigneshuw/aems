@@ -28,6 +28,9 @@
 /* USER CODE BEGIN Includes */
 #include "openamp_fs.h"
 #include "emmc_fs.h"
+#include "ads131m08.h"
+#include "daq_engine.h"
+#include "statemachine.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -55,6 +58,9 @@
 
 /* USER CODE BEGIN PV */
 volatile DaqContext_t g_daq_ctx;
+ADS131M08_HandleTypeDef ads;
+GPIO_TypeDef *SYNC_RESET_GPIO_Port = ADS_SYNC_RESET_GPIO_Port;
+uint16_t SYNC_RESET_Pin = ADS_SYNC_RESET_Pin;
 static int32_t g_cm4_emmc_init_status = 0;
 static int32_t g_cm4_emmc_mount_status = 0;
 static int32_t g_cm4_emmc_create_status = 0;
@@ -113,6 +119,12 @@ int main(void)
   MX_SPI4_Init();
   MX_SDMMC1_MMC_Init();
   /* USER CODE BEGIN 2 */
+  ads.hspi = &hspi4;
+  ads.cs_port = ADS_CS_GPIO_Port;
+  ads.cs_pin = ADS_CS_Pin;
+
+  DAQ_ContextInit();
+  DAQ_EngineInit();
 
   g_cm4_emmc_init_status = (int32_t)EmmcFs_Init();
   if (g_cm4_emmc_init_status != EMMC_FS_OK)
@@ -139,6 +151,7 @@ int main(void)
 
     /* USER CODE BEGIN 3 */
     OpenAmpFs_RemotePoll();
+    DAQ_StateMachine_Run();
   }
   /* USER CODE END 3 */
 }
@@ -153,6 +166,22 @@ int32_t CM4_GetEmmcMountStatus(void)
 {
   return g_cm4_emmc_mount_status;
 }
+
+
+/*
+ * Helper Functions
+ */
+
+
+/*
+ * Callback
+ */
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
+	if(GPIO_Pin == ADS_DRDY_Pin) {
+    g_daq_ctx.events |= DAQ_EVT_ADC_READY;
+	}
+}
+
 /* USER CODE END 4 */
 
 /**
