@@ -175,7 +175,7 @@ void MX_FREERTOS_Init(void) {
 
   /* Create the thread(s) */
   /* definition and creation of defaultTask */
-  osThreadDef(defaultTask, StartDefaultTask, osPriorityHigh, 0, 256);
+  osThreadDef(defaultTask, StartDefaultTask, osPriorityHigh, 0, 1024);
   defaultTaskHandle = osThreadCreate(osThread(defaultTask), NULL);
 
   /* definition and creation of controllerTask */
@@ -595,6 +595,7 @@ void ControllerTask(void const * argument)
           break;
         }
 
+        // Streaming data over TCP
         case 13U:
         {
           uint8_t header[TCP_FILE_STREAM_HEADER_LEN];
@@ -607,10 +608,14 @@ void ControllerTask(void const * argument)
           DaqConfigFromPayload(msg.payload, msg.payload_len, &daq_config, &sample_count);
           if (sample_count == 0U)
           {
-            sample_count = daq_config.block_samples * 32U;
+            stream_size = 0xFFFFFFFFUL;
+            sample_count = 0U;
           }
-          sample_count = (sample_count / daq_config.block_samples) * daq_config.block_samples;
-          stream_size = sample_count * DAQ_SAMPLE_FRAME_SIZE;
+          else
+          {
+            sample_count = (sample_count / daq_config.block_samples) * daq_config.block_samples;
+            stream_size = sample_count * DAQ_SAMPLE_FRAME_SIZE;
+          }
 
           op_status = OpenAmpFs_DaqStartStream(&daq_config);
 

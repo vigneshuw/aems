@@ -362,6 +362,45 @@ static void TcpClient_SendQueued(void)
     }
 }
 
+static void TcpClient_PollRxNonBlocking(char *rx_buffer, uint16_t rx_buffer_len)
+{
+    fd_set read_set;
+    struct timeval timeout;
+    int32_t rx_len;
+
+    if ((gTcpClient.sock < 0) || (rx_buffer == NULL) || (rx_buffer_len == 0U))
+    {
+        return;
+    }
+
+    FD_ZERO(&read_set);
+    FD_SET(gTcpClient.sock, &read_set);
+    timeout.tv_sec = 0;
+    timeout.tv_usec = 0;
+
+    rx_len = lwip_select(gTcpClient.sock + 1, &read_set, NULL, NULL, &timeout);
+    if (rx_len < 0)
+    {
+        TcpClient_CloseSocket();
+        return;
+    }
+
+    if ((rx_len == 0) || (!FD_ISSET(gTcpClient.sock, &read_set)))
+    {
+        return;
+    }
+
+    rx_len = lwip_recv(gTcpClient.sock, rx_buffer, rx_buffer_len, 0);
+    if (rx_len > 0)
+    {
+        TcpClient_ProcessRx(rx_buffer, rx_len);
+    }
+    else if ((errno != EWOULDBLOCK) && (errno != EAGAIN))
+    {
+        TcpClient_CloseSocket();
+    }
+}
+
 static void TcpClient_Task(void *arg)
 {
     char rx_buffer[TCPCLIENT_RX_BUFFER_LEN];
@@ -402,6 +441,7 @@ static void TcpClient_Task(void *arg)
             sys_mutex_lock(&gTcpClient.tx_mutex);
             (void)TcpClient_ProcessStream();
             sys_mutex_unlock(&gTcpClient.tx_mutex);
+            TcpClient_PollRxNonBlocking(rx_buffer, sizeof(rx_buffer));
             if (gTcpClient.reconnect_requested != 0U)
             {
                 continue;

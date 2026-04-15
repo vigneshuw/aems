@@ -2,6 +2,7 @@ import socket
 import struct
 import threading
 import time
+import csv
 
 
 HOST = "0.0.0.0"
@@ -14,15 +15,28 @@ MAX_USEFUL_PAYLOAD_LEN = PACKET_LEN - 15
 CONFIG_TEST_PAYLOAD = bytes(((index * 3) + 1) & 0xFF for index in range(MAX_USEFUL_PAYLOAD_LEN))
 READ_FILENAME = b"test.dat"
 DAQ_FILENAME = b"daq.bin"
-DAQ_SAMPLE_RATE_HZ = 4000
-DAQ_CHANNEL_MASK = 0xFF
+DAQ_SAMPLE_RATE_HZ = 2000
+DAQ_CHANNEL_MASK = 0x3F
 DAQ_BLOCK_SAMPLES = 32
-DAQ_STREAM_SAMPLES = 1024
+DAQ_STREAM_SAMPLES = 0
+DAQ_STREAM_CSV = "stream_data.csv"
+DAQ_FRAME_LEN = 36
+DAQ_STREAM_CHANNELS = 6
+INT24_MAX = 0x7FFFFF
+V_REF_VGAIN = 1.0
+V_DIVIDER = 1.0
+MAINS_VOLTAGE = 1.0
 config_rx_state = {}
 expected_config_file = None
 transfer_metrics = {}
 file_read_in_progress = False
 active_file_stream = None
+daq_stream_stop_requested = False
+daq_stream_control_pending = set()
+daq_stream_remainder = bytearray()
+daq_stream_sample_index = 0
+daq_csv_file = None
+daq_csv_writer = None
 read_chunk_offset = 0
 stream_read_offset = 0
 chunk_response_condition = threading.Condition()
@@ -314,6 +328,68 @@ def parse_daq_ack(packet):
     )
 
 
+def parse_adc_value_voltage(adc_value):
+    if adc_value > INT24_MAX:
+        adc_value = INT24_MAX
+    elif adc_value < -INT24_MAX:
+        adc_value = -INT24_MAX
+
+    v_adc = (float(adc_value) / float(INT24_MAX)) * V_REF_VGAIN
+    return (v_adc / V_DIVIDER) * (MAINS_VOLTAGE * 1.414)
+
+
+def open_daq_csv():
+    global daq_csv_file
+    global daq_csv_writer
+    global daq_stream_remainder
+    global daq_stream_sample_index
+
+    close_daq_csv()
+    daq_stream_remainder = bytearray()
+    daq_stream_sample_index = 0
+    daq_csv_file = open(DAQ_STREAM_CSV, "w", newline="")
+    daq_csv_writer = csv.writer(daq_csv_file)
+    daq_csv_writer.writerow(["sample_index", "ch0", "ch1", "ch2", "ch3", "ch4", "ch5"])
+
+
+def close_daq_csv():
+    global daq_csv_file
+    global daq_csv_writer
+    global daq_stream_remainder
+    global daq_stream_sample_index
+
+    if daq_csv_file is not None:
+        daq_csv_file.flush()
+        daq_csv_file.close()
+
+    daq_csv_file = None
+    daq_csv_writer = None
+    daq_stream_remainder = bytearray()
+    daq_stream_sample_index = 0
+
+
+def write_daq_stream_csv(data):
+    global daq_stream_remainder
+    global daq_stream_sample_index
+
+    if daq_csv_writer is None:
+        return
+
+    daq_stream_remainder.extend(data)
+    while len(daq_stream_remainder) >= DAQ_FRAME_LEN:
+        frame = bytes(daq_stream_remainder[:DAQ_FRAME_LEN])
+        del daq_stream_remainder[:DAQ_FRAME_LEN]
+
+        _response, _crc, *channels = struct.unpack("<HH8i", frame)
+        row = [daq_stream_sample_index]
+        row.extend(parse_adc_value_voltage(value) for value in channels[:DAQ_STREAM_CHANNELS])
+        daq_csv_writer.writerow(row)
+        daq_stream_sample_index += 1
+
+    if daq_csv_file is not None:
+        daq_csv_file.flush()
+
+
 def parse_config_read(packet):
     global expected_config_file
     global file_read_in_progress
@@ -408,6 +484,7 @@ def parse_file_stream_header(packet):
     global active_file_stream
     global file_read_in_progress
     global stream_read_offset
+    global daq_stream_stop_requested
 
     command = packet[0]
     system_status = packet[1]
@@ -418,11 +495,20 @@ def parse_file_stream_header(packet):
     if (system_status != 0) or (total_size == 0):
         active_file_stream = None
         file_read_in_progress = False
+        if command == 13:
+            close_daq_csv()
         if total_size == 0:
             print("Stream is empty or unavailable.")
         return
 
     print(f"RX stream start: cmd={command}, total_size={total_size}")
+    if command == 13:
+        daq_stream_stop_requested = False
+        open_daq_csv()
+        print(
+            f"DAQ CSV capture started: {DAQ_STREAM_CSV}, "
+            f"sample_rate={DAQ_SAMPLE_RATE_HZ}Hz, channel_mask=0x{DAQ_CHANNEL_MASK:02X}"
+        )
 
     transfer_metrics[server_id] = time.time()
     active_file_stream = {
@@ -434,6 +520,7 @@ def parse_file_stream_header(packet):
         "file_offset": stream_read_offset if command == 8 else 0,
         "next_progress_mark": 16 * 1024,
         "first_data_reported": False,
+        "data_start_time": None,
     }
 
 
@@ -456,17 +543,24 @@ def parse_file_stream_data(data):
             active_file_stream = None
             file_read_in_progress = False
             return
+    elif active_file_stream["command"] == 13:
+        write_daq_stream_csv(data)
 
     active_file_stream["bytes_received"] += len(data)
 
     if (len(data) > 0) and (active_file_stream["first_data_reported"] is False):
         print(f"Read data started: received first {len(data)} bytes")
         active_file_stream["first_data_reported"] = True
+        active_file_stream["data_start_time"] = time.time()
 
     while active_file_stream["bytes_received"] >= active_file_stream["next_progress_mark"]:
-        print(
-            f"Read progress: {active_file_stream['bytes_received']}/{active_file_stream['total_size']} bytes"
-        )
+        if active_file_stream["command"] == 13:
+            frames = active_file_stream["bytes_received"] // DAQ_FRAME_LEN
+            print(f"DAQ stream progress: {frames} frames")
+        else:
+            print(
+                f"Read progress: {active_file_stream['bytes_received']}/{active_file_stream['total_size']} bytes"
+            )
         active_file_stream["next_progress_mark"] += 16 * 1024
 
     if active_file_stream["bytes_received"] >= active_file_stream["total_size"]:
@@ -475,18 +569,74 @@ def parse_file_stream_data(data):
             print("Stream pattern verification passed.")
         elif active_file_stream["command"] == 13:
             print(f"DAQ stream complete: received {active_file_stream['bytes_received'] // 36} frames.")
+            close_daq_csv()
+            print(f"DAQ CSV saved: {DAQ_STREAM_CSV}")
 
         start_time = transfer_metrics.pop(active_file_stream["server_id"], None)
         if start_time is not None:
             elapsed = max(time.time() - start_time, 1e-6)
-            throughput_mib_s = (active_file_stream["bytes_received"] / elapsed) / (1024 * 1024)
-            print(
-                f"Average throughput: {throughput_mib_s:.2f} MiB/s "
-                f"over {elapsed:.3f} s"
-            )
+            if active_file_stream["command"] == 13:
+                frames = active_file_stream["bytes_received"] // DAQ_FRAME_LEN
+                print(f"DAQ average rate: {frames / elapsed:.1f} frames/s over {elapsed:.3f} s")
+            else:
+                throughput_mib_s = (active_file_stream["bytes_received"] / elapsed) / (1024 * 1024)
+                print(
+                    f"Average throughput: {throughput_mib_s:.2f} MiB/s "
+                    f"over {elapsed:.3f} s"
+                )
 
         active_file_stream = None
         file_read_in_progress = False
+
+
+def finish_daq_stream_from_stop_marker():
+    global active_file_stream
+    global file_read_in_progress
+    global daq_stream_stop_requested
+
+    if active_file_stream is None:
+        return
+
+    frames = active_file_stream["bytes_received"] // DAQ_FRAME_LEN
+    start_time = transfer_metrics.pop(active_file_stream["server_id"], None)
+    if start_time is not None:
+        total_elapsed = max(time.time() - start_time, 1e-6)
+        data_start_time = active_file_stream.get("data_start_time")
+        data_elapsed = max(time.time() - data_start_time, 1e-6) if data_start_time is not None else total_elapsed
+        print(
+            f"DAQ stream stopped: received {frames} frames, "
+            f"avg={frames / total_elapsed:.1f} frames/s over {total_elapsed:.3f} s, "
+            f"data_rate={frames / data_elapsed:.1f} frames/s over {data_elapsed:.3f} s"
+        )
+    else:
+        print(f"DAQ stream stopped: received {frames} frames.")
+
+    close_daq_csv()
+    print(f"DAQ CSV saved: {DAQ_STREAM_CSV}")
+    active_file_stream = None
+    file_read_in_progress = False
+    daq_stream_stop_requested = False
+
+
+def find_daq_stream_control_marker(buffer, expected_commands):
+    now = int(time.time())
+
+    for index in range(0, max(0, len(buffer) - PACKET_LEN + 1)):
+        command = buffer[index]
+        if command not in expected_commands:
+            continue
+
+        server_id = struct.unpack(">I", buffer[index + 1:index + 5])[0]
+        if server_id != SERVER_ID:
+            continue
+
+        epoch_time = struct.unpack(">Q", buffer[index + 5:index + 13])[0]
+        if epoch_time > (now + 3600):
+            continue
+
+        return index
+
+    return -1
 
 
 def parse_file_chunk(packet):
@@ -557,6 +707,7 @@ def parse_packet(packet):
 
 def recv_loop(conn):
     global active_file_stream
+    global daq_stream_control_pending
     rx_buffer = bytearray()
 
     try:
@@ -570,6 +721,39 @@ def recv_loop(conn):
 
             while rx_buffer:
                 if active_file_stream is not None:
+                    if active_file_stream["command"] == 13:
+                        expected_commands = set(daq_stream_control_pending)
+                        if daq_stream_stop_requested:
+                            expected_commands.add(12)
+                        marker_index = (
+                            find_daq_stream_control_marker(rx_buffer, expected_commands)
+                            if (expected_commands and len(rx_buffer) >= PACKET_LEN)
+                            else -1
+                        )
+                        if marker_index >= 0:
+                            if marker_index > 0:
+                                payload = bytes(rx_buffer[:marker_index])
+                                del rx_buffer[:marker_index]
+                                parse_file_stream_data(payload)
+
+                            command = rx_buffer[0]
+                            if command == 12:
+                                finish_daq_stream_from_stop_marker()
+                            packet = bytes(rx_buffer[:PACKET_LEN])
+                            del rx_buffer[:PACKET_LEN]
+                            parse_packet(packet)
+                            daq_stream_control_pending.discard(command)
+                            continue
+                        if expected_commands and len(rx_buffer) < PACKET_LEN:
+                            break
+
+                        if expected_commands:
+                            consume_len = len(rx_buffer) - (PACKET_LEN - 1)
+                            payload = bytes(rx_buffer[:consume_len])
+                            del rx_buffer[:consume_len]
+                            parse_file_stream_data(payload)
+                            continue
+
                     remaining = active_file_stream["total_size"] - active_file_stream["bytes_received"]
                     if remaining == 0:
                         active_file_stream = None
@@ -733,6 +917,8 @@ def main():
     global file_read_in_progress
     global read_chunk_offset
     global stream_read_offset
+    global daq_stream_stop_requested
+    global daq_stream_control_pending
 
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server:
         server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -757,6 +943,7 @@ def main():
                     break
 
                 if user_input.lower() == "q":
+                    close_daq_csv()
                     break
 
                 if user_input not in {"0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "99"}:
@@ -821,11 +1008,22 @@ def main():
                     print(f"TX DAQ log request for: {DAQ_FILENAME.decode()}")
                 elif command == 12:
                     print("TX DAQ stop request")
+                    if active_file_stream is not None and active_file_stream["command"] == 13:
+                        daq_stream_stop_requested = True
+                        daq_stream_control_pending.add(12)
                 elif command == 13:
-                    print(f"TX DAQ stream request: {DAQ_STREAM_SAMPLES} samples")
+                    print(
+                        "TX DAQ stream request: "
+                        f"sample_rate={DAQ_SAMPLE_RATE_HZ}Hz, "
+                        f"channel_mask=0x{DAQ_CHANNEL_MASK:02X}, "
+                        "stop with command 12"
+                    )
                     file_read_in_progress = True
                 elif command == 99:
                     print("TX OpenAMP heartbeat request")
+
+                if command == 10 and active_file_stream is not None and active_file_stream["command"] == 13:
+                    daq_stream_control_pending.add(10)
 
                 send_packet(conn, command, epoch_time)
 
