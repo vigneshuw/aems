@@ -125,8 +125,7 @@ int main(void)
   ads.cs_pin = ADS_CS_Pin;
 
   adcMaster_Startup();
-  HAL_Delay(10U);
-  g_cm4_adc_device_id = getDeviceIdPattern();
+  g_cm4_adc_device_id = detectBootDeviceIdPattern();
   adcMaster_Shutdown();
 
   DAQ_ContextInit();
@@ -163,6 +162,9 @@ int main(void)
 }
 
 /* USER CODE BEGIN 4 */
+/*
+ * Helper Functions
+ */
 int32_t CM4_GetEmmcInitStatus(void)
 {
   return g_cm4_emmc_init_status;
@@ -177,11 +179,6 @@ uint16_t CM4_GetAdcDeviceId(void)
 {
   return g_cm4_adc_device_id;
 }
-
-/*
- * Helper Functions
- */
-
 
 /*
  * Callback

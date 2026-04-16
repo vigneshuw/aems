@@ -23,10 +23,53 @@ uint8_t     buildSPIarray(const uint16_t opcodeArray[], uint8_t numberOpcodes, u
 uint16_t    enforce_selected_device_modes(uint16_t data);
 uint8_t     getWordByteLength(void);
 
+#define ADS131M08_FRAME_WORDS       (CHANNEL_COUNT + 2U)
+#define ADS131M08_BOOT_WORD_BYTES   (3U)
+#define ADS131M08_MAX_FRAME_BYTES   (ADS131M08_FRAME_WORDS * 4U)
+
+static uint16_t sendBootFullFrameCommand(uint16_t opcode);
+static uint16_t normalizeDeviceIdPattern(uint16_t raw_id);
+
 
 uint16_t getDeviceIdPattern(){
 	uint16_t response =  readSingleRegister(ID_ADDRESS);
 	return (((response & 0xFF00) >> 8) | ((response & 0x00FF) << 8)) & 0xFF00;
+}
+
+
+uint16_t detectBootDeviceIdPattern(void)
+{
+	uint16_t raw_id = 0U;
+	uint16_t normalized_id = 0U;
+
+	HAL_Delay(10);
+	setSYNC_RESET(HIGH);
+	toggleRESET();
+
+	restoreRegisterDefaults();
+	(void)sendBootFullFrameCommand(OPCODE_RESET);
+	HAL_Delay(10);
+
+	/* Clear the reset/status response pipeline before issuing RREG. */
+	(void)sendBootFullFrameCommand(OPCODE_NULL);
+	(void)sendBootFullFrameCommand(OPCODE_NULL);
+
+	for (uint32_t attempt = 0U; attempt < 5U; attempt++)
+	{
+		HAL_Delay(10U);
+
+		(void)sendBootFullFrameCommand(OPCODE_RREG | (((uint16_t)ID_ADDRESS) << 7));
+		raw_id = sendBootFullFrameCommand(OPCODE_NULL);
+		normalized_id = normalizeDeviceIdPattern(raw_id);
+
+		if (normalized_id == (ID_DEFAULT & 0xFF00U))
+		{
+			break;
+		}
+	}
+
+	registerMap[ID_ADDRESS] = raw_id;
+	return normalized_id;
 }
 
 
@@ -62,19 +105,13 @@ void adcStartup(void) {
 	// Toggle the reset pin
 	toggleRESET();
 
-	// Reset the device
-	sendCommand(OPCODE_RESET);
+	resetDevice();
 	HAL_Delay(10);
 
-	// Set the registers to default state
-	restoreRegisterDefaults();
-	// Validate the system state
+	sendCommand(OPCODE_NULL);
 	sendCommand(OPCODE_NULL);
 
-	// Set the clock register
 	writeSingleRegister(CLOCK_ADDRESS, (CLOCK_DEFAULT & ~CLOCK_OSR_MASK) | CLOCK_OSR_256);
-	// Default state for MODE register
-	writeSingleRegister(MODE_ADDRESS, MODE_DEFAULT);
 }
 
 
@@ -843,6 +880,35 @@ uint16_t enforce_selected_device_modes(uint16_t data)
 uint8_t getWordByteLength(void)
 {
     return wlength_byte_values[WLENGTH];
+}
+
+static uint16_t sendBootFullFrameCommand(uint16_t opcode)
+{
+	uint8_t dataTx[ADS131M08_MAX_FRAME_BYTES] = {0};
+	uint8_t dataRx[ADS131M08_MAX_FRAME_BYTES] = {0};
+	uint16_t frameBytes = ADS131M08_FRAME_WORDS * ADS131M08_BOOT_WORD_BYTES;
+
+	dataTx[0] = upperByte(opcode);
+	dataTx[1] = lowerByte(opcode);
+
+	ADS131M08_CS_LOW();
+	HAL_SPI_TransmitReceive(ads.hspi, dataTx, dataRx, frameBytes, HAL_MAX_DELAY);
+	ADS131M08_CS_HIGH();
+
+	return combineBytes(dataRx[0], dataRx[1]);
+}
+
+static uint16_t normalizeDeviceIdPattern(uint16_t raw_id)
+{
+	uint16_t direct = raw_id & 0xFF00U;
+	uint16_t swapped = (((raw_id & 0xFF00U) >> 8) | ((raw_id & 0x00FFU) << 8)) & 0xFF00U;
+
+	if (direct == (ID_DEFAULT & 0xFF00U))
+	{
+		return direct;
+	}
+
+	return swapped;
 }
 
 

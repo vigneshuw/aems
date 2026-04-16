@@ -1575,6 +1575,7 @@ uint16_t    calculateCRC(const uint8_t dataBytes[], uint8_t numberBytes, uint16_
 uint8_t 	spiSendReceiveByte(const uint8_t dataTx);
 void		spiSendReceiveArrays(const uint8_t dataTx[], uint8_t dataRx[], const uint8_t byteLength);
 uint16_t 	getDeviceIdPattern(void);
+uint16_t 	detectBootDeviceIdPattern(void);
 
 // Getter functions
 uint16_t    getRegisterValue(uint8_t address);
