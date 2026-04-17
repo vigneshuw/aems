@@ -30,6 +30,44 @@ static uint8_t write_q_head = 0U;
 static uint8_t write_q_tail = 0U;
 static uint8_t write_q_count = 0U;
 
+static uint16_t DAQ_OsrForSampleRate(uint32_t sample_rate_hz)
+{
+  /*
+   * ADS data rate is MCLK/(2*OSR). With the current 8 MHz MCO clock, these
+   * settings are approximately 31.25k, 15.625k, 7.812k, 3.906k, 1.953k,
+   * 976, 488, and 244 SPS.
+   */
+  if (sample_rate_hz >= 24000U)
+  {
+    return CLOCK_OSR_128;
+  }
+  if (sample_rate_hz >= 12000U)
+  {
+    return CLOCK_OSR_256;
+  }
+  if (sample_rate_hz >= 6000U)
+  {
+    return CLOCK_OSR_512;
+  }
+  if (sample_rate_hz >= 3000U)
+  {
+    return CLOCK_OSR_1024;
+  }
+  if (sample_rate_hz >= 1500U)
+  {
+    return CLOCK_OSR_2048;
+  }
+  if (sample_rate_hz >= 750U)
+  {
+    return CLOCK_OSR_4096;
+  }
+  if (sample_rate_hz >= 375U)
+  {
+    return CLOCK_OSR_8192;
+  }
+  return CLOCK_OSR_16384;
+}
+
 static void DAQ_ResetSoftwareBuffers(void)
 {
   aggr_block.sample_count = 0U;
@@ -122,13 +160,17 @@ void DAQ_Shutdown(void)
 
 void DAQ_Startup(void)
 {
+  uint16_t clock_config;
+
   /* Initialize ADC */
   adcMaster_Startup();
   adcStartup();
 
   /* Configure ADS clocking and PGA gains for the active DAQ profile. */
-  writeSingleRegister(CLOCK_ADDRESS, ((CLOCK_DEFAULT & ~(CLOCK_EXTREF_EN_MASK)) | CLOCK_EXTREF_EN_ENABLED));
-  writeSingleRegister(CLOCK_ADDRESS, ((CLOCK_DEFAULT & ~(CLOCK_OSR_MASK)) | CLOCK_OSR_1024));
+  clock_config = (CLOCK_DEFAULT & ~(CLOCK_EXTREF_EN_MASK | CLOCK_OSR_MASK)) |
+                 CLOCK_EXTREF_EN_ENABLED |
+                 DAQ_OsrForSampleRate(g_daq_cfg.sample_rate_hz);
+  writeSingleRegister(CLOCK_ADDRESS, clock_config);
   writeSingleRegister(GAIN1_ADDRESS, ((GAIN1_DEFAULT & ~(GAIN1_PGAGAIN0_MASK | GAIN1_PGAGAIN1_MASK | GAIN1_PGAGAIN2_MASK))) | (GAIN1_PGAGAIN0_4 | GAIN1_PGAGAIN1_4 | GAIN1_PGAGAIN2_4));
 
   /* Apply calibration values to 6 channels */
@@ -137,7 +179,6 @@ void DAQ_Startup(void)
     calibrate(calibration_values[channel], channel);
   }
 
-  /* Requested sample rate is tracked in g_daq_cfg until ADS timing mapping is finalized. */
   g_daq_ctx.is_adc_armed = 1U;
   aggr_block.sample_count = 0U;
 }
@@ -147,7 +188,7 @@ void DAQ_EngineInit(void)
   /* Reset software pipeline state and force ADC clock output to idle-low. */
   g_daq_ctx.is_adc_armed = 0U;
   DAQ_ResetSoftwareBuffers();
-  g_daq_cfg.sample_rate_hz = 4000U;
+  g_daq_cfg.sample_rate_hz = DAQ_DEFAULT_SAMPLE_RATE_HZ;
   g_daq_cfg.channel_mask = 0xFFU;
   g_daq_cfg.block_samples = DAQ_AGGR_SAMPLES_PER_BLOCK;
   g_daq_cfg.flags = 0U;
