@@ -37,9 +37,13 @@ const DaqConfig_t *DAQ_GetConfig(void);
 
 uint8_t DAQ_StartLogging(const DaqConfig_t *cfg);
 
+int32_t DAQ_GetLastOpStatus(void);
+
 uint8_t DAQ_StartStreaming(const DaqConfig_t *cfg);
 
 void DAQ_Stop(void);
+
+uint8_t DAQ_StopAndClose(void);
 
 void DAQ_GetStatus(DaqStatus_t *status);
 

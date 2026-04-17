@@ -15,7 +15,7 @@ MAX_USEFUL_PAYLOAD_LEN = PACKET_LEN - 15
 CONFIG_TEST_PAYLOAD = bytes(((index * 3) + 1) & 0xFF for index in range(MAX_USEFUL_PAYLOAD_LEN))
 READ_FILENAME = b"test.dat"
 DAQ_FILENAME = b"daq.bin"
-DAQ_SAMPLE_RATE_HZ = 2000
+DAQ_SAMPLE_RATE_HZ = 6000
 DAQ_CHANNEL_MASK = 0x3F
 DAQ_BLOCK_SAMPLES = 64
 DAQ_STREAM_SAMPLES = 0
@@ -38,6 +38,8 @@ daq_stream_remainder = bytearray()
 daq_stream_sample_index = 0
 daq_csv_file = None
 daq_csv_writer = None
+daq_log_start_time = None
+daq_log_stop_time = None
 read_chunk_offset = 0
 stream_read_offset = 0
 chunk_response_condition = threading.Condition()
@@ -68,7 +70,7 @@ def build_packet(command, server_id, epoch_time):
             struct.pack(">I", DAQ_STREAM_SAMPLES) +
             DAQ_FILENAME
         )
-    elif command == 9:
+    elif command in {9, 10, 12, 110, 112}:
         useful_payload = b""
     elif command == 99:
         useful_payload = b""
@@ -272,6 +274,9 @@ def parse_openamp_heartbeat(packet):
 
 
 def parse_daq_status(packet):
+    global daq_log_start_time
+    global daq_log_stop_time
+
     command = packet[0]
     server_id = struct.unpack(">I", packet[1:5])[0]
     epoch_time = struct.unpack(">Q", packet[5:13])[0]
@@ -303,8 +308,24 @@ def parse_daq_status(packet):
         f"bytes_written={bytes_written}"
     )
 
+    if command == 110 and daq_log_start_time is not None:
+        end_time = daq_log_stop_time if daq_log_stop_time is not None else time.time()
+        elapsed = max(end_time - daq_log_start_time, 0.001)
+        mib_s = (bytes_written / (1024.0 * 1024.0)) / elapsed
+        frames_s = samples_captured / elapsed
+        print(
+            "DAQ eMMC metrics: "
+            f"elapsed={elapsed:.3f}s, "
+            f"frames/s={frames_s:.1f}, "
+            f"MiB/s={mib_s:.3f}, "
+            f"dropped_blocks={dropped_buffers}"
+        )
+
 
 def parse_daq_ack(packet):
+    global daq_log_start_time
+    global daq_log_stop_time
+
     command = packet[0]
     server_id = struct.unpack(">I", packet[1:5])[0]
     epoch_time = struct.unpack(">Q", packet[5:13])[0]
@@ -327,6 +348,14 @@ def parse_daq_ack(packet):
         f"channel_mask=0x{channel_mask:08X}, "
         f"block_samples={block_samples}"
     )
+
+    if command == 11 and op_status == 0:
+        daq_log_start_time = time.time()
+        daq_log_stop_time = None
+        print(f"DAQ eMMC logging started: {DAQ_FILENAME.decode(errors='replace')}")
+    elif command == 112 and op_status == 0:
+        daq_log_stop_time = time.time()
+        print("DAQ eMMC logging stopped and file closed. Send 110 for metrics.")
 
 
 def parse_adc_value_voltage(adc_value):
@@ -706,9 +735,9 @@ def parse_packet(packet):
         parse_file_size(packet)
     elif command == 6:
         parse_cm4_heartbeat(packet)
-    elif command == 10:
+    elif command in {10, 110}:
         parse_daq_status(packet)
-    elif command in {11, 12}:
+    elif command in {11, 12, 112}:
         parse_daq_ack(packet)
     elif command == 99:
         parse_openamp_heartbeat(packet)
@@ -948,7 +977,7 @@ def main():
 
             while True:
                 try:
-                    user_input = input("Enter command (0=heartbeat, 1=write config, 2=dat count, 3=all file count, 4=read config, 5=file size, 6=cm4 heartbeat, 7=read one chunk, 8=stream file, 9=test stream, 10=daq status, 11=daq log, 12=daq stop, 13=daq stream, 99=openamp heartbeat, q=quit): ").strip()
+                    user_input = input("Enter command (0=heartbeat, 1=write config, 2=dat count, 3=all file count, 4=read config, 5=file size, 6=cm4 heartbeat, 7=read one chunk, 8=stream file, 9=test stream, 10=daq status, 11=daq log, 12=daq stop, 13=daq stream, 110=daq log status, 112=daq log stop/close, 99=openamp heartbeat, q=quit): ").strip()
                 except (EOFError, KeyboardInterrupt):
                     print("\nExiting.")
                     break
@@ -957,8 +986,8 @@ def main():
                     close_daq_csv()
                     break
 
-                if user_input not in {"0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "99"}:
-                    print("Only commands 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, and 99 are implemented in this test.")
+                if user_input not in {"0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "110", "112", "99"}:
+                    print("Only commands 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 110, 112, and 99 are implemented in this test.")
                     continue
 
                 command = int(user_input)
@@ -1030,6 +1059,10 @@ def main():
                         "stop with command 12"
                     )
                     file_read_in_progress = True
+                elif command == 110:
+                    print("TX DAQ eMMC log status request")
+                elif command == 112:
+                    print("TX DAQ eMMC stop/close request")
                 elif command == 99:
                     print("TX OpenAMP heartbeat request")
 

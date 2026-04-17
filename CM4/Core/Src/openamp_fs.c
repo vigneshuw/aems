@@ -28,6 +28,7 @@
 #define OPENAMP_OP_DAQ_START_STREAM 92U
 #define OPENAMP_OP_DAQ_READ_SHMEM 93U
 #define OPENAMP_OP_DAQ_STOP 94U
+#define OPENAMP_OP_DAQ_STOP_CLOSE 95U
 #define OPENAMP_FILENAME_LEN   64U
 #define OPENAMP_CHUNK_LEN      3072U
 #define OPENAMP_SHMEM_PROBE_LEN 256U
@@ -377,11 +378,11 @@ static int OpenAmpPing_RxCallback(struct rpmsg_endpoint *ept,
       // Decide on the logging process
       if (request_copy.op == OPENAMP_OP_DAQ_START_LOG)
       {
-        response.status = (DAQ_StartLogging(&daq_cfg) != 0U) ? 0 : -10;
+        response.status = (DAQ_StartLogging(&daq_cfg) != 0U) ? 0 : DAQ_GetLastOpStatus();
       }
       else
       {
-        response.status = (DAQ_StartStreaming(&daq_cfg) != 0U) ? 0 : -10;
+        response.status = (DAQ_StartStreaming(&daq_cfg) != 0U) ? 0 : DAQ_GetLastOpStatus();
       }
       response.value = (uint32_t)g_daq_ctx.state;
       break;
@@ -415,6 +416,16 @@ static int OpenAmpPing_RxCallback(struct rpmsg_endpoint *ept,
       DAQ_Stop();
       response.status = 0;
       response.value = (uint32_t)g_daq_ctx.state;
+      break;
+
+    case OPENAMP_OP_DAQ_STOP_CLOSE:
+      response.status = (DAQ_StopAndClose() != 0U) ? 0 : DAQ_GetLastOpStatus();
+      response.value = (uint32_t)g_daq_ctx.state;
+      response.offset = g_daq_ctx.samples_captured;
+      response.length = g_daq_ctx.dropped_buffers;
+      response.arg0 = (uint32_t)g_daq_ctx.last_error;
+      response.arg1 = (uint32_t)g_daq_ctx.bytes_written;
+      response.arg2 = (uint32_t)(g_daq_ctx.bytes_written >> 32);
       break;
 
     case OPENAMP_OP_STREAM_CLOSE:

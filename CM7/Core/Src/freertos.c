@@ -524,6 +524,7 @@ void ControllerTask(void const * argument)
         }
 
         case 10U:
+        case 110U:
         {
           uint8_t tx[TCP_FIXED_RESPONSE_LEN];
           DaqStatus_t daq_status;
@@ -584,6 +585,24 @@ void ControllerTask(void const * argument)
           int32_t op_status;
 
           op_status = OpenAmpFs_DaqStop();
+
+          memset(tx, 0, sizeof(tx));
+          tx[0] = msg.command;
+          WriteU32Be(&tx[1], msg.server_id);
+          WriteU64Be(&tx[5], msg.epoch_time);
+          tx[13] = (op_status == 0) ? 0U : 1U;
+          tx[14] = TcpClient_IsConnected();
+          WriteU32Be(&tx[15], (uint32_t)op_status);
+          (void)TcpClient_SendBuffer(tx, sizeof(tx));
+          break;
+        }
+
+        case 112U:
+        {
+          uint8_t tx[TCP_FIXED_RESPONSE_LEN];
+          int32_t op_status;
+
+          op_status = OpenAmpFs_DaqStopAndClose();
 
           memset(tx, 0, sizeof(tx));
           tx[0] = msg.command;

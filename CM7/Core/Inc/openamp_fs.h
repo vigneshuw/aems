@@ -41,6 +41,7 @@ int32_t OpenAmpFs_DaqReadStreamShared(uint8_t **buffer,
                                       uint32_t *samples_read,
                                       uint32_t *samples_captured);
 int32_t OpenAmpFs_DaqStop(void);
+int32_t OpenAmpFs_DaqStopAndClose(void);
 uint32_t OpenAmpFs_GetServiceCreated(void);
 uint32_t OpenAmpFs_GetRxCount(void);
 int32_t OpenAmpFs_GetInitStatus(void);

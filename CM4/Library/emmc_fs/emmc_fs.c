@@ -23,6 +23,7 @@ static uint8_t s_driver_linked;
 static uint8_t s_fs_mounted;
 static uint8_t s_work_buffer[EMMC_FS_WORKBUF_LEN];
 static uint8_t s_pattern_chunk[EMMC_FS_PATTERN_CHUNK_LEN];
+static EmmcFsWriteHandle_t s_raw_log_handle;
 
 static void EmmcFs_WriteU32Be(uint8_t *data, uint32_t value)
 {
@@ -704,6 +705,50 @@ EmmcFsStatus_t EmmcFs_CloseFileWrite(EmmcFsWriteHandle_t *handle)
     }
 
     return EMMC_FS_OK;
+}
+
+EmmcFsStatus_t EmmcFs_OpenRawLog(const char *filename)
+{
+    EmmcFsStatus_t status;
+
+    if ((filename == NULL) || (filename[0] == '\0'))
+    {
+        return EMMC_FS_ERR_PARAM;
+    }
+
+    if (s_raw_log_handle.is_open != 0U)
+    {
+        (void)EmmcFs_CloseFileWrite(&s_raw_log_handle);
+    }
+
+    memset(&s_raw_log_handle, 0, sizeof(s_raw_log_handle));
+    status = EmmcFs_OpenFileWrite(filename, &s_raw_log_handle);
+    if (status != EMMC_FS_OK)
+    {
+        memset(&s_raw_log_handle, 0, sizeof(s_raw_log_handle));
+    }
+
+    return status;
+}
+
+EmmcFsStatus_t EmmcFs_WriteRawLog(const uint8_t *buffer,
+                                  uint32_t buffer_size,
+                                  uint32_t *bytes_written)
+{
+    return EmmcFs_WriteFileNext(&s_raw_log_handle,
+                                buffer,
+                                buffer_size,
+                                bytes_written);
+}
+
+EmmcFsStatus_t EmmcFs_CloseRawLog(void)
+{
+    return EmmcFs_CloseFileWrite(&s_raw_log_handle);
+}
+
+uint8_t EmmcFs_IsRawLogOpen(void)
+{
+    return s_raw_log_handle.is_open;
 }
 
 EmmcFsStatus_t EmmcFs_CountDatFiles(EmmcFsDatSummary_t *summary)

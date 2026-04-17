@@ -25,6 +25,7 @@
 #define OPENAMP_OP_DAQ_START_STREAM 92U
 #define OPENAMP_OP_DAQ_READ_SHMEM 93U
 #define OPENAMP_OP_DAQ_STOP 94U
+#define OPENAMP_OP_DAQ_STOP_CLOSE 95U
 #define OPENAMP_FILENAME_LEN   64U
 #define OPENAMP_CHUNK_LEN      3072U
 #define OPENAMP_SHMEM_PROBE_MAGIC 0x53484D31U
@@ -491,6 +492,13 @@ int32_t OpenAmpFs_DaqStop(void)
   uint32_t reply_value = 0U;
 
   return OpenAmpFs_SendRequest(OPENAMP_OP_DAQ_STOP, 0U, 0U, NULL, &reply_value);
+}
+
+int32_t OpenAmpFs_DaqStopAndClose(void)
+{
+  uint32_t reply_value = 0U;
+
+  return OpenAmpFs_SendRequest(OPENAMP_OP_DAQ_STOP_CLOSE, 0U, 0U, NULL, &reply_value);
 }
 
 static int32_t OpenAmpFs_SendRequest(uint32_t op,

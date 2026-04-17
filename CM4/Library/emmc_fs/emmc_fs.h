@@ -179,6 +179,16 @@ EmmcFsStatus_t EmmcFs_WriteFileNext(EmmcFsWriteHandle_t *handle,
 
 EmmcFsStatus_t EmmcFs_CloseFileWrite(EmmcFsWriteHandle_t *handle);
 
+EmmcFsStatus_t EmmcFs_OpenRawLog(const char *filename);
+
+EmmcFsStatus_t EmmcFs_WriteRawLog(const uint8_t *buffer,
+                                  uint32_t buffer_size,
+                                  uint32_t *bytes_written);
+
+EmmcFsStatus_t EmmcFs_CloseRawLog(void);
+
+uint8_t EmmcFs_IsRawLogOpen(void);
+
 /**
  * @brief Count files ending with `.dat` in the eMMC root directory.
  * @param summary Pointer to the output summary structure.

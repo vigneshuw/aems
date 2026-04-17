@@ -11,7 +11,7 @@ static uint32_t calibration_values[6] = {-3838, -7481, -7500, -491, -4160, 4890}
 static DaqSampleFrame_t last_sample;
 static DaqConfig_t g_daq_cfg;
 static DaqMode_t g_daq_mode = DAQ_MODE_IDLE;
-static EmmcFsWriteHandle_t g_daq_write_handle;
+static int32_t g_daq_last_op_status = 0;
 
 #define DAQ_AGGR_SAMPLES_PER_BLOCK   (64U)
 #define DAQ_WRITE_QUEUE_DEPTH        (16U)
@@ -194,7 +194,7 @@ void DAQ_EngineInit(void)
   g_daq_cfg.flags = 0U;
   (void)strcpy(g_daq_cfg.filename, "daq.bin");
   g_daq_mode = DAQ_MODE_IDLE;
-  memset(&g_daq_write_handle, 0, sizeof(g_daq_write_handle));
+  (void)EmmcFs_CloseRawLog();
   adcMaster_Shutdown();
 }
 
@@ -216,20 +216,20 @@ const DaqConfig_t *DAQ_GetConfig(void)
 
 uint8_t DAQ_StartLogging(const DaqConfig_t *cfg)
 {
+  EmmcFsStatus_t fs_status;
+
   if (DAQ_ApplyConfig(cfg) == 0U)
   {
+    g_daq_last_op_status = (int32_t)EMMC_FS_ERR_PARAM;
     return 0U;
   }
 
-  if (g_daq_write_handle.is_open != 0U)
-  {
-    (void)EmmcFs_CloseFileWrite(&g_daq_write_handle);
-  }
-
-  memset(&g_daq_write_handle, 0, sizeof(g_daq_write_handle));
-  if (EmmcFs_OpenFileWrite(g_daq_cfg.filename, &g_daq_write_handle) != EMMC_FS_OK)
+  (void)EmmcFs_CloseRawLog();
+  fs_status = EmmcFs_OpenRawLog(g_daq_cfg.filename);
+  if (fs_status != EMMC_FS_OK)
   {
     g_daq_ctx.last_error = DAQ_ERROR_WRITE_OPEN;
+    g_daq_last_op_status = (int32_t)fs_status;
     return 0U;
   }
 
@@ -240,20 +240,24 @@ uint8_t DAQ_StartLogging(const DaqConfig_t *cfg)
   g_daq_ctx.bytes_written = 0U;
   g_daq_ctx.last_error = 0U;
   g_daq_ctx.events = DAQ_EVT_CMD_START;
+  g_daq_last_op_status = 0;
   return 1U;
+}
+
+int32_t DAQ_GetLastOpStatus(void)
+{
+  return g_daq_last_op_status;
 }
 
 uint8_t DAQ_StartStreaming(const DaqConfig_t *cfg)
 {
   if (DAQ_ApplyConfig(cfg) == 0U)
   {
+    g_daq_last_op_status = (int32_t)EMMC_FS_ERR_PARAM;
     return 0U;
   }
 
-  if (g_daq_write_handle.is_open != 0U)
-  {
-    (void)EmmcFs_CloseFileWrite(&g_daq_write_handle);
-  }
+  (void)EmmcFs_CloseRawLog();
 
   g_daq_mode = DAQ_MODE_STREAM_TO_SHMEM;
   DAQ_ResetSoftwareBuffers();
@@ -262,6 +266,7 @@ uint8_t DAQ_StartStreaming(const DaqConfig_t *cfg)
   g_daq_ctx.bytes_written = 0U;
   g_daq_ctx.last_error = 0U;
   g_daq_ctx.events = DAQ_EVT_CMD_START;
+  g_daq_last_op_status = 0;
   return 1U;
 }
 
@@ -277,6 +282,57 @@ void DAQ_Stop(void)
   }
 
   g_daq_ctx.events = DAQ_EVT_CMD_STOP;
+}
+
+uint8_t DAQ_StopAndClose(void)
+{
+  uint32_t guard = 0U;
+
+  if ((g_daq_ctx.state != DAQ_STATE_IDLE) && (g_daq_ctx.state != DAQ_STATE_ERROR))
+  {
+    DAQ_Shutdown();
+  }
+
+  while ((write_q_count != 0U) && (guard < (DAQ_WRITE_QUEUE_DEPTH + 2U)))
+  {
+    DAQ_ServicePendingWrites();
+    guard++;
+  }
+
+  if (aggr_block.sample_count > 0U)
+  {
+    if (DAQ_QueuePush(&aggr_block) == 0U)
+    {
+      g_daq_ctx.dropped_buffers++;
+    }
+    aggr_block.sample_count = 0U;
+  }
+
+  guard = 0U;
+  while ((write_q_count != 0U) && (guard < (DAQ_WRITE_QUEUE_DEPTH + 2U)))
+  {
+    DAQ_ServicePendingWrites();
+    guard++;
+  }
+
+  if (EmmcFs_IsRawLogOpen() != 0U)
+  {
+    if (EmmcFs_CloseRawLog() != EMMC_FS_OK)
+    {
+      g_daq_ctx.last_error = DAQ_ERROR_WRITE_DATA;
+      g_daq_last_op_status = (int32_t)EMMC_FS_ERR_READ_FILE;
+    }
+  }
+
+  adcMaster_Shutdown();
+  g_daq_ctx.events = 0U;
+  g_daq_ctx.is_adc_armed = 0U;
+  g_daq_ctx.state = DAQ_STATE_IDLE;
+  g_daq_mode = DAQ_MODE_IDLE;
+  DAQ_ResetSoftwareBuffers();
+
+  g_daq_last_op_status = (g_daq_ctx.last_error == 0U) ? 0 : (int32_t)EMMC_FS_ERR_READ_FILE;
+  return (g_daq_ctx.last_error == 0U) ? 1U : 0U;
 }
 
 void DAQ_GetStatus(DaqStatus_t *status)
@@ -443,14 +499,14 @@ void DAQ_ServicePendingWrites(void)
   }
 
   blk_bytes = (uint64_t)(blk.sample_count * sizeof(DaqSampleFrame_t));
-  if ((g_daq_write_handle.is_open == 0U) ||
-      (EmmcFs_WriteFileNext(&g_daq_write_handle,
-                            (const uint8_t *)blk.sample,
-                            (uint32_t)blk_bytes,
-                            &bytes_written) != EMMC_FS_OK) ||
+  if ((EmmcFs_IsRawLogOpen() == 0U) ||
+      (EmmcFs_WriteRawLog((const uint8_t *)blk.sample,
+                          (uint32_t)blk_bytes,
+                          &bytes_written) != EMMC_FS_OK) ||
       (bytes_written != (uint32_t)blk_bytes))
   {
     g_daq_ctx.last_error = DAQ_ERROR_WRITE_DATA;
+    g_daq_last_op_status = (int32_t)EMMC_FS_ERR_READ_FILE;
     g_daq_ctx.dropped_buffers++;
     return;
   }
@@ -479,11 +535,12 @@ uint8_t DAQ_HasPendingWrites(void)
 
   if ((pending == 0U) && (g_daq_ctx.is_adc_armed == 0U))
   {
-    if (g_daq_write_handle.is_open != 0U)
+    if (EmmcFs_IsRawLogOpen() != 0U)
     {
-      if (EmmcFs_CloseFileWrite(&g_daq_write_handle) != EMMC_FS_OK)
+      if (EmmcFs_CloseRawLog() != EMMC_FS_OK)
       {
         g_daq_ctx.last_error = DAQ_ERROR_WRITE_DATA;
+        g_daq_last_op_status = (int32_t)EMMC_FS_ERR_READ_FILE;
       }
     }
     g_daq_mode = DAQ_MODE_IDLE;
