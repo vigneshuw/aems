@@ -36,8 +36,8 @@ static uint8_t DAQ_StoreAdcFrame(const adc_channel_data *raw);
 static void DAQ_BuildSampleFrame(const adc_channel_data *raw, DaqSampleFrame_t *frame);
 static uint8_t DAQ_StoreSampleFrame(const DaqSampleFrame_t *frame);
 static void DAQ_TryStartAdcDmaFromIsr(void);
-static void DAQ_PauseAdcCaptureIrqForStorage(void);
-static void DAQ_ResumeAdcCaptureIrqAfterStorage(void);
+static void DAQ_MaskDrdyIrqForStorage(void);
+static void DAQ_UnmaskDrdyIrqAfterStorage(void);
 
 static uint16_t DAQ_OsrForSampleRate(uint32_t sample_rate_hz)
 {
@@ -332,13 +332,13 @@ uint8_t DAQ_StopAndClose(void)
 
   if (EmmcFs_IsRawLogOpen() != 0U)
   {
-    DAQ_PauseAdcCaptureIrqForStorage();
+    DAQ_MaskDrdyIrqForStorage();
     if (EmmcFs_CloseRawLog() != EMMC_FS_OK)
     {
       g_daq_ctx.last_error = DAQ_ERROR_WRITE_DATA;
       g_daq_last_op_status = (int32_t)EMMC_FS_ERR_READ_FILE;
     }
-    DAQ_ResumeAdcCaptureIrqAfterStorage();
+    DAQ_UnmaskDrdyIrqAfterStorage();
   }
 
   adcMaster_Shutdown();
@@ -567,22 +567,18 @@ static void DAQ_TryStartAdcDmaFromIsr(void)
   }
 }
 
-static void DAQ_PauseAdcCaptureIrqForStorage(void)
+static void DAQ_MaskDrdyIrqForStorage(void)
 {
   /*
-   * Do not globally disable interrupts around FatFs/MMC calls: HAL timeout and
-   * card-state polling depend on SysTick. Mask only the DRDY capture source,
-   * stop any active SPI DMA transaction, and discard DRDY edges that occur
-   * while storage owns the bus/time budget.
+   * Keep SDMMC/FatFs writes deterministic by blocking new DRDY ISR entries
+   * during the write. Do not abort SPI DMA and do not clear adc_pending; an
+   * in-flight ADC DMA can still complete and the pending counter remains a
+   * diagnostic of capture pressure.
    */
   HAL_NVIC_DisableIRQ(EXTI15_10_IRQn);
-  __HAL_GPIO_EXTI_CLEAR_IT(ADS_DRDY_Pin);
-  HAL_NVIC_ClearPendingIRQ(EXTI15_10_IRQn);
-  ADS131M08_AbortReadDma();
-  g_daq_ctx.adc_ready_pending = 0U;
 }
 
-static void DAQ_ResumeAdcCaptureIrqAfterStorage(void)
+static void DAQ_UnmaskDrdyIrqAfterStorage(void)
 {
   __HAL_GPIO_EXTI_CLEAR_IT(ADS_DRDY_Pin);
   HAL_NVIC_ClearPendingIRQ(EXTI15_10_IRQn);
@@ -675,7 +671,7 @@ void DAQ_ServicePendingWrites(void)
 
   blk_bytes = (uint64_t)(blk.sample_count * sizeof(DaqSampleFrame_t));
 #if (DAQ_EMMC_WRITE_ENABLE != 0U)
-  DAQ_PauseAdcCaptureIrqForStorage();
+  DAQ_MaskDrdyIrqForStorage();
 
   if ((EmmcFs_IsRawLogOpen() == 0U) ||
       (EmmcFs_WriteRawLog((const uint8_t *)blk.sample,
@@ -686,11 +682,11 @@ void DAQ_ServicePendingWrites(void)
     g_daq_ctx.last_error = DAQ_ERROR_WRITE_DATA;
     g_daq_last_op_status = (int32_t)EMMC_FS_ERR_READ_FILE;
     g_daq_ctx.dropped_buffers++;
-    DAQ_ResumeAdcCaptureIrqAfterStorage();
+    DAQ_UnmaskDrdyIrqAfterStorage();
     return;
   }
 
-  DAQ_ResumeAdcCaptureIrqAfterStorage();
+  DAQ_UnmaskDrdyIrqAfterStorage();
 #endif
 
   if (g_daq_ctx.bytes_queued >= blk_bytes)
@@ -719,13 +715,13 @@ uint8_t DAQ_HasPendingWrites(void)
   {
     if (EmmcFs_IsRawLogOpen() != 0U)
     {
-      DAQ_PauseAdcCaptureIrqForStorage();
+      DAQ_MaskDrdyIrqForStorage();
       if (EmmcFs_CloseRawLog() != EMMC_FS_OK)
       {
         g_daq_ctx.last_error = DAQ_ERROR_WRITE_DATA;
         g_daq_last_op_status = (int32_t)EMMC_FS_ERR_READ_FILE;
       }
-      DAQ_ResumeAdcCaptureIrqAfterStorage();
+      DAQ_UnmaskDrdyIrqAfterStorage();
     }
     g_daq_mode = DAQ_MODE_IDLE;
   }
