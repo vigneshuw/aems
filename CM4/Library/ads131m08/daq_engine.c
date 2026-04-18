@@ -28,6 +28,7 @@ typedef struct
 
 static DaqWriteBlock_t aggr_block;
 static DaqWriteBlock_t write_queue[DAQ_WRITE_QUEUE_DEPTH];
+static uint8_t emmc_pack_buffer[DAQ_AGGR_SAMPLES_PER_BLOCK * DAQ_CHANNEL_COUNT * sizeof(int32_t)] __attribute__((aligned(4)));
 static uint8_t write_q_head = 0U;
 static uint8_t write_q_tail = 0U;
 static uint8_t write_q_count = 0U;
@@ -38,6 +39,12 @@ static uint8_t DAQ_StoreSampleFrame(const DaqSampleFrame_t *frame);
 static void DAQ_TryStartAdcDmaFromIsr(void);
 static void DAQ_MaskDrdyIrqForStorage(void);
 static void DAQ_UnmaskDrdyIrqAfterStorage(void);
+static uint8_t DAQ_CountSelectedChannels(void);
+static uint32_t DAQ_GetQueuedBytes(uint16_t sample_count);
+static uint32_t DAQ_PackBlockSelectedChannels(const DaqWriteBlock_t *blk,
+                                              uint8_t *buffer,
+                                              uint32_t buffer_size);
+static void DAQ_WriteS32Le(uint8_t *data, int32_t value);
 
 static uint16_t DAQ_OsrForSampleRate(uint32_t sample_rate_hz)
 {
@@ -119,6 +126,8 @@ static uint8_t DAQ_ValidateConfig(const DaqConfig_t *cfg)
 
 static uint8_t DAQ_QueuePush(const DaqWriteBlock_t *blk)
 {
+  uint32_t queued_bytes;
+
   /* Fixed-depth ring queue to decouple sampling from storage latency. */
   if (write_q_count >= DAQ_WRITE_QUEUE_DEPTH)
   {
@@ -128,7 +137,8 @@ static uint8_t DAQ_QueuePush(const DaqWriteBlock_t *blk)
   write_queue[write_q_head] = *blk;
   write_q_head = (uint8_t)((write_q_head + 1U) % DAQ_WRITE_QUEUE_DEPTH);
   write_q_count++;
-  g_daq_ctx.bytes_queued += (uint64_t)(blk->sample_count * sizeof(DaqSampleFrame_t));
+  queued_bytes = DAQ_GetQueuedBytes(blk->sample_count);
+  g_daq_ctx.bytes_queued += (uint64_t)queued_bytes;
   return 1U;
 }
 
@@ -585,6 +595,72 @@ static void DAQ_UnmaskDrdyIrqAfterStorage(void)
   HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
 }
 
+static uint8_t DAQ_CountSelectedChannels(void)
+{
+  uint8_t count = 0U;
+
+  for (uint8_t channel = 0U; channel < DAQ_CHANNEL_COUNT; channel++)
+  {
+    if ((g_daq_cfg.channel_mask & (1UL << channel)) != 0U)
+    {
+      count++;
+    }
+  }
+
+  return count;
+}
+
+static uint32_t DAQ_GetQueuedBytes(uint16_t sample_count)
+{
+  if (g_daq_mode == DAQ_MODE_LOG_TO_EMMC)
+  {
+    return (uint32_t)sample_count * (uint32_t)DAQ_CountSelectedChannels() * sizeof(int32_t);
+  }
+
+  return (uint32_t)sample_count * sizeof(DaqSampleFrame_t);
+}
+
+static void DAQ_WriteS32Le(uint8_t *data, int32_t value)
+{
+  uint32_t raw = (uint32_t)value;
+
+  data[0] = (uint8_t)raw;
+  data[1] = (uint8_t)(raw >> 8);
+  data[2] = (uint8_t)(raw >> 16);
+  data[3] = (uint8_t)(raw >> 24);
+}
+
+static uint32_t DAQ_PackBlockSelectedChannels(const DaqWriteBlock_t *blk,
+                                              uint8_t *buffer,
+                                              uint32_t buffer_size)
+{
+  uint32_t offset = 0U;
+
+  if ((blk == NULL) || (buffer == NULL))
+  {
+    return 0U;
+  }
+
+  for (uint16_t sample = 0U; sample < blk->sample_count; sample++)
+  {
+    for (uint8_t channel = 0U; channel < DAQ_CHANNEL_COUNT; channel++)
+    {
+      if ((g_daq_cfg.channel_mask & (1UL << channel)) != 0U)
+      {
+        if ((offset + sizeof(int32_t)) > buffer_size)
+        {
+          return 0U;
+        }
+
+        DAQ_WriteS32Le(&buffer[offset], blk->sample[sample].channel[channel]);
+        offset += sizeof(int32_t);
+      }
+    }
+  }
+
+  return offset;
+}
+
 uint32_t DAQ_ServiceAdcPending(uint32_t max_events)
 {
   uint32_t processed = 0U;
@@ -654,7 +730,7 @@ uint8_t DAQ_ShouldDeferBackgroundWork(void)
 void DAQ_ServicePendingWrites(void)
 {
   DaqWriteBlock_t blk;
-  uint64_t blk_bytes;
+  uint32_t blk_bytes;
 #if (DAQ_EMMC_WRITE_ENABLE != 0U)
   uint32_t bytes_written;
 #endif
@@ -669,15 +745,24 @@ void DAQ_ServicePendingWrites(void)
     return;
   }
 
-  blk_bytes = (uint64_t)(blk.sample_count * sizeof(DaqSampleFrame_t));
+  blk_bytes = DAQ_GetQueuedBytes(blk.sample_count);
 #if (DAQ_EMMC_WRITE_ENABLE != 0U)
+  blk_bytes = DAQ_PackBlockSelectedChannels(&blk, emmc_pack_buffer, sizeof(emmc_pack_buffer));
+  if (blk_bytes == 0U)
+  {
+    g_daq_ctx.last_error = DAQ_ERROR_WRITE_DATA;
+    g_daq_last_op_status = (int32_t)EMMC_FS_ERR_PARAM;
+    g_daq_ctx.dropped_buffers++;
+    return;
+  }
+
   DAQ_MaskDrdyIrqForStorage();
 
   if ((EmmcFs_IsRawLogOpen() == 0U) ||
-      (EmmcFs_WriteRawLog((const uint8_t *)blk.sample,
-                          (uint32_t)blk_bytes,
+      (EmmcFs_WriteRawLog(emmc_pack_buffer,
+                          blk_bytes,
                           &bytes_written) != EMMC_FS_OK) ||
-      (bytes_written != (uint32_t)blk_bytes))
+      (bytes_written != blk_bytes))
   {
     g_daq_ctx.last_error = DAQ_ERROR_WRITE_DATA;
     g_daq_last_op_status = (int32_t)EMMC_FS_ERR_READ_FILE;
@@ -689,15 +774,15 @@ void DAQ_ServicePendingWrites(void)
   DAQ_UnmaskDrdyIrqAfterStorage();
 #endif
 
-  if (g_daq_ctx.bytes_queued >= blk_bytes)
+  if (g_daq_ctx.bytes_queued >= (uint64_t)blk_bytes)
   {
-    g_daq_ctx.bytes_queued -= blk_bytes;
+    g_daq_ctx.bytes_queued -= (uint64_t)blk_bytes;
   }
   else
   {
     g_daq_ctx.bytes_queued = 0U;
   }
-  g_daq_ctx.bytes_written += blk_bytes;
+  g_daq_ctx.bytes_written += (uint64_t)blk_bytes;
 }
 
 uint8_t DAQ_HasPendingWrites(void)
