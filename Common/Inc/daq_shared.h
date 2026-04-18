@@ -46,6 +46,7 @@ typedef struct
   uint32_t dropped_buffers;
   uint64_t bytes_queued;
   uint64_t bytes_written;
+  uint32_t adc_ready_pending;
 } DaqStatus_t;
 
 #ifdef __cplusplus

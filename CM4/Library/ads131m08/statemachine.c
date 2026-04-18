@@ -17,6 +17,7 @@ void DAQ_ContextInit(void)
   g_daq_ctx.dropped_buffers = 0U;
   g_daq_ctx.bytes_queued = 0U;
   g_daq_ctx.bytes_written = 0U;
+  g_daq_ctx.adc_ready_pending = 0U;
   g_daq_ctx.is_adc_armed = 0U;
 }
 
@@ -56,9 +57,15 @@ void DAQ_StateMachine_Run(void)
         g_daq_ctx.events &= ~DAQ_EVT_CMD_STOP;
         g_daq_ctx.state = DAQ_STATE_STOPPING;
       }
-      else if ((g_daq_ctx.events & DAQ_EVT_ADC_READY) != 0U)
+      else if (g_daq_ctx.adc_ready_pending != 0U)
       {
-        g_daq_ctx.events &= ~DAQ_EVT_ADC_READY;
+        __disable_irq();
+        if (g_daq_ctx.adc_ready_pending != 0U)
+        {
+          g_daq_ctx.adc_ready_pending--;
+        }
+        __enable_irq();
+
         if (DAQ_ProcessAdcReadyEvent() == 0U)
         {
           DAQ_SetError(3U);

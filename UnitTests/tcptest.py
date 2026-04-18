@@ -291,6 +291,7 @@ def parse_daq_status(packet):
     bytes_written = (
         struct.unpack(">I", packet[43:47])[0] << 32
     ) | struct.unpack(">I", packet[39:43])[0]
+    adc_ready_pending = struct.unpack(">I", packet[47:51])[0]
 
     print(
         "RX daq-status: "
@@ -305,7 +306,8 @@ def parse_daq_status(packet):
         f"last_error={last_error}, "
         f"samples={samples_captured}, "
         f"dropped={dropped_buffers}, "
-        f"bytes_written={bytes_written}"
+        f"bytes_written={bytes_written}, "
+        f"adc_pending={adc_ready_pending}"
     )
 
     if command == 110 and daq_log_start_time is not None:

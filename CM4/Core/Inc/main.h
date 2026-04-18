@@ -55,6 +55,7 @@ typedef struct
   volatile uint32_t dropped_buffers;
   volatile uint64_t bytes_queued;
   volatile uint64_t bytes_written;
+  volatile uint32_t adc_ready_pending;
   volatile uint8_t is_adc_armed;
 } DaqContext_t;
 

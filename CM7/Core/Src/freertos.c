@@ -547,6 +547,7 @@ void ControllerTask(void const * argument)
           WriteU32Be(&tx[35], daq_status.dropped_buffers);
           WriteU32Be(&tx[39], (uint32_t)daq_status.bytes_written);
           WriteU32Be(&tx[43], (uint32_t)(daq_status.bytes_written >> 32));
+          WriteU32Be(&tx[47], daq_status.adc_ready_pending);
           (void)TcpClient_SendBuffer(tx, sizeof(tx));
           break;
         }

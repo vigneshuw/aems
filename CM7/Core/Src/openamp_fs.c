@@ -55,6 +55,7 @@ typedef struct
   uint32_t arg1;
   uint32_t arg2;
   uint32_t arg3;
+  uint32_t arg4;
 } OpenAmpSmallResponse_t;
 
 typedef struct
@@ -70,6 +71,7 @@ typedef struct
   uint32_t arg1;
   uint32_t arg2;
   uint32_t arg3;
+  uint32_t arg4;
   uint8_t data[OPENAMP_CHUNK_LEN];
 } OpenAmpChunkResponse_t;
 
@@ -406,6 +408,7 @@ int32_t OpenAmpFs_DaqGetStatus(DaqStatus_t *status)
   status->samples_captured = g_last_response.offset;
   status->dropped_buffers = g_last_response.length;
   status->bytes_written = ((uint64_t)g_last_response.arg3 << 32) | g_last_response.arg2;
+  status->adc_ready_pending = g_last_response.arg4;
   return 0;
 }
 

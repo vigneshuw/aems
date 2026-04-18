@@ -188,6 +188,7 @@ void DAQ_EngineInit(void)
   /* Reset software pipeline state and force ADC clock output to idle-low. */
   g_daq_ctx.is_adc_armed = 0U;
   DAQ_ResetSoftwareBuffers();
+  g_daq_ctx.adc_ready_pending = 0U;
   g_daq_cfg.sample_rate_hz = DAQ_DEFAULT_SAMPLE_RATE_HZ;
   g_daq_cfg.channel_mask = 0xFFU;
   g_daq_cfg.block_samples = DAQ_AGGR_SAMPLES_PER_BLOCK;
@@ -238,6 +239,7 @@ uint8_t DAQ_StartLogging(const DaqConfig_t *cfg)
   g_daq_ctx.samples_captured = 0U;
   g_daq_ctx.dropped_buffers = 0U;
   g_daq_ctx.bytes_written = 0U;
+  g_daq_ctx.adc_ready_pending = 0U;
   g_daq_ctx.last_error = 0U;
   g_daq_ctx.events = DAQ_EVT_CMD_START;
   g_daq_last_op_status = 0;
@@ -264,6 +266,7 @@ uint8_t DAQ_StartStreaming(const DaqConfig_t *cfg)
   g_daq_ctx.samples_captured = 0U;
   g_daq_ctx.dropped_buffers = 0U;
   g_daq_ctx.bytes_written = 0U;
+  g_daq_ctx.adc_ready_pending = 0U;
   g_daq_ctx.last_error = 0U;
   g_daq_ctx.events = DAQ_EVT_CMD_START;
   g_daq_last_op_status = 0;
@@ -326,6 +329,7 @@ uint8_t DAQ_StopAndClose(void)
 
   adcMaster_Shutdown();
   g_daq_ctx.events = 0U;
+  g_daq_ctx.adc_ready_pending = 0U;
   g_daq_ctx.is_adc_armed = 0U;
   g_daq_ctx.state = DAQ_STATE_IDLE;
   g_daq_mode = DAQ_MODE_IDLE;
@@ -350,6 +354,7 @@ void DAQ_GetStatus(DaqStatus_t *status)
   status->dropped_buffers = g_daq_ctx.dropped_buffers;
   status->bytes_queued = g_daq_ctx.bytes_queued;
   status->bytes_written = g_daq_ctx.bytes_written;
+  status->adc_ready_pending = g_daq_ctx.adc_ready_pending;
 }
 
 uint8_t DAQ_ReadStreamBlockShared(uint8_t **buffer,

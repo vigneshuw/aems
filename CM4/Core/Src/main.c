@@ -185,7 +185,7 @@ uint16_t CM4_GetAdcDeviceId(void)
  */
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
 	if(GPIO_Pin == ADS_DRDY_Pin) {
-    g_daq_ctx.events |= DAQ_EVT_ADC_READY;
+    g_daq_ctx.adc_ready_pending++;
 	}
 }
 

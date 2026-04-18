@@ -59,6 +59,7 @@ typedef struct
   uint32_t arg1;
   uint32_t arg2;
   uint32_t arg3;
+  uint32_t arg4;
 } OpenAmpSmallResponse_t;
 
 typedef struct
@@ -74,6 +75,7 @@ typedef struct
   uint32_t arg1;
   uint32_t arg2;
   uint32_t arg3;
+  uint32_t arg4;
   uint8_t data[OPENAMP_CHUNK_LEN];
 } OpenAmpChunkResponse_t;
 
@@ -361,6 +363,7 @@ static int OpenAmpPing_RxCallback(struct rpmsg_endpoint *ept,
       response.arg1 = daq_status.last_error;
       response.arg2 = (uint32_t)daq_status.bytes_written;
       response.arg3 = (uint32_t)(daq_status.bytes_written >> 32);
+      response.arg4 = daq_status.adc_ready_pending;
       break;
 
     // Start and Start logging has the same starting point
