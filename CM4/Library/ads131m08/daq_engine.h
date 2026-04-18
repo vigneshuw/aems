@@ -87,6 +87,16 @@ void adcMaster_Shutdown(void);
   */
 uint8_t DAQ_ProcessAdcReadyEvent(void);
 
+void DAQ_OnAdcDrdyFromIsr(void);
+
+void DAQ_OnAdcDmaCompleteFromIsr(void);
+
+void DAQ_OnAdcDmaErrorFromIsr(void);
+
+uint32_t DAQ_ServiceAdcPending(uint32_t max_events);
+
+uint8_t DAQ_ShouldDeferBackgroundWork(void);
+
 /**
   * @brief Service one pending write block from the DAQ queue.
   * @param None

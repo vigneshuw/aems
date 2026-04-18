@@ -17,6 +17,8 @@ static int32_t g_daq_last_op_status = 0;
 #define DAQ_WRITE_QUEUE_DEPTH        (16U)
 #define DAQ_ERROR_WRITE_OPEN         (10U)
 #define DAQ_ERROR_WRITE_DATA         (11U)
+/* Temporary capture-rate test: keep ADC read + RAM aggregation, skip eMMC writes. */
+#define DAQ_EMMC_WRITE_ENABLE        (0U)
 
 typedef struct
 {
@@ -29,6 +31,9 @@ static DaqWriteBlock_t write_queue[DAQ_WRITE_QUEUE_DEPTH];
 static uint8_t write_q_head = 0U;
 static uint8_t write_q_tail = 0U;
 static uint8_t write_q_count = 0U;
+
+static uint8_t DAQ_StoreAdcFrame(const adc_channel_data *raw);
+static void DAQ_TryStartAdcDmaFromIsr(void);
 
 static uint16_t DAQ_OsrForSampleRate(uint32_t sample_rate_hz)
 {
@@ -449,24 +454,33 @@ uint8_t DAQ_ProcessAdcReadyEvent(void)
   }
 
   readAllChannelData(&raw);
+  return DAQ_StoreAdcFrame(&raw);
+}
+
+static uint8_t DAQ_StoreAdcFrame(const adc_channel_data *raw)
+{
+  if (raw == NULL)
+  {
+    return 0U;
+  }
 
   /* Fast guard against obvious invalid SPI frames. */
-  if (raw.response == 0xFFFFU)
+  if (raw->response == 0xFFFFU)
   {
     g_daq_ctx.dropped_buffers++;
     return 1U;
   }
 
-  last_sample.response = raw.response;
-  last_sample.crc = raw.crc;
-  last_sample.channel[0] = raw.channel0;
-  last_sample.channel[1] = raw.channel1;
-  last_sample.channel[2] = raw.channel2;
-  last_sample.channel[3] = raw.channel3;
-  last_sample.channel[4] = raw.channel4;
-  last_sample.channel[5] = raw.channel5;
-  last_sample.channel[6] = raw.channel6;
-  last_sample.channel[7] = raw.channel7;
+  last_sample.response = raw->response;
+  last_sample.crc = raw->crc;
+  last_sample.channel[0] = raw->channel0;
+  last_sample.channel[1] = raw->channel1;
+  last_sample.channel[2] = raw->channel2;
+  last_sample.channel[3] = raw->channel3;
+  last_sample.channel[4] = raw->channel4;
+  last_sample.channel[5] = raw->channel5;
+  last_sample.channel[6] = raw->channel6;
+  last_sample.channel[7] = raw->channel7;
 
   /* L2 buffering: append into aggregation block before queueing to storage path. */
   aggr_block.sample[aggr_block.sample_count++] = last_sample;
@@ -487,11 +501,108 @@ uint8_t DAQ_ProcessAdcReadyEvent(void)
   return 1U;
 }
 
+void DAQ_OnAdcDrdyFromIsr(void)
+{
+  if ((g_daq_ctx.is_adc_armed == 0U) || (g_daq_ctx.state != DAQ_STATE_ACQUIRING))
+  {
+    return;
+  }
+
+  g_daq_ctx.adc_ready_pending++;
+  DAQ_TryStartAdcDmaFromIsr();
+}
+
+void DAQ_OnAdcDmaCompleteFromIsr(void)
+{
+  adc_channel_data raw;
+
+  if (ADS131M08_TakeDmaFrame(&raw) != 0U)
+  {
+    (void)DAQ_StoreAdcFrame(&raw);
+  }
+  else
+  {
+    g_daq_ctx.dropped_buffers++;
+  }
+
+  DAQ_TryStartAdcDmaFromIsr();
+}
+
+void DAQ_OnAdcDmaErrorFromIsr(void)
+{
+  g_daq_ctx.dropped_buffers++;
+  DAQ_TryStartAdcDmaFromIsr();
+}
+
+static void DAQ_TryStartAdcDmaFromIsr(void)
+{
+  if ((g_daq_ctx.is_adc_armed == 0U) || (g_daq_ctx.state != DAQ_STATE_ACQUIRING) ||
+      (g_daq_ctx.adc_ready_pending == 0U) || (ADS131M08_IsReadDmaBusy() != 0U))
+  {
+    return;
+  }
+
+  g_daq_ctx.adc_ready_pending--;
+  if (ADS131M08_StartReadAllChannelDataDma() == 0U)
+  {
+    g_daq_ctx.adc_ready_pending++;
+    g_daq_ctx.dropped_buffers++;
+  }
+}
+
+uint32_t DAQ_ServiceAdcPending(uint32_t max_events)
+{
+  uint32_t processed = 0U;
+
+  if (max_events == 0U)
+  {
+    return 0U;
+  }
+
+  while (processed < max_events)
+  {
+    uint8_t has_event = 0U;
+
+    __disable_irq();
+    if (g_daq_ctx.adc_ready_pending != 0U)
+    {
+      g_daq_ctx.adc_ready_pending--;
+      has_event = 1U;
+    }
+    __enable_irq();
+
+    if (has_event == 0U)
+    {
+      break;
+    }
+
+    if (ADS131M08_StartReadAllChannelDataDma() == 0U)
+    {
+      __disable_irq();
+      g_daq_ctx.adc_ready_pending++;
+      __enable_irq();
+      break;
+    }
+
+    processed++;
+  }
+
+  return processed;
+}
+
+uint8_t DAQ_ShouldDeferBackgroundWork(void)
+{
+  return (uint8_t)((g_daq_ctx.state == DAQ_STATE_ACQUIRING) &&
+                   (g_daq_ctx.adc_ready_pending != 0U));
+}
+
 void DAQ_ServicePendingWrites(void)
 {
   DaqWriteBlock_t blk;
   uint64_t blk_bytes;
+#if (DAQ_EMMC_WRITE_ENABLE != 0U)
   uint32_t bytes_written;
+#endif
 
   if (g_daq_mode != DAQ_MODE_LOG_TO_EMMC)
   {
@@ -504,6 +615,7 @@ void DAQ_ServicePendingWrites(void)
   }
 
   blk_bytes = (uint64_t)(blk.sample_count * sizeof(DaqSampleFrame_t));
+#if (DAQ_EMMC_WRITE_ENABLE != 0U)
   if ((EmmcFs_IsRawLogOpen() == 0U) ||
       (EmmcFs_WriteRawLog((const uint8_t *)blk.sample,
                           (uint32_t)blk_bytes,
@@ -515,6 +627,7 @@ void DAQ_ServicePendingWrites(void)
     g_daq_ctx.dropped_buffers++;
     return;
   }
+#endif
 
   if (g_daq_ctx.bytes_queued >= blk_bytes)
   {

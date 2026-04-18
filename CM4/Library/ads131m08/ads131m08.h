@@ -1650,6 +1650,11 @@ extern GPIO_TypeDef *SYNC_RESET_GPIO_Port;
 extern uint16_t SYNC_RESET_Pin;
 
 void readAllChannelData(adc_channel_data *DataStruct);
+uint8_t ADS131M08_StartReadAllChannelDataDma(void);
+uint8_t ADS131M08_IsReadDmaBusy(void);
+uint8_t ADS131M08_TakeDmaFrame(adc_channel_data *DataStruct);
+void ADS131M08_DmaTxRxCpltCallback(SPI_HandleTypeDef *hspi);
+void ADS131M08_DmaErrorCallback(SPI_HandleTypeDef *hspi);
 
 void calibrate(int32_t adc_value, uint8_t channel);
 

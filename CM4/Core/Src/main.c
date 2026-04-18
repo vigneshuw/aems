@@ -18,6 +18,7 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "dma.h"
 #include "fatfs.h"
 #include "openamp.h"
 #include "sdmmc.h"
@@ -65,6 +66,7 @@ static int32_t g_cm4_emmc_init_status = 0;
 static int32_t g_cm4_emmc_mount_status = 0;
 static int32_t g_cm4_emmc_create_status = 0;
 static uint16_t g_cm4_adc_device_id = 0U;
+static uint32_t g_openamp_defer_poll_divider = 0U;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -117,6 +119,7 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
+  MX_DMA_Init();
   MX_SPI4_Init();
   MX_SDMMC1_MMC_Init();
   /* USER CODE BEGIN 2 */
@@ -155,8 +158,12 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-    OpenAmpFs_RemotePoll();
     DAQ_StateMachine_Run();
+    if ((DAQ_ShouldDeferBackgroundWork() == 0U) ||
+        ((++g_openamp_defer_poll_divider & 0x1FU) == 0U))
+    {
+      OpenAmpFs_RemotePoll();
+    }
   }
   /* USER CODE END 3 */
 }
@@ -185,8 +192,26 @@ uint16_t CM4_GetAdcDeviceId(void)
  */
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
 	if(GPIO_Pin == ADS_DRDY_Pin) {
-    g_daq_ctx.adc_ready_pending++;
+    DAQ_OnAdcDrdyFromIsr();
 	}
+}
+
+void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef *hspi)
+{
+  ADS131M08_DmaTxRxCpltCallback(hspi);
+  if (hspi == ads.hspi)
+  {
+    DAQ_OnAdcDmaCompleteFromIsr();
+  }
+}
+
+void HAL_SPI_ErrorCallback(SPI_HandleTypeDef *hspi)
+{
+  ADS131M08_DmaErrorCallback(hspi);
+  if (hspi == ads.hspi)
+  {
+    DAQ_OnAdcDmaErrorFromIsr();
+  }
 }
 
 /* USER CODE END 4 */

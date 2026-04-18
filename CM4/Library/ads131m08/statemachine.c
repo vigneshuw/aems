@@ -1,6 +1,8 @@
 #include "statemachine.h"
 #include "daq_engine.h"
 
+#define DAQ_ADC_EVENTS_PER_RUN 16U
+
 static void DAQ_SetError(uint32_t err)
 {
   /* Keep a single latched error code and move to terminal DAQ error state. */
@@ -57,21 +59,15 @@ void DAQ_StateMachine_Run(void)
         g_daq_ctx.events &= ~DAQ_EVT_CMD_STOP;
         g_daq_ctx.state = DAQ_STATE_STOPPING;
       }
-      else if (g_daq_ctx.adc_ready_pending != 0U)
+      else
       {
-        __disable_irq();
-        if (g_daq_ctx.adc_ready_pending != 0U)
-        {
-          g_daq_ctx.adc_ready_pending--;
-        }
-        __enable_irq();
-
-        if (DAQ_ProcessAdcReadyEvent() == 0U)
-        {
-          DAQ_SetError(3U);
-        }
+        (void)DAQ_ServiceAdcPending(DAQ_ADC_EVENTS_PER_RUN);
       }
-      DAQ_ServicePendingWrites();
+
+      if (g_daq_ctx.adc_ready_pending == 0U)
+      {
+        DAQ_ServicePendingWrites();
+      }
       break;
 
     case DAQ_STATE_STOPPING:
