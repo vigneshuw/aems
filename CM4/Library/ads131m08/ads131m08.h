@@ -1653,6 +1653,7 @@ void readAllChannelData(adc_channel_data *DataStruct);
 uint8_t ADS131M08_StartReadAllChannelDataDma(void);
 uint8_t ADS131M08_IsReadDmaBusy(void);
 uint8_t ADS131M08_TakeDmaFrame(adc_channel_data *DataStruct);
+void ADS131M08_AbortReadDma(void);
 void ADS131M08_DmaTxRxCpltCallback(SPI_HandleTypeDef *hspi);
 void ADS131M08_DmaErrorCallback(SPI_HandleTypeDef *hspi);
 

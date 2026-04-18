@@ -686,15 +686,7 @@ EmmcFsStatus_t EmmcFs_CloseFileWrite(EmmcFsWriteHandle_t *handle)
     }
 
     EmmcFs_Lock();
-    result = f_sync(&handle->file);
-    if (result == FR_OK)
-    {
-        result = f_close(&handle->file);
-    }
-    else
-    {
-        (void)f_close(&handle->file);
-    }
+    result = f_close(&handle->file);
     EmmcFs_Unlock();
 
     handle->is_open = 0U;

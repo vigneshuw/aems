@@ -95,6 +95,8 @@ void DAQ_OnAdcDmaErrorFromIsr(void);
 
 uint32_t DAQ_ServiceAdcPending(uint32_t max_events);
 
+uint32_t DAQ_ServiceCapturedSamples(uint32_t max_samples);
+
 uint8_t DAQ_ShouldDeferBackgroundWork(void);
 
 /**

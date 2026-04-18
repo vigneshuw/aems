@@ -2,6 +2,7 @@
 #include "daq_engine.h"
 
 #define DAQ_ADC_EVENTS_PER_RUN 16U
+#define DAQ_CAPTURED_SAMPLES_PER_RUN 64U
 
 static void DAQ_SetError(uint32_t err)
 {
@@ -62,10 +63,7 @@ void DAQ_StateMachine_Run(void)
       else
       {
         (void)DAQ_ServiceAdcPending(DAQ_ADC_EVENTS_PER_RUN);
-      }
-
-      if (g_daq_ctx.adc_ready_pending == 0U)
-      {
+        (void)DAQ_ServiceCapturedSamples(DAQ_CAPTURED_SAMPLES_PER_RUN);
         DAQ_ServicePendingWrites();
       }
       break;

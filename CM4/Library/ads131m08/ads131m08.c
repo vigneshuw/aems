@@ -26,16 +26,19 @@ uint8_t     getWordByteLength(void);
 #define ADS131M08_FRAME_WORDS       (CHANNEL_COUNT + 2U)
 #define ADS131M08_BOOT_WORD_BYTES   (3U)
 #define ADS131M08_MAX_FRAME_BYTES   (ADS131M08_FRAME_WORDS * 4U)
+#define ADS131M08_DMA_FRAME_SLOTS   (8U)
 
 static uint16_t sendBootFullFrameCommand(uint16_t opcode);
 static uint16_t normalizeDeviceIdPattern(uint16_t raw_id);
 static void parseAllChannelFrame(const uint8_t *rxBuffer, adc_channel_data *DataStruct);
 
-static uint8_t s_dma_tx_buffer[ADS131M08_MAX_FRAME_BYTES] __attribute__((aligned(4)));
-static uint8_t s_dma_rx_buffer[ADS131M08_MAX_FRAME_BYTES] __attribute__((aligned(4)));
+static uint8_t s_dma_tx_buffer[ADS131M08_DMA_FRAME_SLOTS][ADS131M08_MAX_FRAME_BYTES] __attribute__((aligned(4)));
+static uint8_t s_dma_rx_buffer[ADS131M08_DMA_FRAME_SLOTS][ADS131M08_MAX_FRAME_BYTES] __attribute__((aligned(4)));
 static volatile uint8_t s_dma_busy = 0U;
-static volatile uint8_t s_dma_frame_ready = 0U;
 static volatile uint8_t s_dma_error = 0U;
+static volatile uint8_t s_dma_active_slot = 0U;
+static volatile uint8_t s_dma_ready_tail = 0U;
+static volatile uint8_t s_dma_ready_count = 0U;
 static uint16_t s_dma_frame_size = 0U;
 
 
@@ -227,30 +230,34 @@ uint8_t ADS131M08_StartReadAllChannelDataDma(void)
     uint8_t bytesPerWord = getWordByteLength();
     uint8_t totalWords = 10U;
     uint16_t bufferSize = (uint16_t)(totalWords * bytesPerWord);
+    uint8_t slot;
 
-    if ((ads.hspi == NULL) || (s_dma_busy != 0U) || (bufferSize > ADS131M08_MAX_FRAME_BYTES))
+    if ((ads.hspi == NULL) || (s_dma_busy != 0U) ||
+        (s_dma_ready_count >= ADS131M08_DMA_FRAME_SLOTS) ||
+        (bufferSize > ADS131M08_MAX_FRAME_BYTES))
     {
         return 0U;
     }
 
-    memset(s_dma_tx_buffer, 0x00, bufferSize);
-    memset(s_dma_rx_buffer, 0x00, bufferSize);
+    slot = (uint8_t)((s_dma_ready_tail + s_dma_ready_count) % ADS131M08_DMA_FRAME_SLOTS);
+    memset(s_dma_tx_buffer[slot], 0x00, bufferSize);
+    memset(s_dma_rx_buffer[slot], 0x00, bufferSize);
 
 #ifdef ENABLE_CRC_IN
-    uint16_t crcWordIn = calculateCRC(s_dma_tx_buffer, bufferSize - bytesPerWord, 0xFFFF);
-    s_dma_tx_buffer[bufferSize - bytesPerWord] = upperByte(crcWordIn);
-    s_dma_tx_buffer[bufferSize - bytesPerWord + 1U] = lowerByte(crcWordIn);
+    uint16_t crcWordIn = calculateCRC(s_dma_tx_buffer[slot], bufferSize - bytesPerWord, 0xFFFF);
+    s_dma_tx_buffer[slot][bufferSize - bytesPerWord] = upperByte(crcWordIn);
+    s_dma_tx_buffer[slot][bufferSize - bytesPerWord + 1U] = lowerByte(crcWordIn);
 #endif
 
     s_dma_frame_size = bufferSize;
-    s_dma_frame_ready = 0U;
     s_dma_error = 0U;
+    s_dma_active_slot = slot;
     s_dma_busy = 1U;
 
     ADS131M08_CS_LOW();
     if (HAL_SPI_TransmitReceive_DMA(ads.hspi,
-                                    s_dma_tx_buffer,
-                                    s_dma_rx_buffer,
+                                    s_dma_tx_buffer[slot],
+                                    s_dma_rx_buffer[slot],
                                     bufferSize) != HAL_OK)
     {
         ADS131M08_CS_HIGH();
@@ -269,15 +276,41 @@ uint8_t ADS131M08_IsReadDmaBusy(void)
 
 uint8_t ADS131M08_TakeDmaFrame(adc_channel_data *DataStruct)
 {
-    if ((DataStruct == NULL) || (s_dma_frame_ready == 0U) || (s_dma_error != 0U) ||
+    uint8_t slot;
+
+    if ((DataStruct == NULL) || (s_dma_ready_count == 0U) || (s_dma_error != 0U) ||
         (s_dma_frame_size == 0U))
     {
         return 0U;
     }
 
-    parseAllChannelFrame(s_dma_rx_buffer, DataStruct);
-    s_dma_frame_ready = 0U;
+    __disable_irq();
+    if (s_dma_ready_count == 0U)
+    {
+        __enable_irq();
+        return 0U;
+    }
+    slot = s_dma_ready_tail;
+    s_dma_ready_tail = (uint8_t)((s_dma_ready_tail + 1U) % ADS131M08_DMA_FRAME_SLOTS);
+    s_dma_ready_count--;
+    __enable_irq();
+
+    parseAllChannelFrame(s_dma_rx_buffer[slot], DataStruct);
     return 1U;
+}
+
+void ADS131M08_AbortReadDma(void)
+{
+    if ((ads.hspi != NULL) && (s_dma_busy != 0U))
+    {
+        (void)HAL_SPI_Abort(ads.hspi);
+    }
+
+    ADS131M08_CS_HIGH();
+    s_dma_busy = 0U;
+    s_dma_ready_tail = 0U;
+    s_dma_ready_count = 0U;
+    s_dma_error = 0U;
 }
 
 void ADS131M08_DmaTxRxCpltCallback(SPI_HandleTypeDef *hspi)
@@ -289,7 +322,14 @@ void ADS131M08_DmaTxRxCpltCallback(SPI_HandleTypeDef *hspi)
 
     ADS131M08_CS_HIGH();
     s_dma_busy = 0U;
-    s_dma_frame_ready = 1U;
+    if (s_dma_ready_count < ADS131M08_DMA_FRAME_SLOTS)
+    {
+        s_dma_ready_count++;
+    }
+    else
+    {
+        s_dma_error = 1U;
+    }
 }
 
 void ADS131M08_DmaErrorCallback(SPI_HandleTypeDef *hspi)
@@ -301,7 +341,6 @@ void ADS131M08_DmaErrorCallback(SPI_HandleTypeDef *hspi)
 
     ADS131M08_CS_HIGH();
     s_dma_busy = 0U;
-    s_dma_frame_ready = 0U;
     s_dma_error = 1U;
 }
 

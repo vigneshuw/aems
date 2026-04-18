@@ -17,8 +17,8 @@ static int32_t g_daq_last_op_status = 0;
 #define DAQ_WRITE_QUEUE_DEPTH        (16U)
 #define DAQ_ERROR_WRITE_OPEN         (10U)
 #define DAQ_ERROR_WRITE_DATA         (11U)
-/* Temporary capture-rate test: keep ADC read + RAM aggregation, skip eMMC writes. */
-#define DAQ_EMMC_WRITE_ENABLE        (0U)
+/* Set to 0 only for ADC pipeline testing without storage latency. */
+#define DAQ_EMMC_WRITE_ENABLE        (1U)
 
 typedef struct
 {
@@ -33,7 +33,11 @@ static uint8_t write_q_tail = 0U;
 static uint8_t write_q_count = 0U;
 
 static uint8_t DAQ_StoreAdcFrame(const adc_channel_data *raw);
+static void DAQ_BuildSampleFrame(const adc_channel_data *raw, DaqSampleFrame_t *frame);
+static uint8_t DAQ_StoreSampleFrame(const DaqSampleFrame_t *frame);
 static void DAQ_TryStartAdcDmaFromIsr(void);
+static void DAQ_PauseAdcCaptureIrqForStorage(void);
+static void DAQ_ResumeAdcCaptureIrqAfterStorage(void);
 
 static uint16_t DAQ_OsrForSampleRate(uint32_t sample_rate_hz)
 {
@@ -144,6 +148,9 @@ static uint8_t DAQ_QueuePop(DaqWriteBlock_t *blk)
 
 void DAQ_Shutdown(void)
 {
+  ADS131M08_AbortReadDma();
+  (void)DAQ_ServiceCapturedSamples(DAQ_AGGR_SAMPLES_PER_BLOCK);
+
   /* Flush any partial aggregation so finalization can commit all captured data. */
   if (aggr_block.sample_count > 0U)
   {
@@ -325,11 +332,13 @@ uint8_t DAQ_StopAndClose(void)
 
   if (EmmcFs_IsRawLogOpen() != 0U)
   {
+    DAQ_PauseAdcCaptureIrqForStorage();
     if (EmmcFs_CloseRawLog() != EMMC_FS_OK)
     {
       g_daq_ctx.last_error = DAQ_ERROR_WRITE_DATA;
       g_daq_last_op_status = (int32_t)EMMC_FS_ERR_READ_FILE;
     }
+    DAQ_ResumeAdcCaptureIrqAfterStorage();
   }
 
   adcMaster_Shutdown();
@@ -459,6 +468,8 @@ uint8_t DAQ_ProcessAdcReadyEvent(void)
 
 static uint8_t DAQ_StoreAdcFrame(const adc_channel_data *raw)
 {
+  DaqSampleFrame_t frame;
+
   if (raw == NULL)
   {
     return 0U;
@@ -471,16 +482,32 @@ static uint8_t DAQ_StoreAdcFrame(const adc_channel_data *raw)
     return 1U;
   }
 
-  last_sample.response = raw->response;
-  last_sample.crc = raw->crc;
-  last_sample.channel[0] = raw->channel0;
-  last_sample.channel[1] = raw->channel1;
-  last_sample.channel[2] = raw->channel2;
-  last_sample.channel[3] = raw->channel3;
-  last_sample.channel[4] = raw->channel4;
-  last_sample.channel[5] = raw->channel5;
-  last_sample.channel[6] = raw->channel6;
-  last_sample.channel[7] = raw->channel7;
+  DAQ_BuildSampleFrame(raw, &frame);
+  return DAQ_StoreSampleFrame(&frame);
+}
+
+static void DAQ_BuildSampleFrame(const adc_channel_data *raw, DaqSampleFrame_t *frame)
+{
+  frame->response = raw->response;
+  frame->crc = raw->crc;
+  frame->channel[0] = raw->channel0;
+  frame->channel[1] = raw->channel1;
+  frame->channel[2] = raw->channel2;
+  frame->channel[3] = raw->channel3;
+  frame->channel[4] = raw->channel4;
+  frame->channel[5] = raw->channel5;
+  frame->channel[6] = raw->channel6;
+  frame->channel[7] = raw->channel7;
+}
+
+static uint8_t DAQ_StoreSampleFrame(const DaqSampleFrame_t *frame)
+{
+  if (frame == NULL)
+  {
+    return 0U;
+  }
+
+  last_sample = *frame;
 
   /* L2 buffering: append into aggregation block before queueing to storage path. */
   aggr_block.sample[aggr_block.sample_count++] = last_sample;
@@ -514,17 +541,7 @@ void DAQ_OnAdcDrdyFromIsr(void)
 
 void DAQ_OnAdcDmaCompleteFromIsr(void)
 {
-  adc_channel_data raw;
-
-  if (ADS131M08_TakeDmaFrame(&raw) != 0U)
-  {
-    (void)DAQ_StoreAdcFrame(&raw);
-  }
-  else
-  {
-    g_daq_ctx.dropped_buffers++;
-  }
-
+  /* DMA layer has queued the raw frame; main loop parses/stores/writes it. */
   DAQ_TryStartAdcDmaFromIsr();
 }
 
@@ -548,6 +565,28 @@ static void DAQ_TryStartAdcDmaFromIsr(void)
     g_daq_ctx.adc_ready_pending++;
     g_daq_ctx.dropped_buffers++;
   }
+}
+
+static void DAQ_PauseAdcCaptureIrqForStorage(void)
+{
+  /*
+   * Do not globally disable interrupts around FatFs/MMC calls: HAL timeout and
+   * card-state polling depend on SysTick. Mask only the DRDY capture source,
+   * stop any active SPI DMA transaction, and discard DRDY edges that occur
+   * while storage owns the bus/time budget.
+   */
+  HAL_NVIC_DisableIRQ(EXTI15_10_IRQn);
+  __HAL_GPIO_EXTI_CLEAR_IT(ADS_DRDY_Pin);
+  HAL_NVIC_ClearPendingIRQ(EXTI15_10_IRQn);
+  ADS131M08_AbortReadDma();
+  g_daq_ctx.adc_ready_pending = 0U;
+}
+
+static void DAQ_ResumeAdcCaptureIrqAfterStorage(void)
+{
+  __HAL_GPIO_EXTI_CLEAR_IT(ADS_DRDY_Pin);
+  HAL_NVIC_ClearPendingIRQ(EXTI15_10_IRQn);
+  HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
 }
 
 uint32_t DAQ_ServiceAdcPending(uint32_t max_events)
@@ -590,10 +629,30 @@ uint32_t DAQ_ServiceAdcPending(uint32_t max_events)
   return processed;
 }
 
+uint32_t DAQ_ServiceCapturedSamples(uint32_t max_samples)
+{
+  uint32_t processed = 0U;
+  adc_channel_data raw;
+
+  if (max_samples == 0U)
+  {
+    return 0U;
+  }
+
+  while ((processed < max_samples) && (ADS131M08_TakeDmaFrame(&raw) != 0U))
+  {
+    (void)DAQ_StoreAdcFrame(&raw);
+    processed++;
+  }
+
+  return processed;
+}
+
 uint8_t DAQ_ShouldDeferBackgroundWork(void)
 {
   return (uint8_t)((g_daq_ctx.state == DAQ_STATE_ACQUIRING) &&
-                   (g_daq_ctx.adc_ready_pending != 0U));
+                   ((g_daq_ctx.adc_ready_pending != 0U) ||
+                    (ADS131M08_IsReadDmaBusy() != 0U)));
 }
 
 void DAQ_ServicePendingWrites(void)
@@ -616,6 +675,8 @@ void DAQ_ServicePendingWrites(void)
 
   blk_bytes = (uint64_t)(blk.sample_count * sizeof(DaqSampleFrame_t));
 #if (DAQ_EMMC_WRITE_ENABLE != 0U)
+  DAQ_PauseAdcCaptureIrqForStorage();
+
   if ((EmmcFs_IsRawLogOpen() == 0U) ||
       (EmmcFs_WriteRawLog((const uint8_t *)blk.sample,
                           (uint32_t)blk_bytes,
@@ -625,8 +686,11 @@ void DAQ_ServicePendingWrites(void)
     g_daq_ctx.last_error = DAQ_ERROR_WRITE_DATA;
     g_daq_last_op_status = (int32_t)EMMC_FS_ERR_READ_FILE;
     g_daq_ctx.dropped_buffers++;
+    DAQ_ResumeAdcCaptureIrqAfterStorage();
     return;
   }
+
+  DAQ_ResumeAdcCaptureIrqAfterStorage();
 #endif
 
   if (g_daq_ctx.bytes_queued >= blk_bytes)
@@ -655,11 +719,13 @@ uint8_t DAQ_HasPendingWrites(void)
   {
     if (EmmcFs_IsRawLogOpen() != 0U)
     {
+      DAQ_PauseAdcCaptureIrqForStorage();
       if (EmmcFs_CloseRawLog() != EMMC_FS_OK)
       {
         g_daq_ctx.last_error = DAQ_ERROR_WRITE_DATA;
         g_daq_last_op_status = (int32_t)EMMC_FS_ERR_READ_FILE;
       }
+      DAQ_ResumeAdcCaptureIrqAfterStorage();
     }
     g_daq_mode = DAQ_MODE_IDLE;
   }

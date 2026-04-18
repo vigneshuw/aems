@@ -66,7 +66,6 @@ static int32_t g_cm4_emmc_init_status = 0;
 static int32_t g_cm4_emmc_mount_status = 0;
 static int32_t g_cm4_emmc_create_status = 0;
 static uint16_t g_cm4_adc_device_id = 0U;
-static uint32_t g_openamp_defer_poll_divider = 0U;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -159,11 +158,7 @@ int main(void)
 
     /* USER CODE BEGIN 3 */
     DAQ_StateMachine_Run();
-    if ((DAQ_ShouldDeferBackgroundWork() == 0U) ||
-        ((++g_openamp_defer_poll_divider & 0x1FU) == 0U))
-    {
-      OpenAmpFs_RemotePoll();
-    }
+    OpenAmpFs_RemotePoll();
   }
   /* USER CODE END 3 */
 }
