@@ -13,8 +13,8 @@ static DaqConfig_t g_daq_cfg;
 static DaqMode_t g_daq_mode = DAQ_MODE_IDLE;
 static int32_t g_daq_last_op_status = 0;
 
-#define DAQ_AGGR_SAMPLES_PER_BLOCK   (64U)
-#define DAQ_WRITE_QUEUE_DEPTH        (16U)
+#define DAQ_AGGR_SAMPLES_PER_BLOCK   (128U)
+#define DAQ_WRITE_QUEUE_DEPTH        (8U)
 #define DAQ_ERROR_WRITE_OPEN         (10U)
 #define DAQ_ERROR_WRITE_DATA         (11U)
 /* Set to 0 only for ADC pipeline testing without storage latency. */
