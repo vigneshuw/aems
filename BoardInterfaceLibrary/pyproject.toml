@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "board-interface"
+version = "0.1.0"
+description = "Python interface library for the AEMS board TCP protocol"
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [{ name = "AEMS Firmware Team" }]
+dependencies = []
+
+[project.scripts]
+board-interface-cli = "board_interface.cli:main"
+
+[tool.setuptools]
+package-dir = {"" = "."}
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["board_interface*"]
