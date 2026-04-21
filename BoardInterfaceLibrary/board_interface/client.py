@@ -9,7 +9,7 @@ from dataclasses import asdict
 from pathlib import Path
 from typing import Optional
 
-from .models import CommandConfig, PacketBase, StreamResult
+from .models import CommandConfig, FileListResponse, PacketBase, StreamResult
 from .protocol import (
     CONFIG_READ_HEADER_LEN,
     DAQ_FRAME_LEN,
@@ -65,6 +65,8 @@ class BoardSession:
         self._send_lock = threading.Lock()
         self._condition = threading.Condition()
         self._responses: dict[int, deque[PacketBase]] = defaultdict(deque)
+        self._file_list_result: Optional[FileListResponse] = None
+        self._file_list_buffer: Optional[bytearray] = None
         self._stream_result: Optional[StreamResult] = None
         self._stream_event = threading.Event()
         self._stream_state: Optional[dict] = None
@@ -117,6 +119,27 @@ class BoardSession:
     def get_all_file_count(self, timeout: float = 5.0) -> PacketBase:
         self.send_command(3)
         return self.wait_for_command(3, timeout)
+
+    def get_file_list(self, timeout: float = 5.0) -> FileListResponse:
+        self._file_list_result = None
+        self._file_list_buffer = None
+        self.send_command(4)
+        deadline = time.monotonic() + timeout
+        while self._file_list_result is None:
+            if time.monotonic() >= deadline:
+                raise TimeoutError("Timed out waiting for file list")
+            time.sleep(0.01)
+        return self._file_list_result
+
+    def delete_log_files(self, timeout: float = 5.0) -> PacketBase:
+        self.send_command(6)
+        return self.wait_for_command(6, timeout)
+
+    def delete_file(self, filename: str, timeout: float = 5.0) -> PacketBase:
+        config = CommandConfig(**asdict(self.default_config))
+        config.read_filename = filename
+        self.send_command(7, config=config)
+        return self.wait_for_command(7, timeout)
 
     def get_file_size(self, filename: str | None = None, timeout: float = 5.0) -> PacketBase:
         config = CommandConfig(**asdict(self.default_config))
@@ -239,6 +262,17 @@ class BoardSession:
                         packet = bytes(rx_buffer[:FILE_STREAM_HEADER_LEN])
                         del rx_buffer[:FILE_STREAM_HEADER_LEN]
                         self._handle_stream_header(packet)
+                        continue
+                    if command == 4:
+                        if len(rx_buffer) < CONFIG_READ_HEADER_LEN:
+                            break
+                        chunk_len = int.from_bytes(rx_buffer[22:24], "big")
+                        frame_len = CONFIG_READ_HEADER_LEN + chunk_len
+                        if len(rx_buffer) < frame_len:
+                            break
+                        packet = bytes(rx_buffer[:frame_len])
+                        del rx_buffer[:frame_len]
+                        self._handle_file_list_packet(packet)
                         continue
                     if len(rx_buffer) < PACKET_LEN:
                         break

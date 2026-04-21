@@ -12,6 +12,9 @@ int32_t OpenAmpFs_MasterInit(void);
 int32_t OpenAmpFs_Ping(uint32_t request_value, uint32_t *reply_value);
 int32_t OpenAmpFs_CountDatFiles(uint32_t *dat_count);
 int32_t OpenAmpFs_CountAllFiles(uint32_t *file_count);
+int32_t OpenAmpFs_ListFilesShared(uint8_t **buffer, uint32_t *bytes_read);
+int32_t OpenAmpFs_DeleteLogFiles(uint32_t *deleted_count);
+int32_t OpenAmpFs_DeleteFile(const char *filename, uint32_t *deleted_count);
 int32_t OpenAmpFs_GetFileSize(const char *filename, uint32_t *file_size);
 int32_t OpenAmpFs_ReadFileChunk(const char *filename,
                                 uint32_t offset,

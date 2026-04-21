@@ -7,6 +7,7 @@ from .models import (
     CommandConfig,
     ConfigWriteResponse,
     DaqAckResponse,
+    DeleteResponse,
     DaqStatusResponse,
     FileCountResponse,
     FileSizeResponse,
@@ -48,6 +49,8 @@ def build_packet(command: int, server_id: int = SERVER_ID, epoch_time: int | Non
         useful_payload = CONFIG_TEST_PAYLOAD
     elif command == 5:
         useful_payload = read_filename
+    elif command == 7:
+        useful_payload = read_filename
     elif command == 8:
         useful_payload = struct.pack(">I", config.stream_offset) + read_filename
     elif command in {11, 13}:
@@ -78,6 +81,8 @@ def parse_fixed_packet(packet: bytes) -> PacketBase:
         return TotalFileCountResponse(command, struct.unpack(">I", packet[1:5])[0], struct.unpack(">Q", packet[5:13])[0], packet[13], packet[14], struct.unpack(">I", packet[15:19])[0], struct.unpack(">I", packet[19:23])[0])
     if command == 5:
         return FileSizeResponse(command, struct.unpack(">I", packet[1:5])[0], struct.unpack(">Q", packet[5:13])[0], packet[13], packet[14], struct.unpack(">I", packet[15:19])[0], struct.unpack(">i", packet[19:23])[0])
+    if command in {6, 7}:
+        return DeleteResponse(command, struct.unpack(">I", packet[1:5])[0], struct.unpack(">Q", packet[5:13])[0], packet[13], packet[14], struct.unpack(">i", packet[15:19])[0], struct.unpack(">I", packet[19:23])[0])
     return PacketBase(command, struct.unpack(">I", packet[1:5])[0], struct.unpack(">Q", packet[5:13])[0], packet[13], packet[14])
 
 

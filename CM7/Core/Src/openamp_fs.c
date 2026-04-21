@@ -13,7 +13,10 @@
 #define OPENAMP_OP_PING        99U
 #define OPENAMP_OP_COUNT_DAT   2U
 #define OPENAMP_OP_COUNT_ALL   3U
+#define OPENAMP_OP_LIST_FILES  4U
 #define OPENAMP_OP_FILE_SIZE   5U
+#define OPENAMP_OP_DELETE_LOGS 96U
+#define OPENAMP_OP_DELETE_FILE 97U
 #define OPENAMP_OP_READ_CHUNK  7U
 #define OPENAMP_OP_STREAM_OPEN 80U
 #define OPENAMP_OP_STREAM_READ 81U
@@ -155,6 +158,44 @@ int32_t OpenAmpFs_CountDatFiles(uint32_t *dat_count)
 int32_t OpenAmpFs_CountAllFiles(uint32_t *file_count)
 {
   return OpenAmpFs_SendRequest(OPENAMP_OP_COUNT_ALL, 0U, 0U, NULL, file_count);
+}
+
+int32_t OpenAmpFs_ListFilesShared(uint8_t **buffer, uint32_t *bytes_read)
+{
+  uint32_t reply_value = 0U;
+  int32_t status;
+
+  if ((buffer == NULL) || (bytes_read == NULL))
+  {
+    return -1;
+  }
+
+  *buffer = FILE_SHMEM_DATA_PTR;
+  *bytes_read = 0U;
+
+  status = OpenAmpFs_SendRequestEx(OPENAMP_OP_LIST_FILES, 0U, (uint32_t)FILE_SHMEM_DATA_LEN, NULL, &reply_value, 1U);
+  if (status != 0)
+  {
+    return status;
+  }
+
+  *bytes_read = reply_value;
+  return 0;
+}
+
+int32_t OpenAmpFs_DeleteLogFiles(uint32_t *deleted_count)
+{
+  return OpenAmpFs_SendRequest(OPENAMP_OP_DELETE_LOGS, 0U, 0U, NULL, deleted_count);
+}
+
+int32_t OpenAmpFs_DeleteFile(const char *filename, uint32_t *deleted_count)
+{
+  if ((filename == NULL) || (filename[0] == '\0'))
+  {
+    return -1;
+  }
+
+  return OpenAmpFs_SendRequest(OPENAMP_OP_DELETE_FILE, 0U, 0U, filename, deleted_count);
 }
 
 int32_t OpenAmpFs_GetFileSize(const char *filename, uint32_t *file_size)

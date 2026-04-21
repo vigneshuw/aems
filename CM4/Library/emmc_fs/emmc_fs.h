@@ -19,7 +19,8 @@ typedef enum
     EMMC_FS_ERR_OPEN_DIR = -6,
     EMMC_FS_ERR_READ_DIR = -7,
     EMMC_FS_ERR_OPEN_FILE = -8,
-    EMMC_FS_ERR_READ_FILE = -9
+    EMMC_FS_ERR_READ_FILE = -9,
+    EMMC_FS_ERR_BUFFER_SMALL = -10
 } EmmcFsStatus_t;
 
 typedef enum
@@ -112,6 +113,13 @@ EmmcFsStatus_t EmmcFs_CreatePatternFile(const char *filename,
  * @return `EMMC_FS_ERR_READ_DIR` if directory enumeration fails.
  */
 EmmcFsStatus_t EmmcFs_CountAllFiles(uint32_t *file_count);
+
+EmmcFsStatus_t EmmcFs_ListFiles(char *buffer,
+                                uint32_t buffer_size,
+                                uint32_t *bytes_used);
+
+EmmcFsStatus_t EmmcFs_DeleteLogFiles(uint32_t *deleted_count);
+EmmcFsStatus_t EmmcFs_DeleteFileIfExists(const char *filename, uint32_t *deleted_count);
 
 /**
  * @brief Read a chunk from `config_main.conf`.

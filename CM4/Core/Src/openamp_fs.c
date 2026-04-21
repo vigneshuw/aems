@@ -16,7 +16,10 @@
 #define OPENAMP_OP_PING        99U
 #define OPENAMP_OP_COUNT_DAT   2U
 #define OPENAMP_OP_COUNT_ALL   3U
+#define OPENAMP_OP_LIST_FILES  4U
 #define OPENAMP_OP_FILE_SIZE   5U
+#define OPENAMP_OP_DELETE_LOGS 96U
+#define OPENAMP_OP_DELETE_FILE 97U
 #define OPENAMP_OP_READ_CHUNK  7U
 #define OPENAMP_OP_STREAM_OPEN 80U
 #define OPENAMP_OP_STREAM_READ 81U
@@ -188,6 +191,24 @@ static int OpenAmpPing_RxCallback(struct rpmsg_endpoint *ept,
 
     case OPENAMP_OP_COUNT_ALL:
       response.status = (int32_t)EmmcFs_CountAllFiles(&all_file_count);
+      response.value = all_file_count;
+      break;
+
+    case OPENAMP_OP_LIST_FILES:
+      response.status = (int32_t)EmmcFs_ListFiles((char *)FILE_SHMEM_DATA_PTR,
+                                                  FILE_SHMEM_DATA_LEN,
+                                                  &all_file_count);
+      response.value = all_file_count;
+      response.length = (response.status == 0) ? all_file_count : 0U;
+      break;
+
+    case OPENAMP_OP_DELETE_LOGS:
+      response.status = (int32_t)EmmcFs_DeleteLogFiles(&all_file_count);
+      response.value = all_file_count;
+      break;
+
+    case OPENAMP_OP_DELETE_FILE:
+      response.status = (int32_t)EmmcFs_DeleteFileIfExists(request_copy.filename, &all_file_count);
       response.value = all_file_count;
       break;
 

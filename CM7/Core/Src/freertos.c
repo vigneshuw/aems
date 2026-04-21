@@ -388,6 +388,104 @@ void ControllerTask(void const * argument)
           break;
         }
 
+        case 4U:
+        {
+          uint8_t tx[24U + 1024U];
+          uint8_t *shared_buffer = NULL;
+          uint32_t total_size = 0U;
+          uint32_t offset = 0U;
+          uint16_t chunk_len;
+          int32_t fs_status;
+
+          fs_status = OpenAmpFs_ListFilesShared(&shared_buffer, &total_size);
+          if ((fs_status != 0) || (shared_buffer == NULL) || (total_size == 0U))
+          {
+            memset(tx, 0, 24U);
+            tx[0] = msg.command;
+            tx[1] = (fs_status == 0) ? 0U : 1U;
+            WriteU32Be(&tx[2], msg.server_id);
+            WriteU64Be(&tx[6], msg.epoch_time);
+            WriteU32Be(&tx[14], total_size);
+            WriteU32Be(&tx[18], 0U);
+            tx[22] = 0U;
+            tx[23] = 0U;
+            (void)TcpClient_SendBuffer(tx, 24U);
+            break;
+          }
+
+          while (offset < total_size)
+          {
+            chunk_len = (uint16_t)((total_size - offset) > 1024U ? 1024U : (total_size - offset));
+            memset(tx, 0, 24U + chunk_len);
+            tx[0] = msg.command;
+            tx[1] = 0U;
+            WriteU32Be(&tx[2], msg.server_id);
+            WriteU64Be(&tx[6], msg.epoch_time);
+            WriteU32Be(&tx[14], total_size);
+            WriteU32Be(&tx[18], offset);
+            tx[22] = (uint8_t)(chunk_len >> 8);
+            tx[23] = (uint8_t)chunk_len;
+            memcpy(&tx[24], &shared_buffer[offset], chunk_len);
+            (void)TcpClient_SendBuffer(tx, (uint16_t)(24U + chunk_len));
+            offset += chunk_len;
+          }
+          break;
+        }
+
+        case 6U:
+        {
+          uint8_t tx[TCP_FIXED_RESPONSE_LEN];
+          uint32_t deleted_count = 0U;
+          int32_t op_status;
+
+          op_status = OpenAmpFs_DeleteLogFiles(&deleted_count);
+
+          memset(tx, 0, sizeof(tx));
+          tx[0] = msg.command;
+          WriteU32Be(&tx[1], msg.server_id);
+          WriteU64Be(&tx[5], msg.epoch_time);
+          tx[13] = (op_status == 0) ? 0U : 1U;
+          tx[14] = TcpClient_IsConnected();
+          WriteU32Be(&tx[15], (uint32_t)op_status);
+          WriteU32Be(&tx[19], deleted_count);
+          (void)TcpClient_SendBuffer(tx, sizeof(tx));
+          break;
+        }
+
+        case 7U:
+        {
+          uint8_t tx[TCP_FIXED_RESPONSE_LEN];
+          char filename[65];
+          uint16_t filename_len;
+          uint32_t deleted_count = 0U;
+          int32_t op_status;
+
+          memset(filename, 0, sizeof(filename));
+          filename_len = msg.payload_len;
+          if (filename_len >= sizeof(filename))
+          {
+            filename_len = (uint16_t)(sizeof(filename) - 1U);
+          }
+
+          if (filename_len > 0U)
+          {
+            memcpy(filename, msg.payload, filename_len);
+          }
+
+          op_status = OpenAmpFs_DeleteFile(filename, &deleted_count);
+
+          memset(tx, 0, sizeof(tx));
+          tx[0] = msg.command;
+          WriteU32Be(&tx[1], msg.server_id);
+          WriteU64Be(&tx[5], msg.epoch_time);
+          tx[13] = (op_status == 0) ? 0U : 1U;
+          tx[14] = TcpClient_IsConnected();
+          WriteU32Be(&tx[15], (uint32_t)op_status);
+          WriteU32Be(&tx[19], deleted_count);
+          (void)TcpClient_SendBuffer(tx, sizeof(tx));
+          break;
+        }
+
         case 5U:
         {
           uint8_t tx[TCP_FIXED_RESPONSE_LEN];

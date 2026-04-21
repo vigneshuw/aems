@@ -28,6 +28,7 @@ V_REF_VGAIN = 1.0
 V_DIVIDER = 1.0
 MAINS_VOLTAGE = 1.0
 config_rx_state = {}
+file_list_rx_state = {}
 expected_config_file = None
 transfer_metrics = {}
 file_read_in_progress = False
@@ -53,7 +54,11 @@ def build_packet(command, server_id, epoch_time):
 
     if command == 1:
         useful_payload = CONFIG_TEST_PAYLOAD
+    elif command == 4:
+        useful_payload = b""
     elif command == 5:
+        useful_payload = READ_FILENAME
+    elif command == 7:
         useful_payload = READ_FILENAME
     elif command == 8:
         useful_payload = struct.pack(">I", stream_read_offset) + READ_FILENAME
@@ -155,6 +160,40 @@ def parse_total_file_count(packet):
         f"total_count={total_file_count}, "
         f"fs_status=0x{fs_status:08X}"
     )
+
+
+def parse_delete_ack(packet):
+    command = packet[0]
+    server_id = struct.unpack(">I", packet[1:5])[0]
+    epoch_time = struct.unpack(">Q", packet[5:13])[0]
+    system_status = packet[13]
+    tcp_connected = packet[14]
+    op_status = struct.unpack(">i", packet[15:19])[0]
+    deleted_count = struct.unpack(">I", packet[19:23])[0]
+
+    print(
+        "RX delete-ack: "
+        f"cmd={command}, "
+        f"id={server_id}, "
+        f"time={epoch_time}, "
+        f"status={system_status}, "
+        f"tcp={tcp_connected}, "
+        f"op_status={op_status}, "
+        f"deleted={deleted_count}"
+    )
+
+    if command == 6:
+        if op_status == 0:
+            print(f"Delete-all complete: deleted {deleted_count} file(s).")
+        else:
+            print("Delete-all failed.")
+    elif command == 7:
+        if op_status != 0:
+            print(f"Delete-file failed for: {READ_FILENAME.decode(errors='replace')}")
+        elif deleted_count == 0:
+            print(f"Delete-file no-op: {READ_FILENAME.decode(errors='replace')} not present.")
+        else:
+            print(f"Delete-file success: {READ_FILENAME.decode(errors='replace')}")
 
 
 def parse_file_size(packet):
@@ -372,6 +411,55 @@ def write_daq_stream_csv(data):
         daq_csv_file.flush()
 
 
+def parse_file_list_packet(packet):
+    global file_list_rx_state
+
+    command = packet[0]
+    system_status = packet[1]
+    server_id = struct.unpack(">I", packet[2:6])[0]
+    epoch_time = struct.unpack(">Q", packet[6:14])[0]
+    total_size = struct.unpack(">I", packet[14:18])[0]
+    offset = struct.unpack(">I", packet[18:22])[0]
+    chunk_len = struct.unpack(">H", packet[22:24])[0]
+    chunk = packet[24:24 + chunk_len]
+    state_key = (command, server_id)
+
+    if (system_status != 0) or (total_size == 0):
+        print(
+            "RX file-list: "
+            f"cmd={command}, id={server_id}, time={epoch_time}, status={system_status}, total_size={total_size}"
+        )
+        print("File list unavailable or empty.")
+        file_list_rx_state.pop(state_key, None)
+        return
+
+    state = file_list_rx_state.setdefault(
+        state_key,
+        {"total_size": total_size, "buffer": bytearray(total_size)}
+    )
+
+    if state["total_size"] != total_size:
+        state["total_size"] = total_size
+        state["buffer"] = bytearray(total_size)
+
+    if chunk_len > 0 and (offset + chunk_len) <= len(state["buffer"]):
+        state["buffer"][offset:offset + chunk_len] = chunk
+
+    print(
+        "RX file-list: "
+        f"cmd={command}, id={server_id}, time={epoch_time}, status={system_status}, total_size={total_size}, offset={offset}, chunk_len={chunk_len}"
+    )
+
+    if (offset + chunk_len) >= total_size:
+        full_data = bytes(state["buffer"])
+        decoded = full_data.decode("utf-8", errors="replace")
+        filenames = [entry for entry in decoded.splitlines() if entry]
+        print(f"File list complete: {len(filenames)} file(s)")
+        for name in filenames:
+            print(f" - {name}")
+        file_list_rx_state.pop(state_key, None)
+
+
 def parse_file_stream_header(packet):
     global active_file_stream
     global file_read_in_progress
@@ -554,6 +642,8 @@ def parse_packet(packet):
         parse_total_file_count(packet)
     elif command == 5:
         parse_file_size(packet)
+    elif command in {6, 7}:
+        parse_delete_ack(packet)
     elif command in {10, 110}:
         parse_daq_status(packet)
     elif command in {11, 12, 112}:
@@ -636,6 +726,18 @@ def recv_loop(conn):
                     packet = bytes(rx_buffer[:FILE_STREAM_HEADER_LEN])
                     del rx_buffer[:FILE_STREAM_HEADER_LEN]
                     parse_file_stream_header(packet)
+                elif command == 4:
+                    if len(rx_buffer) < CONFIG_READ_HEADER_LEN:
+                        break
+
+                    chunk_len = struct.unpack(">H", rx_buffer[22:24])[0]
+                    frame_len = CONFIG_READ_HEADER_LEN + chunk_len
+                    if len(rx_buffer) < frame_len:
+                        break
+
+                    packet = bytes(rx_buffer[:frame_len])
+                    del rx_buffer[:frame_len]
+                    parse_file_list_packet(packet)
                 else:
                     if len(rx_buffer) < PACKET_LEN:
                         break
@@ -691,7 +793,7 @@ def main():
 
             while True:
                 try:
-                    user_input = input("Enter command (0=heartbeat, 1=write config, 2=dat count, 3=all file count, 5=file size [asks filename], 8=stream file, 9=test stream, 10=daq status, 11=daq log [asks filename], 12=daq stop, 13=daq stream [asks filename], 110=daq log status, 112=daq log stop/close, 99=openamp heartbeat, q=quit): ").strip()
+                    user_input = input("Enter command (0=heartbeat, 1=write config, 2=dat count, 3=all file count, 4=file list, 5=file size [asks filename], 6=delete .bin/.dat, 7=delete file [asks filename], 8=stream file, 9=test stream, 10=daq status, 11=daq log [asks filename], 12=daq stop, 13=daq stream [asks filename], 110=daq log status, 112=daq log stop/close, 99=openamp heartbeat, q=quit): ").strip()
                 except (EOFError, KeyboardInterrupt):
                     print("\nExiting.")
                     break
@@ -700,14 +802,18 @@ def main():
                     close_daq_csv()
                     break
 
-                if user_input not in {"0", "1", "2", "3", "5", "8", "9", "10", "11", "12", "13", "110", "112", "99"}:
-                    print("Only commands 0, 1, 2, 3, 5, 8, 9, 10, 11, 12, 13, 110, 112, and 99 are implemented in this test.")
+                if user_input not in {"0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "110", "112", "99"}:
+                    print("Only commands 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 110, 112, and 99 are implemented in this test.")
                     continue
 
                 command = int(user_input)
 
                 if command == 5:
                     filename_text = input(f"File size filename [{READ_FILENAME.decode(errors='replace')}]: ").strip()
+                    if filename_text:
+                        READ_FILENAME = filename_text.encode("ascii", errors="ignore")
+                elif command == 7:
+                    filename_text = input(f"Delete filename [{READ_FILENAME.decode(errors='replace')}]: ").strip()
                     if filename_text:
                         READ_FILENAME = filename_text.encode("ascii", errors="ignore")
                 elif command == 11:
@@ -750,14 +856,24 @@ def main():
                         CONFIG_TEST_PAYLOAD
                     )
                     print(f"TX config payload: {CONFIG_TEST_PAYLOAD.hex()}")
+                elif command == 4:
+                    print("TX file list request")
                 elif command == 5:
                     print(f"TX file size request for: {READ_FILENAME.decode()}")
+                elif command == 6:
+                    print("TX delete .bin/.dat files request")
+                elif command == 7:
+                    print(f"TX delete file request for: {READ_FILENAME.decode()}")
                 elif command == 8:
                     print(f"TX file stream request for: {READ_FILENAME.decode()} offset={stream_read_offset}")
                     file_read_in_progress = True
                 elif command == 9:
                     print("TX test stream request")
                     file_read_in_progress = True
+                elif command == 7:
+                    filename_text = input(f"Delete filename [{READ_FILENAME.decode(errors='replace')}]: ").strip()
+                    if filename_text:
+                        READ_FILENAME = filename_text.encode("ascii", errors="ignore")
                 elif command == 11:
                     print(f"TX DAQ log request for: {DAQ_FILENAME.decode()}")
                 elif command == 12:

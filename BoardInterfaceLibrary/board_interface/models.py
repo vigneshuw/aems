@@ -106,3 +106,24 @@ class StreamResult:
     verification_passed: bool = True
     verification_error: Optional[str] = None
     elapsed_seconds: float = 0.0
+
+
+@dataclass(slots=True)
+class FileListResponse:
+    command: int
+    server_id: int
+    epoch_time: int
+    total_size: int
+    data: bytes
+
+    @property
+    def filenames(self) -> list[str]:
+        if not self.data:
+            return []
+        return [entry for entry in self.data.decode("utf-8", errors="replace").splitlines() if entry]
+
+
+@dataclass(slots=True)
+class DeleteResponse(PacketBase):
+    op_status: int
+    deleted_count: int

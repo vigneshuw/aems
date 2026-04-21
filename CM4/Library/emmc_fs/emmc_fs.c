@@ -70,6 +70,52 @@ static EmmcFsStatus_t EmmcFs_EnsureLinked(void)
     return EMMC_FS_OK;
 }
 
+static uint8_t EmmcFs_IsBinOrDatFile(const char *name)
+{
+    size_t len;
+    char c0;
+    char c1;
+    char c2;
+    char c3;
+
+    if (name == NULL)
+    {
+        return 0U;
+    }
+
+    len = strlen(name);
+    if (len < 4U)
+    {
+        return 0U;
+    }
+
+    c0 = name[len - 4U];
+    c1 = name[len - 3U];
+    c2 = name[len - 2U];
+    c3 = name[len - 1U];
+
+    if (c0 != '.')
+    {
+        return 0U;
+    }
+
+    if (((c1 == 'd') || (c1 == 'D')) &&
+        ((c2 == 'a') || (c2 == 'A')) &&
+        ((c3 == 't') || (c3 == 'T')))
+    {
+        return 1U;
+    }
+
+    if (((c1 == 'b') || (c1 == 'B')) &&
+        ((c2 == 'i') || (c2 == 'I')) &&
+        ((c3 == 'n') || (c3 == 'N')))
+    {
+        return 1U;
+    }
+
+    return 0U;
+}
+
 static uint8_t EmmcFs_IsDatFile(const char *name)
 {
     size_t len;
@@ -864,4 +910,210 @@ EmmcFsStatus_t EmmcFs_CountAllFiles(uint32_t *file_count)
     (void)f_closedir(&dir);
     EmmcFs_Unlock();
     return EMMC_FS_OK;
+}
+
+
+EmmcFsStatus_t EmmcFs_ListFiles(char *buffer,
+                                uint32_t buffer_size,
+                                uint32_t *bytes_used)
+{
+    DIR dir;
+    FILINFO info;
+    FRESULT result;
+    EmmcFsStatus_t status;
+    char root_path[EMMC_FS_PATH_LEN + 1U];
+    uint32_t used = 0U;
+    uint32_t name_len;
+
+    if ((buffer == NULL) || (bytes_used == NULL) || (buffer_size == 0U))
+    {
+        return EMMC_FS_ERR_PARAM;
+    }
+
+    *bytes_used = 0U;
+    buffer[0] = '\0';
+
+    EmmcFs_Lock();
+
+    status = EmmcFs_EnsureMounted();
+    if (status != EMMC_FS_OK)
+    {
+        EmmcFs_Unlock();
+        return status;
+    }
+
+    (void)snprintf(root_path, sizeof(root_path), "%s%s", s_emmc_path, EMMC_FS_ROOT_SUFFIX);
+
+    result = f_opendir(&dir, root_path);
+    if (result != FR_OK)
+    {
+        EmmcFs_Unlock();
+        return EMMC_FS_ERR_OPEN_DIR;
+    }
+
+    for (;;)
+    {
+        result = f_readdir(&dir, &info);
+        if (result != FR_OK)
+        {
+            (void)f_closedir(&dir);
+            EmmcFs_Unlock();
+            return EMMC_FS_ERR_READ_DIR;
+        }
+
+        if (info.fname[0] == '\0')
+        {
+            break;
+        }
+
+        if ((info.fattrib & AM_DIR) != 0U)
+        {
+            continue;
+        }
+
+        name_len = (uint32_t)strlen(info.fname);
+        if ((used + name_len + 1U) >= buffer_size)
+        {
+            (void)f_closedir(&dir);
+            EmmcFs_Unlock();
+            *bytes_used = used;
+            return EMMC_FS_ERR_BUFFER_SMALL;
+        }
+
+        memcpy(&buffer[used], info.fname, name_len);
+        used += name_len;
+        buffer[used++] = '\n';
+    }
+
+    if (used > 0U)
+    {
+        buffer[used - 1U] = '\0';
+        used -= 1U;
+    }
+    else
+    {
+        buffer[0] = '\0';
+    }
+
+    (void)f_closedir(&dir);
+    EmmcFs_Unlock();
+    *bytes_used = used;
+    return EMMC_FS_OK;
+}
+
+
+EmmcFsStatus_t EmmcFs_DeleteLogFiles(uint32_t *deleted_count)
+{
+    DIR dir;
+    FILINFO info;
+    FRESULT result;
+    EmmcFsStatus_t status;
+    char root_path[EMMC_FS_PATH_LEN + 1U];
+    char file_path[EMMC_FS_FILEPATH_LEN];
+
+    if (deleted_count == NULL)
+    {
+        return EMMC_FS_ERR_PARAM;
+    }
+
+    *deleted_count = 0U;
+
+    EmmcFs_Lock();
+
+    status = EmmcFs_EnsureMounted();
+    if (status != EMMC_FS_OK)
+    {
+        EmmcFs_Unlock();
+        return status;
+    }
+
+    (void)snprintf(root_path, sizeof(root_path), "%s%s", s_emmc_path, EMMC_FS_ROOT_SUFFIX);
+    result = f_opendir(&dir, root_path);
+    if (result != FR_OK)
+    {
+        EmmcFs_Unlock();
+        return EMMC_FS_ERR_OPEN_DIR;
+    }
+
+    for (;;)
+    {
+        result = f_readdir(&dir, &info);
+        if (result != FR_OK)
+        {
+            (void)f_closedir(&dir);
+            EmmcFs_Unlock();
+            return EMMC_FS_ERR_READ_DIR;
+        }
+
+        if (info.fname[0] == '\0')
+        {
+            break;
+        }
+
+        if ((info.fattrib & AM_DIR) != 0U)
+        {
+            continue;
+        }
+
+        if (EmmcFs_IsBinOrDatFile(info.fname) == 0U)
+        {
+            continue;
+        }
+
+        (void)snprintf(file_path, sizeof(file_path), "%s%s", s_emmc_path, info.fname);
+        result = f_unlink(file_path);
+        if (result != FR_OK)
+        {
+            (void)f_closedir(&dir);
+            EmmcFs_Unlock();
+            return EMMC_FS_ERR_READ_FILE;
+        }
+
+        (*deleted_count)++;
+    }
+
+    (void)f_closedir(&dir);
+    EmmcFs_Unlock();
+    return EMMC_FS_OK;
+}
+
+EmmcFsStatus_t EmmcFs_DeleteFileIfExists(const char *filename, uint32_t *deleted_count)
+{
+    FRESULT result;
+    EmmcFsStatus_t status;
+    char file_path[EMMC_FS_FILEPATH_LEN];
+
+    if ((filename == NULL) || (deleted_count == NULL) || (filename[0] == '\0'))
+    {
+        return EMMC_FS_ERR_PARAM;
+    }
+
+    *deleted_count = 0U;
+
+    EmmcFs_Lock();
+
+    status = EmmcFs_EnsureMounted();
+    if (status != EMMC_FS_OK)
+    {
+        EmmcFs_Unlock();
+        return status;
+    }
+
+    (void)snprintf(file_path, sizeof(file_path), "%s%s", s_emmc_path, filename);
+    result = f_unlink(file_path);
+    if (result == FR_OK)
+    {
+        *deleted_count = 1U;
+        EmmcFs_Unlock();
+        return EMMC_FS_OK;
+    }
+
+    if (result == FR_NO_FILE)
+    {
+        EmmcFs_Unlock();
+        return EMMC_FS_OK;
+    }
+
+    EmmcFs_Unlock();
+    return EMMC_FS_ERR_READ_FILE;
 }
