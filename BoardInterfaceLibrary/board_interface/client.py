@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import csv
 import socket
-import struct
 import threading
 import time
 from collections import defaultdict, deque
@@ -10,7 +9,7 @@ from dataclasses import asdict
 from pathlib import Path
 from typing import Optional
 
-from .models import CommandConfig, ConfigReadResult, FileChunkResponse, PacketBase, StreamResult
+from .models import CommandConfig, PacketBase, StreamResult
 from .protocol import (
     CONFIG_READ_HEADER_LEN,
     DAQ_FRAME_LEN,
@@ -20,7 +19,6 @@ from .protocol import (
     build_packet,
     parse_fixed_packet,
     parse_stream_header,
-    parse_variable_packet,
     verify_pattern_chunk,
 )
 
@@ -67,9 +65,6 @@ class BoardSession:
         self._send_lock = threading.Lock()
         self._condition = threading.Condition()
         self._responses: dict[int, deque[PacketBase]] = defaultdict(deque)
-        self._chunk_responses: dict[int, FileChunkResponse] = {}
-        self._config_result: Optional[ConfigReadResult] = None
-        self._config_buffer: Optional[bytearray] = None
         self._stream_result: Optional[StreamResult] = None
         self._stream_event = threading.Event()
         self._stream_state: Optional[dict] = None
@@ -107,16 +102,6 @@ class BoardSession:
                 self._condition.wait(remaining)
             return self._responses[command].popleft()
 
-    def wait_for_chunk(self, offset: int, timeout: float = 5.0) -> FileChunkResponse:
-        deadline = time.monotonic() + timeout
-        with self._condition:
-            while offset not in self._chunk_responses:
-                remaining = deadline - time.monotonic()
-                if remaining <= 0:
-                    raise TimeoutError(f"Timed out waiting for chunk {offset}")
-                self._condition.wait(remaining)
-            return self._chunk_responses.pop(offset)
-
     def heartbeat(self, timeout: float = 5.0) -> PacketBase:
         self.send_command(0)
         return self.wait_for_command(0, timeout)
@@ -133,35 +118,12 @@ class BoardSession:
         self.send_command(3)
         return self.wait_for_command(3, timeout)
 
-    def read_config(self, timeout: float = 5.0) -> ConfigReadResult:
-        self._config_result = None
-        self._config_buffer = None
-        self.send_command(4)
-        deadline = time.monotonic() + timeout
-        while self._config_result is None:
-            if time.monotonic() >= deadline:
-                raise TimeoutError("Timed out waiting for config read")
-            time.sleep(0.01)
-        return self._config_result
-
     def get_file_size(self, filename: str | None = None, timeout: float = 5.0) -> PacketBase:
         config = CommandConfig(**asdict(self.default_config))
         if filename is not None:
             config.read_filename = filename
         self.send_command(5, config=config)
         return self.wait_for_command(5, timeout)
-
-    def cm4_heartbeat(self, timeout: float = 5.0) -> PacketBase:
-        self.send_command(6)
-        return self.wait_for_command(6, timeout)
-
-    def read_chunk(self, filename: str | None = None, offset: int = 0, timeout: float = 5.0) -> FileChunkResponse:
-        config = CommandConfig(**asdict(self.default_config))
-        if filename is not None:
-            config.read_filename = filename
-        config.chunk_offset = offset
-        self.send_command(7, config=config)
-        return self.wait_for_chunk(offset, timeout)
 
     def stream_file(self, filename: str | None = None, offset: int = 0, timeout: float = 30.0, verify_pattern: bool = True) -> StreamResult:
         config = CommandConfig(**asdict(self.default_config))
@@ -278,17 +240,6 @@ class BoardSession:
                         del rx_buffer[:FILE_STREAM_HEADER_LEN]
                         self._handle_stream_header(packet)
                         continue
-                    if command in {4, 7}:
-                        if len(rx_buffer) < CONFIG_READ_HEADER_LEN:
-                            break
-                        chunk_len = struct.unpack(">H", rx_buffer[22:24])[0]
-                        frame_len = CONFIG_READ_HEADER_LEN + chunk_len
-                        if len(rx_buffer) < frame_len:
-                            break
-                        packet = bytes(rx_buffer[:frame_len])
-                        del rx_buffer[:frame_len]
-                        self._handle_variable_packet(packet)
-                        continue
                     if len(rx_buffer) < PACKET_LEN:
                         break
                     packet = bytes(rx_buffer[:PACKET_LEN])
@@ -306,20 +257,6 @@ class BoardSession:
         with self._condition:
             self._responses[parsed.command].append(parsed)
             self._condition.notify_all()
-
-    def _handle_variable_packet(self, packet: bytes) -> None:
-        parsed = parse_variable_packet(packet)
-        if parsed.command == 4:
-            if self._config_buffer is None or len(self._config_buffer) != parsed.total_size:
-                self._config_buffer = bytearray(parsed.total_size)
-            if parsed.chunk_len > 0 and (parsed.offset + parsed.chunk_len) <= len(self._config_buffer):
-                self._config_buffer[parsed.offset:parsed.offset + parsed.chunk_len] = parsed.chunk
-            if parsed.total_size == 0 or (parsed.offset + parsed.chunk_len) >= parsed.total_size:
-                self._config_result = ConfigReadResult(parsed.command, parsed.server_id, parsed.epoch_time, parsed.total_size, bytes(self._config_buffer))
-        elif parsed.command == 7:
-            with self._condition:
-                self._chunk_responses[parsed.offset] = parsed
-                self._condition.notify_all()
 
     def _handle_stream_header(self, packet: bytes) -> None:
         command, status, server_id, epoch_time, total_size = parse_stream_header(packet)

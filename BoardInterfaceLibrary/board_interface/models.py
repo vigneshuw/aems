@@ -49,22 +49,6 @@ class FileSizeResponse(PacketBase):
     fs_status: int
 
 
-@dataclass(slots=True)
-class Cm4HeartbeatResponse(PacketBase):
-    ipc_result: int
-    ipc_error: int
-    fs_ready: int
-    emmc_busy: int
-    emmc_init_status: int
-    emmc_mount_status: int
-    emmc_create_status: int
-    emmc_readthrough_status: int
-    cmd_pending: int
-    cmd_seq: int
-    cmd_cmd: int
-    rsp_ready: int
-    rsp_seq: int
-    rsp_cmd: int
 
 
 @dataclass(slots=True)
@@ -105,25 +89,8 @@ class DaqAckResponse(PacketBase):
     block_samples: int
 
 
-@dataclass(slots=True)
-class ConfigReadResult:
-    command: int
-    server_id: int
-    epoch_time: int
-    total_size: int
-    data: bytes
 
 
-@dataclass(slots=True)
-class FileChunkResponse:
-    command: int
-    server_id: int
-    epoch_time: int
-    status: int
-    total_size: int
-    offset: int
-    chunk_len: int
-    chunk: bytes
 
 
 @dataclass(slots=True)

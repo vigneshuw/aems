@@ -40,10 +40,7 @@ daq_csv_file = None
 daq_csv_writer = None
 daq_log_start_time = None
 daq_log_stop_time = None
-read_chunk_offset = 0
 stream_read_offset = 0
-chunk_response_condition = threading.Condition()
-chunk_responses = {}
 
 
 def build_packet(command, server_id, epoch_time):
@@ -58,8 +55,6 @@ def build_packet(command, server_id, epoch_time):
         useful_payload = CONFIG_TEST_PAYLOAD
     elif command == 5:
         useful_payload = READ_FILENAME
-    elif command == 7:
-        useful_payload = struct.pack(">I", read_chunk_offset) + READ_FILENAME
     elif command == 8:
         useful_payload = struct.pack(">I", stream_read_offset) + READ_FILENAME
     elif command in {11, 13}:
@@ -180,51 +175,6 @@ def parse_file_size(packet):
         f"tcp={tcp_connected}, "
         f"file_size={file_size}, "
         f"fs_status={fs_status}"
-    )
-
-
-def parse_cm4_heartbeat(packet):
-    command = packet[0]
-    server_id = struct.unpack(">I", packet[1:5])[0]
-    epoch_time = struct.unpack(">Q", packet[5:13])[0]
-    system_status = packet[13]
-    tcp_connected = packet[14]
-    ipc_result = struct.unpack(">I", packet[15:19])[0]
-    ipc_error = struct.unpack(">I", packet[19:23])[0]
-    fs_ready = struct.unpack(">I", packet[23:27])[0]
-    emmc_busy = struct.unpack(">I", packet[27:31])[0]
-    emmc_init_status = struct.unpack(">i", packet[31:35])[0]
-    emmc_mount_status = struct.unpack(">i", packet[35:39])[0]
-    emmc_create_status = struct.unpack(">i", packet[39:43])[0]
-    emmc_readthrough_status = struct.unpack(">i", packet[43:47])[0]
-    cmd_pending = packet[47]
-    cmd_seq = struct.unpack(">I", packet[48:52])[0]
-    cmd_cmd = packet[52]
-    rsp_ready = packet[53]
-    rsp_seq = struct.unpack(">I", packet[54:58])[0]
-    rsp_cmd = packet[58]
-
-    print(
-        "RX cm4-heartbeat: "
-        f"cmd={command}, "
-        f"id={server_id}, "
-        f"time={epoch_time}, "
-        f"status={system_status}, "
-        f"tcp={tcp_connected}, "
-        f"ipc_result={ipc_result}, "
-        f"ipc_error={ipc_error}, "
-        f"fs_ready={fs_ready}, "
-        f"emmc_busy={emmc_busy}, "
-        f"emmc_init_status={emmc_init_status}, "
-        f"emmc_mount_status={emmc_mount_status}, "
-        f"emmc_create_status={emmc_create_status}, "
-        f"emmc_readthrough_status={emmc_readthrough_status}, "
-        f"cmd_pending={cmd_pending}, "
-        f"cmd_seq={cmd_seq}, "
-        f"cmd_cmd={cmd_cmd}, "
-        f"rsp_ready={rsp_ready}, "
-        f"rsp_seq={rsp_seq}, "
-        f"rsp_cmd={rsp_cmd}"
     )
 
 
@@ -422,96 +372,6 @@ def write_daq_stream_csv(data):
         daq_csv_file.flush()
 
 
-def parse_config_read(packet):
-    global expected_config_file
-    global file_read_in_progress
-
-    command = packet[0]
-    system_status = packet[1]
-    server_id = struct.unpack(">I", packet[2:6])[0]
-    epoch_time = struct.unpack(">Q", packet[6:14])[0]
-    total_size = struct.unpack(">I", packet[14:18])[0]
-    offset = struct.unpack(">I", packet[18:22])[0]
-    chunk_len = struct.unpack(">H", packet[22:24])[0]
-    chunk = packet[24:24 + chunk_len]
-    state_key = (command, server_id)
-
-    if command == 4:
-        state = config_rx_state.setdefault(
-            state_key,
-            {"total_size": total_size, "buffer": bytearray(total_size)}
-        )
-    else:
-        state = config_rx_state.setdefault(
-            state_key,
-            {"total_size": total_size, "bytes_received": 0}
-        )
-
-    if command in {5, 9} and offset == 0 and server_id not in transfer_metrics:
-        transfer_metrics[server_id] = time.time()
-
-    if state["total_size"] != total_size:
-        state["total_size"] = total_size
-        if command == 4:
-            state["buffer"] = bytearray(total_size)
-        else:
-            state["bytes_received"] = 0
-
-    if command == 4:
-        if chunk_len > 0 and (offset + chunk_len) <= len(state["buffer"]):
-            state["buffer"][offset:offset + chunk_len] = chunk
-    else:
-        state["bytes_received"] += chunk_len
-        if (state["bytes_received"] % (256 * 1024) == 0) or ((offset + chunk_len) >= total_size):
-            print(
-                f"Read progress: {state['bytes_received']}/{total_size} bytes"
-            )
-
-    print(
-        "RX config-read: "
-        f"cmd={command}, "
-        f"id={server_id}, "
-        f"time={epoch_time}, "
-        f"status={system_status}, "
-        f"total_size={total_size}, "
-        f"offset={offset}, "
-        f"chunk_len={chunk_len}"
-    )
-
-    if (system_status == 0) and (total_size == 0):
-        print("Config file is empty.")
-        config_rx_state.pop(state_key, None)
-        transfer_metrics.pop(server_id, None)
-        if command in {5, 9}:
-            file_read_in_progress = False
-    elif (system_status == 0) and ((offset + chunk_len) >= total_size) and (total_size > 0):
-        if command == 4:
-            full_data = bytes(state["buffer"])
-            print(f"Config read complete: {full_data.hex()}")
-
-            if expected_config_file is not None:
-                if full_data == expected_config_file:
-                    print("Config verification passed.")
-                else:
-                    print("Config verification FAILED.")
-        else:
-            print(f"Named file read complete: received {state['bytes_received']} bytes.")
-
-        if command in {5, 9}:
-            start_time = transfer_metrics.pop(server_id, None)
-            if start_time is not None:
-                elapsed = max(time.time() - start_time, 1e-6)
-                throughput_mbps = (total_size / elapsed) / (1024 * 1024)
-                print(
-                    f"Read throughput: {throughput_mbps:.2f} MiB/s "
-                    f"for {total_size} bytes in {elapsed:.3f} s"
-                )
-
-        config_rx_state.pop(state_key, None)
-        if command in {5, 9}:
-            file_read_in_progress = False
-
-
 def parse_file_stream_header(packet):
     global active_file_stream
     global file_read_in_progress
@@ -681,45 +541,6 @@ def find_daq_stream_control_marker(buffer, expected_commands):
     return -1
 
 
-def parse_file_chunk(packet):
-    global read_chunk_offset
-
-    command = packet[0]
-    system_status = packet[1]
-    server_id = struct.unpack(">I", packet[2:6])[0]
-    epoch_time = struct.unpack(">Q", packet[6:14])[0]
-    total_size = struct.unpack(">I", packet[14:18])[0]
-    offset = struct.unpack(">I", packet[18:22])[0]
-    chunk_len = struct.unpack(">H", packet[22:24])[0]
-    chunk = packet[24:24 + chunk_len]
-
-    print(
-        "RX file-chunk: "
-        f"cmd={command}, "
-        f"id={server_id}, "
-        f"time={epoch_time}, "
-        f"status={system_status}, "
-        f"total_size={total_size}, "
-        f"offset={offset}, "
-        f"chunk_len={chunk_len}, "
-        f"first16={chunk[:16].hex()}"
-    )
-
-    with chunk_response_condition:
-        chunk_responses[offset] = {
-            "command": command,
-            "server_id": server_id,
-            "epoch_time": epoch_time,
-            "status": system_status,
-            "total_size": total_size,
-            "offset": offset,
-            "chunk_len": chunk_len,
-            "chunk": chunk,
-        }
-        read_chunk_offset = offset + chunk_len
-        chunk_response_condition.notify_all()
-
-
 def parse_packet(packet):
     command = packet[0]
 
@@ -731,12 +552,8 @@ def parse_packet(packet):
         parse_file_count(packet)
     elif command == 3:
         parse_total_file_count(packet)
-    elif command == 4:
-        parse_config_read(packet)
     elif command == 5:
         parse_file_size(packet)
-    elif command == 6:
-        parse_cm4_heartbeat(packet)
     elif command in {10, 110}:
         parse_daq_status(packet)
     elif command in {11, 12, 112}:
@@ -819,30 +636,6 @@ def recv_loop(conn):
                     packet = bytes(rx_buffer[:FILE_STREAM_HEADER_LEN])
                     del rx_buffer[:FILE_STREAM_HEADER_LEN]
                     parse_file_stream_header(packet)
-                elif command == 4:
-                    if len(rx_buffer) < CONFIG_READ_HEADER_LEN:
-                        break
-
-                    chunk_len = struct.unpack(">H", rx_buffer[22:24])[0]
-                    frame_len = CONFIG_READ_HEADER_LEN + chunk_len
-                    if len(rx_buffer) < frame_len:
-                        break
-
-                    packet = bytes(rx_buffer[:frame_len])
-                    del rx_buffer[:frame_len]
-                    parse_packet(packet)
-                elif command == 7:
-                    if len(rx_buffer) < CONFIG_READ_HEADER_LEN:
-                        break
-
-                    chunk_len = struct.unpack(">H", rx_buffer[22:24])[0]
-                    frame_len = CONFIG_READ_HEADER_LEN + chunk_len
-                    if len(rx_buffer) < frame_len:
-                        break
-
-                    packet = bytes(rx_buffer[:frame_len])
-                    del rx_buffer[:frame_len]
-                    parse_file_chunk(packet)
                 else:
                     if len(rx_buffer) < PACKET_LEN:
                         break
@@ -863,18 +656,6 @@ def send_packet(conn, command, epoch_time=None):
     return epoch_time
 
 
-def wait_for_chunk(offset, timeout_s=5.0):
-    deadline = time.monotonic() + timeout_s
-    with chunk_response_condition:
-        while offset not in chunk_responses:
-            remaining = deadline - time.monotonic()
-            if remaining <= 0:
-                return None
-            chunk_response_condition.wait(remaining)
-
-        return chunk_responses.pop(offset)
-
-
 def verify_pattern_chunk(offset, chunk):
     for index, value in enumerate(chunk):
         expected = (((offset + index) * 37) + 11) & 0xFF
@@ -884,80 +665,9 @@ def verify_pattern_chunk(offset, chunk):
     return True, 0, 0, 0
 
 
-def read_file_repeated_chunks(conn):
-    global read_chunk_offset
-
-    offset = 0
-    total_size = None
-    bytes_received = 0
-    start_time = time.time()
-
-    with chunk_response_condition:
-        chunk_responses.clear()
-
-    print(f"TX repeated chunk read for: {READ_FILENAME.decode()}")
-
-    while True:
-        read_chunk_offset = offset
-        print(f"TX chunk request offset={offset}")
-        send_packet(conn, 7)
-
-        response = wait_for_chunk(offset)
-        if response is None:
-            print(f"Timed out waiting for chunk at offset {offset}.")
-            return
-
-        if response["status"] != 0:
-            print(f"Chunk read failed at offset {offset}: status={response['status']}")
-            return
-
-        chunk_len = response["chunk_len"]
-        if total_size is None:
-            total_size = response["total_size"]
-            print(f"Repeated read total_size={total_size}")
-
-        if response["total_size"] != total_size:
-            print(
-                "Total size changed during read: "
-                f"old={total_size}, new={response['total_size']}"
-            )
-            return
-
-        if chunk_len == 0:
-            print(f"Zero-length chunk at offset {offset}; stopping.")
-            return
-
-        valid, bad_index, expected, actual = verify_pattern_chunk(offset, response["chunk"])
-        if not valid:
-            print(
-                "Pattern verification FAILED: "
-                f"offset={offset}, index={bad_index}, "
-                f"expected=0x{expected:02X}, actual=0x{actual:02X}"
-            )
-            return
-
-        bytes_received += chunk_len
-        offset += chunk_len
-
-        if (bytes_received % (64 * 1024) == 0) or (offset >= total_size):
-            print(f"Repeated read progress: {bytes_received}/{total_size} bytes")
-
-        if offset >= total_size:
-            elapsed = max(time.time() - start_time, 1e-6)
-            throughput_mib_s = (bytes_received / elapsed) / (1024 * 1024)
-            print(
-                "Repeated chunk read complete: "
-                f"{bytes_received} bytes, "
-                f"{throughput_mib_s:.2f} MiB/s over {elapsed:.3f} s"
-            )
-            read_chunk_offset = 0
-            return
-
-
 def main():
     global expected_config_file
     global file_read_in_progress
-    global read_chunk_offset
     global stream_read_offset
     global daq_stream_stop_requested
     global daq_stream_control_pending
@@ -981,7 +691,7 @@ def main():
 
             while True:
                 try:
-                    user_input = input("Enter command (0=heartbeat, 1=write config, 2=dat count, 3=all file count, 4=read config, 5=file size [asks filename], 6=cm4 heartbeat, 7=read one chunk, 8=stream file, 9=test stream, 10=daq status, 11=daq log [asks filename], 12=daq stop, 13=daq stream [asks filename], 110=daq log status, 112=daq log stop/close, 99=openamp heartbeat, q=quit): ").strip()
+                    user_input = input("Enter command (0=heartbeat, 1=write config, 2=dat count, 3=all file count, 5=file size [asks filename], 8=stream file, 9=test stream, 10=daq status, 11=daq log [asks filename], 12=daq stop, 13=daq stream [asks filename], 110=daq log status, 112=daq log stop/close, 99=openamp heartbeat, q=quit): ").strip()
                 except (EOFError, KeyboardInterrupt):
                     print("\nExiting.")
                     break
@@ -990,8 +700,8 @@ def main():
                     close_daq_csv()
                     break
 
-                if user_input not in {"0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "110", "112", "99"}:
-                    print("Only commands 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 110, 112, and 99 are implemented in this test.")
+                if user_input not in {"0", "1", "2", "3", "5", "8", "9", "10", "11", "12", "13", "110", "112", "99"}:
+                    print("Only commands 0, 1, 2, 3, 5, 8, 9, 10, 11, 12, 13, 110, 112, and 99 are implemented in this test.")
                     continue
 
                 command = int(user_input)
@@ -1009,17 +719,6 @@ def main():
                     if filename_text:
                         DAQ_FILENAME = filename_text.encode("ascii", errors="ignore")
 
-                if command == 7:
-                    offset_text = input(f"Offset bytes [{read_chunk_offset}] or all: ").strip()
-                    if offset_text.lower() in {"all", "full"}:
-                        read_file_repeated_chunks(conn)
-                        continue
-                    if offset_text:
-                        try:
-                            read_chunk_offset = int(offset_text, 0)
-                        except ValueError:
-                            print("Invalid offset. Use decimal or 0x-prefixed hex.")
-                            continue
                 elif command == 8:
                     offset_text = input(f"Stream offset bytes [{stream_read_offset}]: ").strip()
                     if offset_text:
@@ -1053,8 +752,6 @@ def main():
                     print(f"TX config payload: {CONFIG_TEST_PAYLOAD.hex()}")
                 elif command == 5:
                     print(f"TX file size request for: {READ_FILENAME.decode()}")
-                elif command == 7:
-                    print(f"TX one-chunk read request for: {READ_FILENAME.decode()} offset={read_chunk_offset}")
                 elif command == 8:
                     print(f"TX file stream request for: {READ_FILENAME.decode()} offset={stream_read_offset}")
                     file_read_in_progress = True

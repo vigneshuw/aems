@@ -24,10 +24,9 @@ def interactive(host: str, port: int) -> None:
 
     prompt = (
         "Enter command (0=heartbeat, 1=write config, 2=dat count, 3=all file count, "
-        "4=read config, 5=file size [asks filename], 6=cm4 heartbeat, 7=read one chunk, "
-        "8=stream file, 9=test stream, 10=daq status, 11=daq log [asks filename], "
-        "12=daq stop, 13=daq stream [asks filename], 110=daq log status, "
-        "112=daq log stop/close, 99=openamp heartbeat, q=quit): "
+        "5=file size [asks filename], 8=stream file, 9=test stream, 10=daq status, "
+        "11=daq log [asks filename], 12=daq stop, 13=daq stream [asks filename], "
+        "110=daq log status, 112=daq log stop/close, 99=openamp heartbeat, q=quit): "
     )
 
     try:
@@ -43,18 +42,10 @@ def interactive(host: str, port: int) -> None:
                 _show(session.get_dat_file_count())
             elif command == "3":
                 _show(session.get_all_file_count())
-            elif command == "4":
-                _show(session.read_config(timeout=10.0))
             elif command == "5":
                 default_filename = session.last_daq_filename or session.default_config.read_filename
                 filename = input(f"Filename [{default_filename}]: ").strip()
                 _show(session.get_file_size(filename or default_filename))
-            elif command == "6":
-                _show(session.cm4_heartbeat())
-            elif command == "7":
-                filename = input(f"Filename [{session.default_config.read_filename}]: ").strip()
-                offset = int((input("Offset [0]: ").strip() or "0"), 0)
-                _show(session.read_chunk(filename or None, offset, timeout=10.0))
             elif command == "8":
                 filename = input(f"Filename [{session.default_config.read_filename}]: ").strip()
                 offset = int((input("Offset [0]: ").strip() or "0"), 0)
