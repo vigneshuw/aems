@@ -961,6 +961,8 @@ def main():
     global stream_read_offset
     global daq_stream_stop_requested
     global daq_stream_control_pending
+    global READ_FILENAME
+    global DAQ_FILENAME
 
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server:
         server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -979,7 +981,7 @@ def main():
 
             while True:
                 try:
-                    user_input = input("Enter command (0=heartbeat, 1=write config, 2=dat count, 3=all file count, 4=read config, 5=file size, 6=cm4 heartbeat, 7=read one chunk, 8=stream file, 9=test stream, 10=daq status, 11=daq log, 12=daq stop, 13=daq stream, 110=daq log status, 112=daq log stop/close, 99=openamp heartbeat, q=quit): ").strip()
+                    user_input = input("Enter command (0=heartbeat, 1=write config, 2=dat count, 3=all file count, 4=read config, 5=file size [asks filename], 6=cm4 heartbeat, 7=read one chunk, 8=stream file, 9=test stream, 10=daq status, 11=daq log [asks filename], 12=daq stop, 13=daq stream [asks filename], 110=daq log status, 112=daq log stop/close, 99=openamp heartbeat, q=quit): ").strip()
                 except (EOFError, KeyboardInterrupt):
                     print("\nExiting.")
                     break
@@ -993,6 +995,19 @@ def main():
                     continue
 
                 command = int(user_input)
+
+                if command == 5:
+                    filename_text = input(f"File size filename [{READ_FILENAME.decode(errors='replace')}]: ").strip()
+                    if filename_text:
+                        READ_FILENAME = filename_text.encode("ascii", errors="ignore")
+                elif command == 11:
+                    filename_text = input(f"DAQ log filename [{DAQ_FILENAME.decode(errors='replace')}]: ").strip()
+                    if filename_text:
+                        DAQ_FILENAME = filename_text.encode("ascii", errors="ignore")
+                elif command == 13:
+                    filename_text = input(f"DAQ stream filename [{DAQ_FILENAME.decode(errors='replace')}]: ").strip()
+                    if filename_text:
+                        DAQ_FILENAME = filename_text.encode("ascii", errors="ignore")
 
                 if command == 7:
                     offset_text = input(f"Offset bytes [{read_chunk_offset}] or all: ").strip()

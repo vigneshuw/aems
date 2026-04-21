@@ -62,6 +62,7 @@ class BoardSession:
         self.addr = addr
         self.server_id = server_id
         self.default_config = CommandConfig()
+        self.last_daq_filename = self.default_config.daq_filename
         self._running = True
         self._send_lock = threading.Lock()
         self._condition = threading.Condition()
@@ -188,6 +189,8 @@ class BoardSession:
         config.daq_channel_mask = channel_mask
         config.daq_block_samples = block_samples
         config.daq_stream_samples = stream_samples
+        self.default_config.daq_filename = filename
+        self.last_daq_filename = filename
         self.send_command(11, config=config)
         return self.wait_for_command(11, timeout)
 
@@ -206,6 +209,8 @@ class BoardSession:
         config.daq_channel_mask = channel_mask
         config.daq_block_samples = block_samples
         config.daq_stream_samples = stream_samples
+        self.default_config.daq_filename = filename
+        self.last_daq_filename = filename
         self._prepare_stream(command=13, capture_bytes=False, verify_pattern=False, csv_path=Path(csv_path) if csv_path else None)
         self.send_command(13, config=config)
         return self._wait_for_stream(timeout)
