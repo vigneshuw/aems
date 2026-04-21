@@ -972,7 +972,7 @@ EmmcFsStatus_t EmmcFs_ListFiles(char *buffer,
         }
 
         name_len = (uint32_t)strlen(info.fname);
-        if ((used + name_len + 1U) >= buffer_size)
+        if ((used + name_len + 16U) >= buffer_size)
         {
             (void)f_closedir(&dir);
             EmmcFs_Unlock();
@@ -982,7 +982,11 @@ EmmcFsStatus_t EmmcFs_ListFiles(char *buffer,
 
         memcpy(&buffer[used], info.fname, name_len);
         used += name_len;
-        buffer[used++] = '\n';
+        buffer[used++] = '\t';
+        used += (uint32_t)snprintf(&buffer[used],
+                                   (size_t)(buffer_size - used),
+                                   "%lu\n",
+                                   (unsigned long)info.fsize);
     }
 
     if (used > 0U)

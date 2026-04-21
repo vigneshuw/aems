@@ -453,10 +453,14 @@ def parse_file_list_packet(packet):
     if (offset + chunk_len) >= total_size:
         full_data = bytes(state["buffer"])
         decoded = full_data.decode("utf-8", errors="replace")
-        filenames = [entry for entry in decoded.splitlines() if entry]
-        print(f"File list complete: {len(filenames)} file(s)")
-        for name in filenames:
-            print(f" - {name}")
+        entries = [entry for entry in decoded.splitlines() if entry]
+        print(f"File list complete: {len(entries)} file(s)")
+        for item in entries:
+            if "	" in item:
+                name, size_text = item.split("	", 1)
+                print(f" - {name} ({size_text.strip()} bytes)")
+            else:
+                print(f" - {item}")
         file_list_rx_state.pop(state_key, None)
 
 

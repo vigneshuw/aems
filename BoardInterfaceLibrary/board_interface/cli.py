@@ -43,7 +43,10 @@ def interactive(host: str, port: int) -> None:
             elif command == "3":
                 _show(session.get_all_file_count())
             elif command == "4":
-                _show(session.get_file_list(timeout=10.0))
+                response = session.get_file_list(timeout=10.0)
+                print(f"File list: {len(response.entries)} file(s)")
+                for entry in response.entries:
+                    print(f" - {entry.name} ({entry.size} bytes)")
             elif command == "5":
                 default_filename = session.last_daq_filename or session.default_config.read_filename
                 filename = input(f"Filename [{default_filename}]: ").strip()

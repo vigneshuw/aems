@@ -109,6 +109,12 @@ class StreamResult:
 
 
 @dataclass(slots=True)
+class FileListEntry:
+    name: str
+    size: int
+
+
+@dataclass(slots=True)
 class FileListResponse:
     command: int
     server_id: int
@@ -117,10 +123,28 @@ class FileListResponse:
     data: bytes
 
     @property
-    def filenames(self) -> list[str]:
+    def entries(self) -> list[FileListEntry]:
         if not self.data:
             return []
-        return [entry for entry in self.data.decode("utf-8", errors="replace").splitlines() if entry]
+
+        result: list[FileListEntry] = []
+        for line in self.data.decode("utf-8", errors="replace").splitlines():
+            if not line:
+                continue
+            if "	" in line:
+                name, size_text = line.split("	", 1)
+                try:
+                    size = int(size_text.strip())
+                except ValueError:
+                    size = 0
+                result.append(FileListEntry(name=name, size=size))
+            else:
+                result.append(FileListEntry(name=line, size=0))
+        return result
+
+    @property
+    def filenames(self) -> list[str]:
+        return [entry.name for entry in self.entries]
 
 
 @dataclass(slots=True)
