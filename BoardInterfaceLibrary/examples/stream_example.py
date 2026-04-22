@@ -28,6 +28,9 @@ def to_serializable(value):
 def metadata_path_for(output: Path) -> Path:
     return output.with_suffix(output.suffix + ".metadata.json")
 
+def count_enabled_channels(channel_mask: int) -> int:
+    return bin(channel_mask & 0xFFFFFFFF).count("1")
+
 def ack_summary(ack):
     if ack is None:
         return None
@@ -128,6 +131,15 @@ def main() -> None:
             "remote_file": args.remote_file,
             "output_file": str(output),
             "duration_seconds": args.duration,
+            "command_13_ack_present": start_ack is not None,
+            "requested_daq_config": {
+                "sample_rate_hz": args.sample_rate,
+                "channel_mask": args.channel_mask,
+                "channel_mask_hex": f"0x{args.channel_mask:08X}",
+                "block_samples": args.block_samples,
+                "enabled_channel_count": count_enabled_channels(args.channel_mask),
+            },
+            "confirmed_daq_config": ack_summary(start_ack),
             "command_13_ack": ack_summary(start_ack),
             "command_12_ack": ack_summary(stop_ack),
             "command_10_status": daq_status_summary(daq_status),
