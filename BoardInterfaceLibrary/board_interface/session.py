@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import csv
+import math
 import socket
+import struct
 import threading
 import time
 from collections import defaultdict, deque
@@ -21,6 +23,55 @@ from .protocol import (
     parse_stream_header,
     verify_pattern_chunk,
 )
+
+
+INT24_MAX = 8388607  # 2^23 - 1
+V_REF = 1.2
+V_REF_VGAIN = 0.3
+CT_V_PEAK = 0.4714
+CT_CURRENT_MAX = 100.0
+V_DIVIDER = 0.2568
+MAINS_VOLTAGE = 240.0
+
+
+def clamp_int24(adc_value: int) -> int:
+    if adc_value > INT24_MAX:
+        return INT24_MAX
+    if adc_value < -INT24_MAX:
+        return -INT24_MAX
+    return adc_value
+
+
+def parse_adc_value_current(adc_value: int) -> float:
+    adc_value = clamp_int24(adc_value)
+    v_out = (float(adc_value) / float(INT24_MAX)) * V_REF
+    v_ct = v_out * (CT_V_PEAK / V_REF)
+    current = (v_ct / CT_V_PEAK) * (CT_CURRENT_MAX * 1.414)
+    return current
+
+
+def parse_adc_value_voltage(adc_value: int) -> float:
+    adc_value = clamp_int24(adc_value)
+    v_adc = (float(adc_value) / float(INT24_MAX)) * V_REF_VGAIN
+    v_mains = (v_adc / V_DIVIDER) * (MAINS_VOLTAGE * 1.414)
+    return v_mains
+
+
+def round_significant(value: float, digits: int = 4) -> float:
+    if value == 0.0:
+        return 0.0
+    return round(value, digits - 1 - int(math.floor(math.log10(abs(value)))))
+
+
+def decode_daq_frame(frame: bytes) -> list[int]:
+    _response, _crc, *channels = struct.unpack("<HH8i", frame)
+    converted: list[float] = []
+    for index, value in enumerate(channels[:6]):
+        if index < 3:
+            converted.append(round_significant(parse_adc_value_voltage(int(value)), 4))
+        else:
+            converted.append(round_significant(parse_adc_value_current(int(value)), 4))
+    return converted
 
 
 class StreamHandle:
@@ -231,7 +282,7 @@ class BoardSession:
         self.send_command(112)
         return self.wait_for_command(112, timeout)
 
-    def start_daq_stream_async(self, filename: str = "daq.bin", sample_rate_hz: int = 2000, channel_mask: int = 0x3F, block_samples: int = 128, stream_samples: int = 0, csv_path: str | Path | None = None) -> StreamHandle:
+    def start_daq_stream_async(self, filename: str = "daq.bin", sample_rate_hz: int = 2000, channel_mask: int = 0x3F, block_samples: int = 128, stream_samples: int = 0, csv_path: str | Path | None = None, local_path: str | Path | None = None) -> StreamHandle:
         config = replace(
             self.default_config,
             daq_filename=filename,
@@ -242,12 +293,26 @@ class BoardSession:
         )
         self.default_config = replace(config)
         self.last_daq_filename = filename
-        handle = self._prepare_stream(command=13, capture_bytes=False, verify_pattern=False, local_path=None, csv_path=Path(csv_path) if csv_path else self._default_stream_csv_path(filename))
+        handle = self._prepare_stream(
+            command=13,
+            capture_bytes=False,
+            verify_pattern=False,
+            local_path=Path(local_path) if local_path else None,
+            csv_path=Path(csv_path) if csv_path else (self._default_stream_csv_path(filename) if local_path is None else None),
+        )
         self.send_command(13, config=config)
         return handle
 
-    def start_daq_stream(self, filename: str = "daq.bin", sample_rate_hz: int = 2000, channel_mask: int = 0x3F, block_samples: int = 128, stream_samples: int = 0, csv_path: str | Path | None = None, timeout: float = 30.0) -> StreamResult:
-        return self.start_daq_stream_async(filename=filename, sample_rate_hz=sample_rate_hz, channel_mask=channel_mask, block_samples=block_samples, stream_samples=stream_samples, csv_path=csv_path).wait(timeout)
+    def start_daq_stream(self, filename: str = "daq.bin", sample_rate_hz: int = 2000, channel_mask: int = 0x3F, block_samples: int = 128, stream_samples: int = 0, csv_path: str | Path | None = None, local_path: str | Path | None = None, timeout: float = 30.0) -> StreamResult:
+        return self.start_daq_stream_async(
+            filename=filename,
+            sample_rate_hz=sample_rate_hz,
+            channel_mask=channel_mask,
+            block_samples=block_samples,
+            stream_samples=stream_samples,
+            csv_path=csv_path,
+            local_path=local_path,
+        ).wait(timeout)
 
     def openamp_heartbeat(self, timeout: float = 5.0) -> PacketBase:
         self.send_command(99)
@@ -488,16 +553,21 @@ class BoardSession:
                 state["binary_file"].write(payload)
                 state["binary_file"].flush()
         elif state["command"] == 13:
+            if state["local_path"] is not None:
+                if state["binary_file"] is None:
+                    state["binary_file"] = state["local_path"].open("wb")
+                state["binary_file"].write(payload)
+                state["binary_file"].flush()
             if state["csv_path"] is not None:
                 if state["csv_file"] is None:
                     state["csv_file"] = state["csv_path"].open("w", newline="")
                     state["csv_writer"] = csv.writer(state["csv_file"])
-                    state["csv_writer"].writerow(["sample_index", "raw_frame_hex"])
+                    state["csv_writer"].writerow(["sample_index", "ch0", "ch1", "ch2", "ch3", "ch4", "ch5"])
                 state["remainder"].extend(payload)
                 while len(state["remainder"]) >= DAQ_FRAME_LEN:
                     frame = bytes(state["remainder"][:DAQ_FRAME_LEN])
                     del state["remainder"][:DAQ_FRAME_LEN]
-                    state["csv_writer"].writerow([state["sample_index"], frame.hex()])
+                    state["csv_writer"].writerow([state["sample_index"], *decode_daq_frame(frame)])
                     state["sample_index"] += 1
                 state["csv_file"].flush()
 

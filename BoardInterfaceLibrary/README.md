@@ -17,6 +17,20 @@ Examples are under `examples/`:
 - `examples/README.md`
 
 
+
+## Response parsing for end users
+
+Use `board_interface.ResponseParser` to convert board responses and ACKs into stable dictionaries for application code.
+
+Example:
+
+```python
+from board_interface import ResponseParser
+parsed = ResponseParser.parse(response)
+```
+
+This parser is the intended place to update when board ACK/response formats change in the future.
+
 ## Current board limitation
 
 The current board/firmware build is limited to a channel mask of `0x3F`.

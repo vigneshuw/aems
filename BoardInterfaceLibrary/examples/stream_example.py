@@ -20,6 +20,7 @@ def main() -> None:
     parser.add_argument("--mode", choices=["file", "daq"], default="daq", help="Streaming mode")
     parser.add_argument("--remote-file", default="daq.bin", help="Remote filename to stream")
     parser.add_argument("--output", help="Local output path. Defaults to captures/<ip>_<name>.(bin|csv)")
+    parser.add_argument("--daq-output-format", choices=["csv", "bin"], default="csv", help="For --mode daq: write parsed channel CSV or raw binary stream")
     parser.add_argument("--duration", type=float, default=30.0, help="DAQ stream duration in seconds before command 12 is sent")
     parser.add_argument("--sample-rate", type=int, default=2000, help="DAQ stream sample rate")
     parser.add_argument("--channel-mask", type=lambda value: int(value, 0), default=0x3F, help="DAQ channel mask")
@@ -45,7 +46,8 @@ def main() -> None:
 
         # Command 13 style DAQ stream: start asynchronously, record the command 13 ack,
         # run for the requested duration, then send command 12 so the board closes the live stream cleanly.
-        output = Path(args.output) if args.output else Path("captures") / f"{session.ip_address}_{Path(args.remote_file).stem}.csv"
+        default_suffix = ".csv" if args.daq_output_format == "csv" else ".bin"
+        output = Path(args.output) if args.output else Path("captures") / f"{session.ip_address}_{Path(args.remote_file).stem}{default_suffix}"
         output = ensure_directory(output)
         print(f"Starting DAQ stream for {args.remote_file} -> {output}")
         handle = session.start_daq_stream_async(
@@ -53,7 +55,8 @@ def main() -> None:
             sample_rate_hz=args.sample_rate,
             channel_mask=args.channel_mask,
             block_samples=args.block_samples,
-            csv_path=output,
+            csv_path=output if args.daq_output_format == "csv" else None,
+            local_path=output if args.daq_output_format == "bin" else None,
         )
         # Some firmware builds return a fixed command 13 ACK before streaming, others transition
         # directly into the stream header. Treat the start ACK as optional for now.
@@ -80,6 +83,7 @@ def main() -> None:
             "board_ip": session.ip_address,
             "remote_file": args.remote_file,
             "output_file": str(output),
+            "output_format": args.daq_output_format if args.mode == "daq" else "bin",
             "duration_seconds": args.duration,
             "command_13_ack_present": start_ack is not None,
             "requested_daq_config": {

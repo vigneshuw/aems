@@ -17,13 +17,13 @@ def load_board_ips(path: Path) -> list[str]:
     return ips
 
 
-def default_output_path(output_dir: Path, board_ip: str, remote_file: str, mode: str) -> Path:
-    suffix = ".csv" if mode == "daq" else Path(remote_file).suffix or ".bin"
-    stem = Path(remote_file).stem if mode == "daq" else Path(remote_file).name
+def default_output_path(output_dir: Path, board_ip: str, remote_file: str, mode: str, daq_output_format: str) -> Path:
     if mode == "daq":
-        filename = f"{board_ip}_{stem}.csv"
+        suffix = ".csv" if daq_output_format == "csv" else ".bin"
+        filename = f"{board_ip}_{Path(remote_file).stem}{suffix}"
     else:
-        filename = f"{board_ip}_{stem}{suffix if suffix.startswith('.') else '.' + suffix}"
+        suffix = Path(remote_file).suffix or ".bin"
+        filename = f"{board_ip}_{Path(remote_file).stem}{suffix}"
     return output_dir / filename
 
 
@@ -34,6 +34,7 @@ def main() -> None:
     parser.add_argument("--ip-file", required=True, help="Text file containing one board IP per line")
     parser.add_argument("--remote-file", default="daq.bin", help="Remote filename to stream from every board")
     parser.add_argument("--mode", choices=["file", "daq"], default="daq", help="Streaming mode for every board")
+    parser.add_argument("--daq-output-format", choices=["csv", "bin"], default="csv", help="For --mode daq: write parsed channel CSV or raw binary stream")
     parser.add_argument("--output-dir", default="captures", help="Directory where host-side outputs are written")
     parser.add_argument("--timeout", type=float, default=60.0, help="Seconds to wait for each requested board to connect")
     parser.add_argument("--sample-rate", type=int, default=2000, help="DAQ stream sample rate")
@@ -63,7 +64,7 @@ def main() -> None:
 
         handles: dict[str, StreamHandle] = {}
         for board_ip, session in sessions.items():
-            output_path = default_output_path(output_dir, board_ip, args.remote_file, args.mode)
+            output_path = default_output_path(output_dir, board_ip, args.remote_file, args.mode, args.daq_output_format)
             print(f"Starting {args.mode} stream on {board_ip} -> {output_path}")
 
             if args.mode == "file":
@@ -80,7 +81,8 @@ def main() -> None:
                     sample_rate_hz=args.sample_rate,
                     channel_mask=args.channel_mask,
                     block_samples=args.block_samples,
-                    csv_path=output_path,
+                    csv_path=output_path if args.daq_output_format == "csv" else None,
+                    local_path=output_path if args.daq_output_format == "bin" else None,
                 )
 
         for board_ip, handle in handles.items():

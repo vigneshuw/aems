@@ -11,6 +11,20 @@ This directory contains runnable examples for `BoardInterfaceLibrary`. The examp
 The host machine runs these scripts as the TCP server. Boards connect into the host as TCP clients.
 
 
+
+## Response parsing for end users
+
+Use `board_interface.ResponseParser` to convert board responses and ACKs into stable dictionaries for application code.
+
+Example:
+
+```python
+from board_interface import ResponseParser
+parsed = ResponseParser.parse(response)
+```
+
+This parser is the intended place to update when board ACK/response formats change in the future.
+
 ## Current board limitation
 
 The current board/firmware build is limited to a channel mask of `0x3F`.
@@ -168,18 +182,43 @@ python .\examples\stream_example.py --mode file --board-ip 192.168.0.10 --remote
 
 If `--output` is omitted, the script writes to a default path that includes the board IP.
 
-#### Stream live DAQ data to a CSV on the host
+#### Stream live DAQ data to the host
 
-This is the DAQ-stream path. The output is written as CSV. The example now starts command 13 asynchronously, waits for `--duration`, sends command 12 with `stop_daq()`, waits for stream completion, then sends command 10 and saves metadata next to the CSV.
+For `--mode daq`, there are now two output options:
+
+- `--daq-output-format csv`
+  - writes a parsed CSV with converted physical values
+  - columns are:
+    - `sample_index`
+    - `ch0`
+    - `ch1`
+    - `ch2`
+    - `ch3`
+    - `ch4`
+    - `ch5`
+  - channel mapping is:
+    - `ch0`, `ch1`, `ch2` -> converted voltage values
+    - `ch3`, `ch4`, `ch5` -> converted current values
+- `--daq-output-format bin`
+  - writes the raw DAQ stream payload directly to a `.bin` file
+  - this file contains only raw bytes; you can re-run the same conversion methods later if you want to post-process it offline
+
+The example starts command 13 asynchronously, waits for `--duration`, sends command 12 with `stop_daq()`, waits for stream completion, then sends command 10 and saves metadata next to the output file.
 
 The default DAQ stream duration is 30 seconds.
 
 ```powershell
-python .\examples\stream_example.py --mode daq --board-ip 192.168.0.10 --remote-file daq0.bin --duration 30 --output captures\daq0.csv
+python .\examples\stream_example.py --mode daq --daq-output-format csv --board-ip 192.168.0.10 --remote-file daq0.bin --duration 30 --output captures\daq0.csv
 ```
 
 The example also writes a metadata file next to the CSV, for example:
 - `captures\daq0.csv.metadata.json`
+
+To dump the raw DAQ stream payload as a binary file instead:
+
+```powershell
+python .\examples\stream_example.py --mode daq --daq-output-format bin --board-ip 192.168.0.10 --remote-file daq0.bin --duration 30 --output captures\daq0.bin
+```
 
 That metadata file contains:
 - `board_ip`
@@ -210,7 +249,7 @@ This metadata structure is intended to mirror the style of output you inspect in
 With DAQ stream settings:
 
 ```powershell
-python .\examples\stream_example.py --mode daq --board-ip 192.168.0.10 --remote-file daq0.bin --duration 15 --sample-rate 2000 --channel-mask 0x3F --block-samples 128
+python .\examples\stream_example.py --mode daq --daq-output-format csv --board-ip 192.168.0.10 --remote-file daq0.bin --duration 15 --sample-rate 2000 --channel-mask 0x3F --block-samples 128
 ```
 
 ### 4. Stream from multiple boards simultaneously
@@ -229,12 +268,22 @@ A sample file is already included at:
 #### Multi-board DAQ stream to CSV
 
 ```powershell
-python .\examples\multi_board_stream_example.py --ip-file .\examples\boards.txt --mode daq --remote-file daq.bin --output-dir captures
+python .\examples\multi_board_stream_example.py --ip-file .\examples\boards.txt --mode daq --daq-output-format csv --remote-file daq.bin --output-dir captures
 ```
 
 Each board writes to its own file, for example:
 - `captures\192.168.0.10_daq.csv`
 - `captures\192.168.0.11_daq.csv`
+
+#### Multi-board DAQ stream to raw binary files
+
+```powershell
+python .\examples\multi_board_stream_example.py --ip-file .\examples\boards.txt --mode daq --daq-output-format bin --remote-file daq.bin --output-dir captures
+```
+
+Each board writes to its own file, for example:
+- `captures\192.168.0.10_daq.bin`
+- `captures\192.168.0.11_daq.bin`
 
 #### Multi-board file stream to binary files
 
