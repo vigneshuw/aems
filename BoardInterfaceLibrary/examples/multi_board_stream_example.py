@@ -3,7 +3,7 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from board_interface import BoardServer, StreamHandle
+from board_interface import BoardServer, ResponseParser, StreamHandle
 
 
 def load_board_ips(path: Path) -> list[str]:
@@ -86,11 +86,7 @@ def main() -> None:
         for board_ip, handle in handles.items():
             # Wait for each active stream to finish and report the per-board result.
             result = handle.wait(timeout=max(args.timeout, 300.0))
-            target = result.csv_path or result.local_path
-            print(
-                f"Complete: {board_ip} -> {target}, "
-                f"bytes={result.bytes_received}, frames={result.frames_received}, elapsed={result.elapsed_seconds:.2f}s"
-            )
+            print(ResponseParser.parse(result))
     finally:
         server.close()
 

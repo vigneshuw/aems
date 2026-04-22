@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from common import build_parser, open_server, sleep_with_progress, wait_for_session
+from common import build_parser, open_server, print_parsed_response, sleep_with_progress, wait_for_session
 
 
 def main() -> None:
@@ -25,7 +25,7 @@ def main() -> None:
             block_samples=args.block_samples,
             timeout=max(args.timeout, 10.0),
         )
-        print(start_ack)
+        print_parsed_response(start_ack)
 
         # Let acquisition run for the requested dwell time.
         print(f"Logging for {args.duration:.1f}s")
@@ -34,16 +34,15 @@ def main() -> None:
         # Stop the logger and then ask the board for its final status counters.
         print("Stopping DAQ log")
         stop_ack = session.stop_daq_log(timeout=max(args.timeout, 10.0))
-        print(stop_ack)
+        print_parsed_response(stop_ack)
 
         print("Reading DAQ status")
         status = session.get_daq_status(log_status=True, timeout=max(args.timeout, 10.0))
-        print(status)
+        print_parsed_response(status)
 
         # Finally confirm the remote file exists and has the expected size.
         print(f"Reading file size for {args.filename}")
-        file_size = session.get_file_size(args.filename, timeout=max(args.timeout, 10.0))
-        print(file_size)
+        print_parsed_response(session.get_file_size(args.filename, timeout=max(args.timeout, 10.0)))
     finally:
         server.close()
 

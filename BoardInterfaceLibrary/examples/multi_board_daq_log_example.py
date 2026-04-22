@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import argparse
+import json
 from pathlib import Path
 
-from board_interface import BoardServer
+from board_interface import BoardServer, ResponseParser
 
 
 def load_board_ips(path: Path) -> list[str]:
@@ -61,7 +62,7 @@ def main() -> None:
                 block_samples=args.block_samples,
                 timeout=max(args.timeout, 10.0),
             )
-            print(f"  start ack: {ack}")
+            print(json.dumps(ResponseParser.parse(ack), indent=2))
 
         print(f"Logging on {len(sessions)} boards for {args.duration:.1f}s")
         import time
@@ -72,13 +73,13 @@ def main() -> None:
             remote_filename = filenames[board_ip]
             print(f"Stopping DAQ log on {board_ip}")
             stop_ack = session.stop_daq_log(timeout=max(args.timeout, 10.0))
-            print(f"  stop ack: {stop_ack}")
+            print(json.dumps(ResponseParser.parse(stop_ack), indent=2))
 
             status = session.get_daq_status(log_status=True, timeout=max(args.timeout, 10.0))
-            print(f"  status: {status}")
+            print(json.dumps(ResponseParser.parse(status), indent=2))
 
             file_size = session.get_file_size(remote_filename, timeout=max(args.timeout, 10.0))
-            print(f"  file size ({remote_filename}): {file_size}")
+            print(json.dumps(ResponseParser.parse(file_size), indent=2))
     finally:
         server.close()
 

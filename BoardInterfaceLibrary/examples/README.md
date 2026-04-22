@@ -10,6 +10,15 @@ This directory contains runnable examples for `BoardInterfaceLibrary`. The examp
 
 The host machine runs these scripts as the TCP server. Boards connect into the host as TCP clients.
 
+
+## Current board limitation
+
+The current board/firmware build is limited to a channel mask of `0x3F`.
+
+That means:
+- only channels 0 through 5 are currently supported by the examples and library workflows
+- do not request a wider channel mask until the board firmware explicitly supports it
+
 ## TODO - Mandatory protocol fix
 
 ### Temporary workaround currently in use

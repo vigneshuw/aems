@@ -1,68 +1,18 @@
 from __future__ import annotations
 
 import json
-from dataclasses import asdict, is_dataclass
 from pathlib import Path
 
-from common import build_parser, ensure_directory, open_server, sleep_with_progress, wait_for_session
-
-
-def to_serializable(value):
-    if is_dataclass(value):
-        return {key: to_serializable(item) for key, item in asdict(value).items()}
-    if isinstance(value, bytes):
-        return {
-            "type": "bytes",
-            "length": len(value),
-            "hex_preview": value[:32].hex(),
-        }
-    if isinstance(value, Path):
-        return str(value)
-    if isinstance(value, dict):
-        return {key: to_serializable(item) for key, item in value.items()}
-    if isinstance(value, (list, tuple)):
-        return [to_serializable(item) for item in value]
-    return value
+from board_interface import ResponseParser
+from common import build_parser, ensure_directory, open_server, print_parsed_response, sleep_with_progress, wait_for_session
 
 
 def metadata_path_for(output: Path) -> Path:
     return output.with_suffix(output.suffix + ".metadata.json")
 
+
 def count_enabled_channels(channel_mask: int) -> int:
     return bin(channel_mask & 0xFFFFFFFF).count("1")
-
-def ack_summary(ack):
-    if ack is None:
-        return None
-    data = to_serializable(ack)
-    if isinstance(data, dict) and "channel_mask" in data:
-        data["channel_mask_hex"] = f"0x{data['channel_mask']:08X}"
-    return data
-
-
-def daq_status_summary(status):
-    data = to_serializable(status)
-    if not isinstance(data, dict):
-        return data
-    bytes_written = data.get("bytes_written", 0)
-    samples = data.get("samples_captured", 0)
-    elapsed = float(data.get("epoch_time", 0))
-    data["bytes_written_mib"] = round(bytes_written / (1024.0 * 1024.0), 6)
-    data["samples_captured"] = samples
-    return data
-
-
-def daq_stream_summary(result):
-    data = to_serializable(result)
-    if not isinstance(data, dict):
-        return data
-    elapsed = float(data.get("elapsed_seconds", 0.0) or 0.0)
-    frames = int(data.get("frames_received", 0) or 0)
-    bytes_received = int(data.get("bytes_received", 0) or 0)
-    data["avg_frames_per_sec"] = round((frames / elapsed), 3) if elapsed > 0.0 else 0.0
-    data["avg_mib_per_sec"] = round(((bytes_received / (1024.0 * 1024.0)) / elapsed), 6) if elapsed > 0.0 else 0.0
-    data["bytes_received_mib"] = round(bytes_received / (1024.0 * 1024.0), 6)
-    return data
 
 
 def main() -> None:
@@ -90,7 +40,7 @@ def main() -> None:
                 local_path=output,
                 timeout=max(args.timeout, 60.0),
             )
-            print(f"Complete: {result.bytes_received} bytes written to {output}")
+            print_parsed_response(result)
             return
 
         # Command 13 style DAQ stream: start asynchronously, record the command 13 ack,
@@ -109,7 +59,7 @@ def main() -> None:
         # directly into the stream header. Treat the start ACK as optional for now.
         try:
             start_ack = session.wait_for_command(13, timeout=2.0)
-            print(start_ack)
+            print_parsed_response(start_ack)
         except TimeoutError:
             start_ack = None
             print("No fixed command 13 ACK received; continuing with stream header only.")
@@ -119,10 +69,10 @@ def main() -> None:
 
         print("Stopping DAQ stream")
         stop_ack = session.stop_daq(timeout=max(args.timeout, 10.0))
-        print(stop_ack)
+        print_parsed_response(stop_ack)
 
         result = handle.wait(timeout=max(args.timeout, 30.0))
-        print(f"Complete: {result.frames_received} frames written to {output}")
+        print_parsed_response(result)
 
         # Collect board-side DAQ metrics after the stop ACK and store them next to the streamed CSV.
         daq_status = session.get_daq_status(log_status=False, timeout=max(args.timeout, 10.0))
@@ -139,11 +89,11 @@ def main() -> None:
                 "block_samples": args.block_samples,
                 "enabled_channel_count": count_enabled_channels(args.channel_mask),
             },
-            "confirmed_daq_config": ack_summary(start_ack),
-            "command_13_ack": ack_summary(start_ack),
-            "command_12_ack": ack_summary(stop_ack),
-            "command_10_status": daq_status_summary(daq_status),
-            "command_13_stream": daq_stream_summary(result),
+            "confirmed_daq_config": ResponseParser.parse(start_ack),
+            "command_13_ack": ResponseParser.parse(start_ack),
+            "command_12_ack": ResponseParser.parse(stop_ack),
+            "command_10_status": ResponseParser.parse(daq_status),
+            "command_13_stream": ResponseParser.parse(result),
         }
         metadata_path = metadata_path_for(output)
         metadata_path.write_text(json.dumps(metadata, indent=2))

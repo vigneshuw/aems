@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 import argparse
+import json
 import time
 from pathlib import Path
 
-from board_interface import BoardServer, BoardSession
+from board_interface import BoardServer, BoardSession, ResponseParser
 
 
 def build_parser(description: str) -> argparse.ArgumentParser:
@@ -52,3 +53,7 @@ def sleep_with_progress(seconds: float) -> None:
         print(f"  remaining: {remaining:5.1f}s", end="\r", flush=True)
         time.sleep(min(0.5, remaining))
     print(" " * 32, end="\r", flush=True)
+
+
+def print_parsed_response(response) -> None:
+    print(json.dumps(ResponseParser.parse(response), indent=2))
