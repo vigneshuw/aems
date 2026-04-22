@@ -73,6 +73,9 @@ Until that firmware update exists, the current heuristic should be treated as a 
   - starts DAQ logging on one board, waits, stops, then queries status and file size
 - `stream_example.py`
   - streams either a remote file or a DAQ stream from one board
+- `stream_on_command.py`
+  - same core arguments as `stream_example.py`, but DAQ/file streaming starts when you press Enter
+  - for DAQ mode, pressing Enter a second time sends command `12` to stop the stream
 - `multi_board_stream_example.py`
   - waits for multiple boards and starts simultaneous streams on all of them
 - `multi_board_daq_log_example.py`
@@ -171,6 +174,27 @@ python .\examples\daq_log_example.py --board-ip 192.168.0.10 --filename daq0.bin
 ```
 
 ### 3. Stream from one board
+
+#### Interactive Enter-to-start / Enter-to-stop streaming
+
+This example is intended for manual bench use.
+
+- it accepts the same main stream arguments as `stream_example.py`
+- it waits for Enter before starting the stream
+- in `--mode daq`, it waits for Enter again before sending command `12`
+- in `--mode file`, the second Enter concept does not apply because file streaming ends when the remote file transfer completes
+
+DAQ stream with manual start/stop:
+
+```powershell
+python .\examples\stream_on_command.py --mode daq --daq-output-format csv --board-ip 192.168.0.10 --remote-file daq0.bin --output captures\daq0.csv
+```
+
+Raw file stream with manual start:
+
+```powershell
+python .\examples\stream_on_command.py --mode file --file-output-format bin --board-ip 192.168.0.10 --remote-file daq0.bin --output captures\daq0.bin
+```
 
 #### Stream a remote file to the host
 
