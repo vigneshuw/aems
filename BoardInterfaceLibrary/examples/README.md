@@ -174,13 +174,74 @@ python .\examples\daq_log_example.py --board-ip 192.168.0.10 --filename daq0.bin
 
 #### Stream a remote file to the host
 
-This is the file-stream path. The output is written to a local binary file.
+For `--mode file`, there are now two output options:
+
+- `--file-output-format bin`
+  - writes the remote file exactly as raw bytes to a `.bin` file
+- `--file-output-format csv`
+  - treats the remote file as a command `11` eMMC DAQ log file
+  - decodes it using the CM4 packed-log format, not the live stream format
+  - columns are:
+    - `sample_index`
+    - `ch0`
+    - `ch1`
+    - `ch2`
+    - `ch3`
+    - `ch4`
+    - `ch5`
+
+Raw binary file read:
 
 ```powershell
-python .\examples\stream_example.py --mode file --board-ip 192.168.0.10 --remote-file daq0.bin --output captures\daq0.bin
+python .\examples\stream_example.py --mode file --file-output-format bin --board-ip 192.168.0.10 --remote-file daq0.bin --output captures\daq0.bin
 ```
 
+Convert streamed file directly to CSV:
+
+```powershell
+python .\examples\stream_example.py --mode file --file-output-format csv --board-ip 192.168.0.10 --remote-file daq0.bin --output captures\daq0.csv
+```
+
+For file-mode CSV output, the example also writes a metadata file next to the CSV, for example:
+- `captures\daq0.csv.metadata.json`
+
+That metadata records:
+- `decode_format`
+  - currently `command11_packed_log`
+- `sample_bytes`
+  - currently `24`
+- `channel_mask`
+  - currently `0x3F`
+- `assumed_channel_order`
+- `channel_types`
+- `command_8_stream`
+  - parsed file-stream summary from the library
+- `frames_written`
+
 If `--output` is omitted, the script writes to a default path that includes the board IP.
+
+##### Important binary-layout detail for file mode
+
+When command `11` logs DAQ data to eMMC, the CM4 firmware writes only the selected channel values into the file:
+
+- current board limitation: channel mask is `0x3F`
+- channels written: `ch0` through `ch5`
+- storage type: signed 32-bit little-endian per channel
+- no `response` field in the file
+- no `crc` field in the file
+- no per-sample header
+
+So the current board writes:
+- `24` bytes per logged sample
+- sample layout:
+  - `ch0 int32_le`
+  - `ch1 int32_le`
+  - `ch2 int32_le`
+  - `ch3 int32_le`
+  - `ch4 int32_le`
+  - `ch5 int32_le`
+
+This is why file-mode CSV conversion uses a different unpacker from live DAQ stream CSV conversion.
 
 #### Stream live DAQ data to the host
 
@@ -188,6 +249,7 @@ For `--mode daq`, there are now two output options:
 
 - `--daq-output-format csv`
   - writes a parsed CSV with converted physical values
+  - decodes the command `13` live stream frame format
   - columns are:
     - `sample_index`
     - `ch0`
@@ -202,6 +264,22 @@ For `--mode daq`, there are now two output options:
 - `--daq-output-format bin`
   - writes the raw DAQ stream payload directly to a `.bin` file
   - this file contains only raw bytes; you can re-run the same conversion methods later if you want to post-process it offline
+
+##### Important binary-layout detail for DAQ stream mode
+
+Command `13` live streaming is not packed the same way as the eMMC log file.
+
+The live DAQ stream uses the full firmware sample frame:
+- `response uint16_le`
+- `crc uint16_le`
+- `channel[0..7]` as eight signed 32-bit little-endian integers
+
+Total:
+- `36` bytes per stream frame
+
+So:
+- command `11` file log decode path != command `13` live stream decode path
+- the library now keeps those two formats separate on purpose
 
 The example starts command 13 asynchronously, waits for `--duration`, sends command 12 with `stop_daq()`, waits for stream completion, then sends command 10 and saves metadata next to the output file.
 
@@ -288,12 +366,35 @@ Each board writes to its own file, for example:
 #### Multi-board file stream to binary files
 
 ```powershell
-python .\examples\multi_board_stream_example.py --ip-file .\examples\boards.txt --mode file --remote-file daq.bin --output-dir captures
+python .\examples\multi_board_stream_example.py --ip-file .\examples\boards.txt --mode file --file-output-format bin --remote-file daq.bin --output-dir captures
 ```
 
 Each board writes to its own file, for example:
 - `captures\192.168.0.10_daq.bin`
 - `captures\192.168.0.11_daq.bin`
+
+#### Multi-board file stream converted to CSV
+
+```powershell
+python .\examples\multi_board_stream_example.py --ip-file .\examples\boards.txt --mode file --file-output-format csv --remote-file daq.bin --output-dir captures
+```
+
+Each board writes to its own converted CSV, for example:
+- `captures\192.168.0.10_daq.csv`
+- `captures\192.168.0.11_daq.csv`
+
+For file-mode CSV conversion, each board also gets its own metadata file, for example:
+- `captures\192.168.0.10_daq.csv.metadata.json`
+- `captures\192.168.0.11_daq.csv.metadata.json`
+
+These metadata files contain the same decode details as the single-board file-mode CSV example:
+- `decode_format`
+- `sample_bytes`
+- `channel_mask`
+- `assumed_channel_order`
+- `channel_types`
+- `command_8_stream`
+- `frames_written`
 
 ### 5. Run DAQ logs on multiple boards simultaneously
 

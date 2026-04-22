@@ -1,9 +1,7 @@
 from __future__ import annotations
 
 import csv
-import math
 import socket
-import struct
 import threading
 import time
 from collections import defaultdict, deque
@@ -11,10 +9,10 @@ from dataclasses import replace
 from pathlib import Path
 from typing import Optional
 
+from .daq import DAQ_FRAME_LEN, decode_daq_frame
 from .models import BoardInfo, CommandConfig, FileListResponse, OpenAmpHeartbeatResponse, PacketBase, StreamResult
 from .protocol import (
     CONFIG_READ_HEADER_LEN,
-    DAQ_FRAME_LEN,
     FILE_STREAM_HEADER_LEN,
     PACKET_LEN,
     SERVER_ID,
@@ -23,55 +21,6 @@ from .protocol import (
     parse_stream_header,
     verify_pattern_chunk,
 )
-
-
-INT24_MAX = 8388607  # 2^23 - 1
-V_REF = 1.2
-V_REF_VGAIN = 0.3
-CT_V_PEAK = 0.4714
-CT_CURRENT_MAX = 100.0
-V_DIVIDER = 0.2568
-MAINS_VOLTAGE = 240.0
-
-
-def clamp_int24(adc_value: int) -> int:
-    if adc_value > INT24_MAX:
-        return INT24_MAX
-    if adc_value < -INT24_MAX:
-        return -INT24_MAX
-    return adc_value
-
-
-def parse_adc_value_current(adc_value: int) -> float:
-    adc_value = clamp_int24(adc_value)
-    v_out = (float(adc_value) / float(INT24_MAX)) * V_REF
-    v_ct = v_out * (CT_V_PEAK / V_REF)
-    current = (v_ct / CT_V_PEAK) * (CT_CURRENT_MAX * 1.414)
-    return current
-
-
-def parse_adc_value_voltage(adc_value: int) -> float:
-    adc_value = clamp_int24(adc_value)
-    v_adc = (float(adc_value) / float(INT24_MAX)) * V_REF_VGAIN
-    v_mains = (v_adc / V_DIVIDER) * (MAINS_VOLTAGE * 1.414)
-    return v_mains
-
-
-def round_significant(value: float, digits: int = 4) -> float:
-    if value == 0.0:
-        return 0.0
-    return round(value, digits - 1 - int(math.floor(math.log10(abs(value)))))
-
-
-def decode_daq_frame(frame: bytes) -> list[int]:
-    _response, _crc, *channels = struct.unpack("<HH8i", frame)
-    converted: list[float] = []
-    for index, value in enumerate(channels[:6]):
-        if index < 3:
-            converted.append(round_significant(parse_adc_value_voltage(int(value)), 4))
-        else:
-            converted.append(round_significant(parse_adc_value_current(int(value)), 4))
-    return converted
 
 
 class StreamHandle:
@@ -233,7 +182,7 @@ class BoardSession:
         self.send_command(5, config=config)
         return self.wait_for_command(5, timeout)
 
-    def stream_file_async(self, filename: str | None = None, offset: int = 0, local_path: str | Path | None = None, verify_pattern: bool = True) -> StreamHandle:
+    def stream_file_async(self, filename: str | None = None, offset: int = 0, local_path: str | Path | None = None, verify_pattern: bool = False) -> StreamHandle:
         config = replace(self.default_config)
         if filename is not None:
             config.read_filename = filename
@@ -242,7 +191,7 @@ class BoardSession:
         self.send_command(8, config=config)
         return handle
 
-    def stream_file(self, filename: str | None = None, offset: int = 0, timeout: float = 30.0, verify_pattern: bool = True, local_path: str | Path | None = None) -> StreamResult:
+    def stream_file(self, filename: str | None = None, offset: int = 0, timeout: float = 30.0, verify_pattern: bool = False, local_path: str | Path | None = None) -> StreamResult:
         return self.stream_file_async(filename=filename, offset=offset, local_path=local_path, verify_pattern=verify_pattern).wait(timeout)
 
     def test_stream_async(self) -> StreamHandle:

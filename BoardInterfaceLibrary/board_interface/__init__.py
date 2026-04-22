@@ -1,4 +1,13 @@
 from .client import BoardServer, BoardSession, StreamHandle
+from .daq import (
+    convert_daq_bin_to_csv,
+    convert_daq_stream_bin_to_csv,
+    decode_daq_frame,
+    decode_daq_log_sample,
+    decode_daq_stream_frame,
+    parse_adc_value_current,
+    parse_adc_value_voltage,
+)
 from .models import (
     BoardInfo,
     CommandConfig,
@@ -36,4 +45,11 @@ __all__ = [
     "ResponseParser",
     "StreamResult",
     "TotalFileCountResponse",
+    "convert_daq_bin_to_csv",
+    "convert_daq_stream_bin_to_csv",
+    "decode_daq_frame",
+    "decode_daq_log_sample",
+    "decode_daq_stream_frame",
+    "parse_adc_value_current",
+    "parse_adc_value_voltage",
 ]

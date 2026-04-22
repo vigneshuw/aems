@@ -29,8 +29,8 @@ def main() -> None:
         print("List files")
         print_parsed_response(session.get_file_list(timeout=max(args.timeout, 10.0)))
 
-        print(f"Get file size for {args.read_file}")
-        print_parsed_response(session.get_file_size(args.read_file, timeout=max(args.timeout, 10.0)))
+        # print(f"Get file size for {args.read_file}")
+        # print_parsed_response(session.get_file_size(args.read_file, timeout=max(args.timeout, 10.0)))
 
         # print("DAQ status")
         # print_parsed_response(session.get_daq_status(timeout=max(args.timeout, 10.0)))
