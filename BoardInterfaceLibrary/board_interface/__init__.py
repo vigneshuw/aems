@@ -1,13 +1,14 @@
-from .client import BoardServer, BoardSession
+from .client import BoardServer, BoardSession, StreamHandle
 from .models import (
+    BoardInfo,
     CommandConfig,
     ConfigWriteResponse,
     DaqAckResponse,
     DeleteResponse,
     DaqStatusResponse,
+    FileListEntry,
     FileListResponse,
     FileCountResponse,
-    FileListEntry,
     FileSizeResponse,
     OpenAmpHeartbeatResponse,
     PacketBase,
@@ -18,6 +19,8 @@ from .models import (
 __all__ = [
     "BoardServer",
     "BoardSession",
+    "StreamHandle",
+    "BoardInfo",
     "CommandConfig",
     "ConfigWriteResponse",
     "DaqAckResponse",

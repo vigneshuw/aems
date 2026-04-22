@@ -49,8 +49,6 @@ class FileSizeResponse(PacketBase):
     fs_status: int
 
 
-
-
 @dataclass(slots=True)
 class OpenAmpHeartbeatResponse(PacketBase):
     reply_value: int
@@ -89,10 +87,6 @@ class DaqAckResponse(PacketBase):
     block_samples: int
 
 
-
-
-
-
 @dataclass(slots=True)
 class StreamResult:
     command: int
@@ -103,6 +97,7 @@ class StreamResult:
     data: bytes = b""
     frames_received: int = 0
     csv_path: Optional[Path] = None
+    local_path: Optional[Path] = None
     verification_passed: bool = True
     verification_error: Optional[str] = None
     elapsed_seconds: float = 0.0
@@ -131,8 +126,8 @@ class FileListResponse:
         for line in self.data.decode("utf-8", errors="replace").splitlines():
             if not line:
                 continue
-            if "	" in line:
-                name, size_text = line.split("	", 1)
+            if "\t" in line:
+                name, size_text = line.split("\t", 1)
                 try:
                     size = int(size_text.strip())
                 except ValueError:
@@ -151,3 +146,15 @@ class FileListResponse:
 class DeleteResponse(PacketBase):
     op_status: int
     deleted_count: int
+
+
+@dataclass(slots=True)
+class BoardInfo:
+    board_key: str
+    ip_address: str
+    peer_port: int
+    connected_at: float
+    last_seen_at: float
+    is_online: bool
+    latest_heartbeat: Optional[PacketBase] = None
+    latest_openamp_heartbeat: Optional[OpenAmpHeartbeatResponse] = None

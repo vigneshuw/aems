@@ -7,8 +7,8 @@ from .models import (
     CommandConfig,
     ConfigWriteResponse,
     DaqAckResponse,
-    DeleteResponse,
     DaqStatusResponse,
+    DeleteResponse,
     FileCountResponse,
     FileSizeResponse,
     OpenAmpHeartbeatResponse,
@@ -70,21 +70,74 @@ def build_packet(command: int, server_id: int = SERVER_ID, epoch_time: int | Non
 
 def parse_fixed_packet(packet: bytes) -> PacketBase:
     command = packet[0]
+    server_id = struct.unpack(">I", packet[1:5])[0]
+    epoch_time = struct.unpack(">Q", packet[5:13])[0]
+    status = packet[13]
+    tcp_connected = packet[14]
 
     if command == 0:
-        return PacketBase(command, struct.unpack(">I", packet[1:5])[0], struct.unpack(">Q", packet[5:13])[0], packet[13], packet[14])
+        return PacketBase(command, server_id, epoch_time, status, tcp_connected)
     if command == 1:
-        return ConfigWriteResponse(command, struct.unpack(">I", packet[1:5])[0], struct.unpack(">Q", packet[5:13])[0], packet[13], packet[14], struct.unpack(">I", packet[15:19])[0])
+        return ConfigWriteResponse(command, server_id, epoch_time, status, tcp_connected, struct.unpack(">I", packet[15:19])[0])
     if command == 2:
-        return FileCountResponse(command, struct.unpack(">I", packet[1:5])[0], struct.unpack(">Q", packet[5:13])[0], packet[13], packet[14], struct.unpack(">I", packet[15:19])[0], struct.unpack(">I", packet[19:23])[0])
+        return FileCountResponse(command, server_id, epoch_time, status, tcp_connected, struct.unpack(">I", packet[15:19])[0], struct.unpack(">I", packet[19:23])[0])
     if command == 3:
-        return TotalFileCountResponse(command, struct.unpack(">I", packet[1:5])[0], struct.unpack(">Q", packet[5:13])[0], packet[13], packet[14], struct.unpack(">I", packet[15:19])[0], struct.unpack(">I", packet[19:23])[0])
+        return TotalFileCountResponse(command, server_id, epoch_time, status, tcp_connected, struct.unpack(">I", packet[15:19])[0], struct.unpack(">I", packet[19:23])[0])
     if command == 5:
-        return FileSizeResponse(command, struct.unpack(">I", packet[1:5])[0], struct.unpack(">Q", packet[5:13])[0], packet[13], packet[14], struct.unpack(">I", packet[15:19])[0], struct.unpack(">i", packet[19:23])[0])
+        return FileSizeResponse(command, server_id, epoch_time, status, tcp_connected, struct.unpack(">I", packet[15:19])[0], struct.unpack(">i", packet[19:23])[0])
     if command in {6, 7}:
-        return DeleteResponse(command, struct.unpack(">I", packet[1:5])[0], struct.unpack(">Q", packet[5:13])[0], packet[13], packet[14], struct.unpack(">i", packet[15:19])[0], struct.unpack(">I", packet[19:23])[0])
-    return PacketBase(command, struct.unpack(">I", packet[1:5])[0], struct.unpack(">Q", packet[5:13])[0], packet[13], packet[14])
-
+        return DeleteResponse(command, server_id, epoch_time, status, tcp_connected, struct.unpack(">i", packet[15:19])[0], struct.unpack(">I", packet[19:23])[0])
+    if command in {10, 110}:
+        return DaqStatusResponse(
+            command,
+            server_id,
+            epoch_time,
+            status,
+            tcp_connected,
+            struct.unpack(">i", packet[15:19])[0],
+            struct.unpack(">I", packet[19:23])[0],
+            struct.unpack(">I", packet[23:27])[0],
+            struct.unpack(">I", packet[27:31])[0],
+            struct.unpack(">I", packet[31:35])[0],
+            struct.unpack(">I", packet[35:39])[0],
+            struct.unpack(">I", packet[39:43])[0],
+            struct.unpack(">I", packet[43:47])[0],
+        )
+    if command in {11, 12, 13, 112}:
+        return DaqAckResponse(
+            command,
+            server_id,
+            epoch_time,
+            status,
+            tcp_connected,
+            struct.unpack(">i", packet[15:19])[0],
+            struct.unpack(">I", packet[19:23])[0],
+            struct.unpack(">I", packet[23:27])[0],
+            struct.unpack(">I", packet[27:31])[0],
+        )
+    if command == 99:
+        return OpenAmpHeartbeatResponse(
+            command,
+            server_id,
+            epoch_time,
+            status,
+            tcp_connected,
+            struct.unpack(">I", packet[15:19])[0],
+            struct.unpack(">i", packet[19:23])[0],
+            struct.unpack(">I", packet[23:27])[0],
+            struct.unpack(">I", packet[27:31])[0],
+            struct.unpack(">i", packet[31:35])[0],
+            struct.unpack(">i", packet[35:39])[0],
+            struct.unpack(">i", packet[39:43])[0],
+            struct.unpack(">i", packet[43:47])[0],
+            struct.unpack(">I", packet[47:51])[0],
+            struct.unpack(">I", packet[51:55])[0],
+            struct.unpack(">i", packet[55:59])[0],
+            struct.unpack(">i", packet[59:63])[0],
+            struct.unpack(">I", packet[63:67])[0],
+            struct.unpack(">I", packet[67:71])[0],
+        )
+    return PacketBase(command, server_id, epoch_time, status, tcp_connected)
 
 
 def parse_stream_header(packet: bytes) -> tuple[int, int, int, int, int]:

@@ -13,3 +13,22 @@ CM7/Release/
 *.list
 *.hex
 *.bin
+
+######
+# Python files
+######
+# Build artifacts
+build/
+dist/
+*.egg-info/
+
+# Python compiled files
+__pycache__/
+*.py[cod]
+*$py.class
+
+######
+# Other Generic
+######
+captures/
+.vscode/
