@@ -2,7 +2,7 @@
 
 This directory contains runnable examples for `BoardInterfaceLibrary`. The examples are intentionally small and direct, but they cover the main workflows you are likely to need:
 
-- inspecting a board and exercising individual commands
+- inspecting a board and exercising individual commands (Comment out items you don't need)
 - starting a DAQ log to eMMC and stopping it cleanly
 - streaming a file or DAQ data back to the host
 - running simultaneous streams from multiple boards
@@ -27,7 +27,7 @@ This parser is the intended place to update when board ACK/response formats chan
 
 ## Current board limitation
 
-The current board/firmware build is limited to a channel mask of `0x3F`.
+The current board/firmware build is limited to a channel mask of `0x3F`. All the binary to csv conversions implemented will only consider 6-channels, the codebase needs to be updated if going more than 6-channels.
 
 That means:
 - only channels 0 through 5 are currently supported by the examples and library workflows
@@ -330,7 +330,7 @@ With DAQ stream settings:
 python .\examples\stream_example.py --mode daq --daq-output-format csv --board-ip 192.168.0.10 --remote-file daq0.bin --duration 15 --sample-rate 2000 --channel-mask 0x3F --block-samples 128
 ```
 
-### 4. Stream from multiple boards simultaneously
+### 4. Stream from multiple boards simultaneously (Needs Testing)
 
 Create an IP file such as `boards.txt`:
 
