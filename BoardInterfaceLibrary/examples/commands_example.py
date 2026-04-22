@@ -17,8 +17,8 @@ def main() -> None:
         print("Heartbeat")
         print_parsed_response(session.heartbeat())
 
-        print("Write config")
-        print_parsed_response(session.write_config())
+        # print("Write config")
+        # print_parsed_response(session.write_config())
 
         print("Count .dat files")
         print_parsed_response(session.get_dat_file_count())
@@ -32,22 +32,22 @@ def main() -> None:
         print(f"Get file size for {args.read_file}")
         print_parsed_response(session.get_file_size(args.read_file, timeout=max(args.timeout, 10.0)))
 
-        print("DAQ status")
-        print_parsed_response(session.get_daq_status(timeout=max(args.timeout, 10.0)))
+        # print("DAQ status")
+        # print_parsed_response(session.get_daq_status(timeout=max(args.timeout, 10.0)))
 
-        print("DAQ log status")
-        print_parsed_response(session.get_daq_status(log_status=True, timeout=max(args.timeout, 10.0)))
+        # print("DAQ log status")
+        # print_parsed_response(session.get_daq_status(log_status=True, timeout=max(args.timeout, 10.0)))
 
-        print("OpenAMP heartbeat")
-        print_parsed_response(session.openamp_heartbeat(timeout=max(args.timeout, 10.0)))
+        # print("OpenAMP heartbeat")
+        # print_parsed_response(session.openamp_heartbeat(timeout=max(args.timeout, 10.0)))
 
         # Optional targeted delete first, then broad cleanup of .bin/.dat logs.
         if args.delete_file:
             print(f"Delete file {args.delete_file}")
             print_parsed_response(session.delete_file(args.delete_file, timeout=max(args.timeout, 10.0)))
 
-        print("Delete all .bin/.dat files")
-        print_parsed_response(session.delete_log_files(timeout=max(args.timeout, 10.0)))
+        # print("Delete all .bin/.dat files")
+        # print_parsed_response(session.delete_log_files(timeout=max(args.timeout, 10.0)))
     finally:
         server.close()
 
