@@ -14,6 +14,11 @@ static DaqMode_t g_daq_mode = DAQ_MODE_IDLE;
 static int32_t g_daq_last_op_status = 0;
 static uint32_t g_calibration_samples_averaged = 0U;
 static int32_t g_calibration_storage_status = 0;
+static uint8_t g_offset_calibration_active = 0U;
+static uint32_t g_offset_calibration_ignore_until = 0U;
+static uint32_t g_offset_calibration_average_until = 0U;
+static uint32_t g_offset_calibration_count = 0U;
+static int64_t g_offset_calibration_sum[DAQ_OFFSET_CAL_CHANNELS];
 
 #define DAQ_AGGR_SAMPLES_PER_BLOCK   (128U)
 #define DAQ_WRITE_QUEUE_DEPTH        (8U)
@@ -63,8 +68,8 @@ static uint32_t DAQ_PackBlockSelectedChannels(const DaqWriteBlock_t *blk,
 static void DAQ_WriteS32Le(uint8_t *data, int32_t value);
 static uint32_t DAQ_CalibrationChecksum(const DaqOffsetCalibrationFile_t *record);
 static void DAQ_ApplyZeroOffsetCalibration(void);
-static void DAQ_CopyRawChannels(const adc_channel_data *raw, int32_t channels[DAQ_OFFSET_CAL_CHANNELS]);
-static uint8_t DAQ_WaitAndReadCalibrationSample(adc_channel_data *raw, uint32_t timeout_ms);
+static void DAQ_StartOffsetCalibrationAccumulator(void);
+static uint8_t DAQ_AccumulateOffsetCalibrationFrame(const adc_channel_data *raw);
 
 static uint16_t DAQ_OsrForSampleRate(uint32_t sample_rate_hz)
 {
@@ -389,12 +394,7 @@ void DAQ_GetOffsetCalibration(DaqCalibration_t *calibration)
 
 int32_t DAQ_RunOffsetCalibration(DaqCalibration_t *calibration)
 {
-  uint32_t ignore_end_tick;
-  uint32_t average_end_tick;
-  uint32_t sample_count = 0U;
-  int64_t sum[DAQ_OFFSET_CAL_CHANNELS] = {0, 0, 0, 0, 0, 0};
-  adc_channel_data raw;
-  int32_t channels[DAQ_OFFSET_CAL_CHANNELS];
+  uint32_t guard_end_tick;
   DaqConfig_t saved_cfg = g_daq_cfg;
   DaqMode_t saved_mode = g_daq_mode;
   DaqState_t saved_state = g_daq_ctx.state;
@@ -437,42 +437,49 @@ int32_t DAQ_RunOffsetCalibration(DaqCalibration_t *calibration)
                       (GAIN1_PGAGAIN0_4 | GAIN1_PGAGAIN1_4 | GAIN1_PGAGAIN2_4));
   DAQ_ApplyZeroOffsetCalibration();
 
-  ignore_end_tick = HAL_GetTick() + DAQ_OFFSET_CAL_IGNORE_MS;
-  while ((int32_t)(HAL_GetTick() - ignore_end_tick) < 0)
-  {
-    (void)DAQ_WaitAndReadCalibrationSample(&raw, 20U);
-  }
+  DAQ_StartOffsetCalibrationAccumulator();
+  __HAL_GPIO_EXTI_CLEAR_IT(ADS_DRDY_Pin);
+  HAL_NVIC_ClearPendingIRQ(EXTI15_10_IRQn);
+  HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
+  g_daq_ctx.state = DAQ_STATE_ACQUIRING;
+  g_daq_ctx.is_adc_armed = 1U;
 
-  average_end_tick = HAL_GetTick() + DAQ_OFFSET_CAL_AVERAGE_MS;
-  while ((int32_t)(HAL_GetTick() - average_end_tick) < 0)
+  guard_end_tick = HAL_GetTick() +
+                   DAQ_OFFSET_CAL_IGNORE_MS +
+                   DAQ_OFFSET_CAL_AVERAGE_MS +
+                   100U;
+  while ((int32_t)(HAL_GetTick() - guard_end_tick) < 0)
   {
-    if (DAQ_WaitAndReadCalibrationSample(&raw, 20U) != 0U)
+    (void)DAQ_ServiceAdcPending(16U);
+    (void)DAQ_ServiceCapturedSamples(64U);
+    if (g_offset_calibration_active == 0U)
     {
-      DAQ_CopyRawChannels(&raw, channels);
-      for (uint8_t channel = 0U; channel < DAQ_OFFSET_CAL_CHANNELS; channel++)
-      {
-        sum[channel] += channels[channel];
-      }
-      sample_count++;
+      break;
     }
   }
 
-  adcMaster_Shutdown();
+  g_daq_ctx.is_adc_armed = 0U;
   ADS131M08_AbortReadDma();
+  (void)DAQ_ServiceCapturedSamples(DAQ_AGGR_SAMPLES_PER_BLOCK);
+  adcMaster_Shutdown();
+  g_offset_calibration_active = 0U;
 
-  if (sample_count == 0U)
+  if (g_offset_calibration_count == 0U)
   {
     g_daq_cfg = saved_cfg;
     g_daq_mode = saved_mode;
     g_daq_ctx.state = saved_state;
+    g_daq_ctx.is_adc_armed = 0U;
+    g_daq_ctx.adc_ready_pending = 0U;
     return (int32_t)EMMC_FS_ERR_READ_FILE;
   }
 
   for (uint8_t channel = 0U; channel < DAQ_OFFSET_CAL_CHANNELS; channel++)
   {
-    calibration_values[channel] = (int32_t)(sum[channel] / (int64_t)sample_count);
+    calibration_values[channel] = (int32_t)(g_offset_calibration_sum[channel] /
+                                            (int64_t)g_offset_calibration_count);
   }
-  g_calibration_samples_averaged = sample_count;
+  g_calibration_samples_averaged = g_offset_calibration_count;
   storage_status = DAQ_SaveOffsetCalibration();
 
   g_daq_cfg = saved_cfg;
@@ -710,6 +717,11 @@ static uint8_t DAQ_StoreAdcFrame(const adc_channel_data *raw)
     return 1U;
   }
 
+  if (g_offset_calibration_active != 0U)
+  {
+    return DAQ_AccumulateOffsetCalibrationFrame(raw);
+  }
+
   DAQ_BuildSampleFrame(raw, &frame);
   return DAQ_StoreSampleFrame(&frame);
 }
@@ -875,50 +887,45 @@ static void DAQ_ApplyZeroOffsetCalibration(void)
   }
 }
 
-static void DAQ_CopyRawChannels(const adc_channel_data *raw, int32_t channels[DAQ_OFFSET_CAL_CHANNELS])
+static void DAQ_StartOffsetCalibrationAccumulator(void)
 {
-  if ((raw == NULL) || (channels == NULL))
-  {
-    return;
-  }
-
-  channels[0] = raw->channel0;
-  channels[1] = raw->channel1;
-  channels[2] = raw->channel2;
-  channels[3] = raw->channel3;
-  channels[4] = raw->channel4;
-  channels[5] = raw->channel5;
+  memset(g_offset_calibration_sum, 0, sizeof(g_offset_calibration_sum));
+  g_offset_calibration_count = 0U;
+  g_calibration_samples_averaged = 0U;
+  g_offset_calibration_ignore_until = HAL_GetTick() + DAQ_OFFSET_CAL_IGNORE_MS;
+  g_offset_calibration_average_until = g_offset_calibration_ignore_until + DAQ_OFFSET_CAL_AVERAGE_MS;
+  g_offset_calibration_active = 1U;
 }
 
-static uint8_t DAQ_WaitAndReadCalibrationSample(adc_channel_data *raw, uint32_t timeout_ms)
+static uint8_t DAQ_AccumulateOffsetCalibrationFrame(const adc_channel_data *raw)
 {
-  uint32_t start_tick;
+  uint32_t now;
 
   if (raw == NULL)
   {
     return 0U;
   }
 
-  start_tick = HAL_GetTick();
-  while (HAL_GPIO_ReadPin(ADS_DRDY_GPIO_Port, ADS_DRDY_Pin) != GPIO_PIN_RESET)
+  now = HAL_GetTick();
+  if ((int32_t)(now - g_offset_calibration_average_until) >= 0)
   {
-    if ((HAL_GetTick() - start_tick) >= timeout_ms)
-    {
-      return 0U;
-    }
+    g_offset_calibration_active = 0U;
+    return 1U;
   }
 
-  readAllChannelData(raw);
-
-  start_tick = HAL_GetTick();
-  while (HAL_GPIO_ReadPin(ADS_DRDY_GPIO_Port, ADS_DRDY_Pin) == GPIO_PIN_RESET)
+  if ((int32_t)(now - g_offset_calibration_ignore_until) < 0)
   {
-    if ((HAL_GetTick() - start_tick) >= timeout_ms)
-    {
-      break;
-    }
+    return 1U;
   }
 
+  g_offset_calibration_sum[0] += raw->channel0;
+  g_offset_calibration_sum[1] += raw->channel1;
+  g_offset_calibration_sum[2] += raw->channel2;
+  g_offset_calibration_sum[3] += raw->channel3;
+  g_offset_calibration_sum[4] += raw->channel4;
+  g_offset_calibration_sum[5] += raw->channel5;
+  g_offset_calibration_count++;
+  g_daq_ctx.samples_captured++;
   return 1U;
 }
 
