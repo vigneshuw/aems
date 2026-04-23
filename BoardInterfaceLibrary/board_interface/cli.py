@@ -26,7 +26,7 @@ def interactive(host: str, port: int) -> None:
         "Enter command (0=heartbeat, 1=write config, 2=dat count, 3=all file count, 4=file list, "
         "5=file size [asks filename], 6=delete .bin/.dat, 7=delete file [asks filename], 8=stream file, 9=test stream, 10=daq status, "
         "11=daq log [asks filename], 12=daq stop, 13=daq stream [asks filename], "
-        "110=daq log status, 112=daq log stop/close, 99=openamp heartbeat, q=quit): "
+        "97=get offsets, 98=run offset cal, 110=daq log status, 112=daq log stop/close, 99=openamp heartbeat, q=quit): "
     )
 
     try:
@@ -84,6 +84,11 @@ def interactive(host: str, port: int) -> None:
                 filename = input(f"DAQ filename [{session.default_config.daq_filename}]: ").strip()
                 csv_path = input("CSV path [stream_data.csv]: ").strip() or "stream_data.csv"
                 _show(session.start_daq_stream(filename=filename or session.default_config.daq_filename, csv_path=csv_path, timeout=30.0))
+            elif command == "97":
+                _show(session.get_offset_calibration())
+            elif command == "98":
+                print("Running offset calibration; this takes about 15 seconds.")
+                _show(session.run_offset_calibration(timeout=30.0))
             elif command == "110":
                 _show(session.get_daq_status(log_status=True))
             elif command == "112":

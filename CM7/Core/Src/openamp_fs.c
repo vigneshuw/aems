@@ -9,6 +9,7 @@
 
 #define OPENAMP_PING_CHAN_NAME "openamp_pingpong_demo"
 #define OPENAMP_PING_TIMEOUT_MS 3000U
+#define OPENAMP_CAL_TIMEOUT_MS  25000U
 
 #define OPENAMP_OP_PING        99U
 #define OPENAMP_OP_COUNT_DAT   2U
@@ -23,6 +24,8 @@
 #define OPENAMP_OP_STREAM_CLOSE 82U
 #define OPENAMP_OP_STREAM_READ_SHMEM 83U
 #define OPENAMP_OP_SHMEM_PROBE 84U
+#define OPENAMP_OP_DAQ_GET_CAL 85U
+#define OPENAMP_OP_DAQ_RUN_CAL 86U
 #define OPENAMP_OP_DAQ_STATUS  90U
 #define OPENAMP_OP_DAQ_START_LOG 91U
 #define OPENAMP_OP_DAQ_START_STREAM 92U
@@ -117,6 +120,17 @@ static int32_t OpenAmpFs_SendRequestEx2(uint32_t op,
                                         const char *filename,
                                         uint32_t *reply_value,
                                         uint8_t fast_wait);
+static int32_t OpenAmpFs_SendRequestEx3(uint32_t op,
+                                        uint32_t request_value,
+                                        uint32_t request_length,
+                                        uint32_t arg0,
+                                        uint32_t arg1,
+                                        uint32_t arg2,
+                                        uint32_t arg3,
+                                        const char *filename,
+                                        uint32_t *reply_value,
+                                        uint8_t fast_wait,
+                                        uint32_t timeout_ms);
 
 int32_t OpenAmpFs_MasterInit(void)
 {
@@ -545,6 +559,77 @@ int32_t OpenAmpFs_DaqStopAndClose(void)
   return OpenAmpFs_SendRequest(OPENAMP_OP_DAQ_STOP_CLOSE, 0U, 0U, NULL, &reply_value);
 }
 
+int32_t OpenAmpFs_DaqGetCalibration(DaqCalibration_t *calibration)
+{
+  uint32_t reply_value = 0U;
+  int32_t status;
+
+  if (calibration == NULL)
+  {
+    return -1;
+  }
+
+  memset(calibration, 0, sizeof(*calibration));
+  status = OpenAmpFs_SendRequestEx3(OPENAMP_OP_DAQ_GET_CAL,
+                                    0U,
+                                    0U,
+                                    0U,
+                                    0U,
+                                    0U,
+                                    0U,
+                                    NULL,
+                                    &reply_value,
+                                    0U,
+                                    OPENAMP_PING_TIMEOUT_MS);
+  if (status == 0)
+  {
+    calibration->offset[0] = (int32_t)g_last_response.value;
+    calibration->offset[1] = (int32_t)g_last_response.offset;
+    calibration->offset[2] = (int32_t)g_last_response.length;
+    calibration->offset[3] = (int32_t)g_last_response.arg1;
+    calibration->offset[4] = (int32_t)g_last_response.arg2;
+    calibration->offset[5] = (int32_t)g_last_response.arg3;
+    calibration->samples_averaged = g_last_response.arg4;
+    calibration->storage_status = status;
+  }
+
+  return status;
+}
+
+int32_t OpenAmpFs_DaqRunCalibration(DaqCalibration_t *calibration)
+{
+  uint32_t reply_value = 0U;
+  int32_t status;
+
+  if (calibration == NULL)
+  {
+    return -1;
+  }
+
+  memset(calibration, 0, sizeof(*calibration));
+  status = OpenAmpFs_SendRequestEx3(OPENAMP_OP_DAQ_RUN_CAL,
+                                    0U,
+                                    0U,
+                                    0U,
+                                    0U,
+                                    0U,
+                                    0U,
+                                    NULL,
+                                    &reply_value,
+                                    0U,
+                                    OPENAMP_CAL_TIMEOUT_MS);
+  calibration->offset[0] = (int32_t)g_last_response.value;
+  calibration->offset[1] = (int32_t)g_last_response.offset;
+  calibration->offset[2] = (int32_t)g_last_response.length;
+  calibration->offset[3] = (int32_t)g_last_response.arg1;
+  calibration->offset[4] = (int32_t)g_last_response.arg2;
+  calibration->offset[5] = (int32_t)g_last_response.arg3;
+  calibration->samples_averaged = g_last_response.arg4;
+  calibration->storage_status = status;
+
+  return status;
+}
+
 static int32_t OpenAmpFs_SendRequest(uint32_t op,
                                      uint32_t request_value,
                                      uint32_t request_length,
@@ -583,6 +668,31 @@ static int32_t OpenAmpFs_SendRequestEx2(uint32_t op,
                                         const char *filename,
                                         uint32_t *reply_value,
                                         uint8_t fast_wait)
+{
+  return OpenAmpFs_SendRequestEx3(op,
+                                  request_value,
+                                  request_length,
+                                  arg0,
+                                  arg1,
+                                  arg2,
+                                  arg3,
+                                  filename,
+                                  reply_value,
+                                  fast_wait,
+                                  OPENAMP_PING_TIMEOUT_MS);
+}
+
+static int32_t OpenAmpFs_SendRequestEx3(uint32_t op,
+                                        uint32_t request_value,
+                                        uint32_t request_length,
+                                        uint32_t arg0,
+                                        uint32_t arg1,
+                                        uint32_t arg2,
+                                        uint32_t arg3,
+                                        const char *filename,
+                                        uint32_t *reply_value,
+                                        uint8_t fast_wait,
+                                        uint32_t timeout_ms)
 {
   OpenAmpPingRequest_t request;
   uint32_t start_tick;
@@ -633,7 +743,7 @@ static int32_t OpenAmpFs_SendRequestEx2(uint32_t op,
   while (g_response_ready == 0U)
   {
     OPENAMP_check_for_message();
-    if ((HAL_GetTick() - start_tick) > OPENAMP_PING_TIMEOUT_MS)
+    if ((HAL_GetTick() - start_tick) > timeout_ms)
     {
       return -4;
     }

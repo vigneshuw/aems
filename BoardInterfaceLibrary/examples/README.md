@@ -456,6 +456,8 @@ These examples exercise the current command set in the library:
 - `11` - start DAQ log
 - `12` - stop DAQ
 - `13` - DAQ stream
+- `97` - get current CM4 ADC offset calibration values
+- `98` - run CM4 ADC offset calibration, save the offsets persistently, and return the new values
 - `99` - OpenAMP heartbeat
 - `110` - DAQ log status
 - `112` - stop/close DAQ log

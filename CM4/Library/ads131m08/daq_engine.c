@@ -7,16 +7,23 @@
 #include "file_shmem.h"
 #include "statemachine.h"
 
-static uint32_t calibration_values[6] = {-3838, -7481, -7500, -491, -4160, 4890};
+static int32_t calibration_values[DAQ_OFFSET_CAL_CHANNELS] = {0, 0, 0, 0, 0, 0};
 static DaqSampleFrame_t last_sample;
 static DaqConfig_t g_daq_cfg;
 static DaqMode_t g_daq_mode = DAQ_MODE_IDLE;
 static int32_t g_daq_last_op_status = 0;
+static uint32_t g_calibration_samples_averaged = 0U;
+static int32_t g_calibration_storage_status = 0;
 
 #define DAQ_AGGR_SAMPLES_PER_BLOCK   (128U)
 #define DAQ_WRITE_QUEUE_DEPTH        (8U)
 #define DAQ_ERROR_WRITE_OPEN         (10U)
 #define DAQ_ERROR_WRITE_DATA         (11U)
+#define DAQ_OFFSET_CAL_FILENAME      "ocal.cfg"
+#define DAQ_OFFSET_CAL_MAGIC         0x314C4143UL
+#define DAQ_OFFSET_CAL_VERSION       1U
+#define DAQ_OFFSET_CAL_IGNORE_MS     5000U
+#define DAQ_OFFSET_CAL_AVERAGE_MS    10000U
 /* Set to 0 only for ADC pipeline testing without storage latency. */
 #define DAQ_EMMC_WRITE_ENABLE        (1U)
 
@@ -25,6 +32,15 @@ typedef struct
   uint16_t sample_count;
   DaqSampleFrame_t sample[DAQ_AGGR_SAMPLES_PER_BLOCK];
 } DaqWriteBlock_t;
+
+typedef struct
+{
+  uint32_t magic;
+  uint32_t version;
+  uint32_t channel_count;
+  int32_t offset[DAQ_OFFSET_CAL_CHANNELS];
+  uint32_t checksum;
+} DaqOffsetCalibrationFile_t;
 
 static DaqWriteBlock_t aggr_block;
 static DaqWriteBlock_t write_queue[DAQ_WRITE_QUEUE_DEPTH];
@@ -45,6 +61,10 @@ static uint32_t DAQ_PackBlockSelectedChannels(const DaqWriteBlock_t *blk,
                                               uint8_t *buffer,
                                               uint32_t buffer_size);
 static void DAQ_WriteS32Le(uint8_t *data, int32_t value);
+static uint32_t DAQ_CalibrationChecksum(const DaqOffsetCalibrationFile_t *record);
+static void DAQ_ApplyZeroOffsetCalibration(void);
+static void DAQ_CopyRawChannels(const adc_channel_data *raw, int32_t channels[DAQ_OFFSET_CAL_CHANNELS]);
+static uint8_t DAQ_WaitAndReadCalibrationSample(adc_channel_data *raw, uint32_t timeout_ms);
 
 static uint16_t DAQ_OsrForSampleRate(uint32_t sample_rate_hz)
 {
@@ -266,6 +286,204 @@ uint8_t DAQ_StartLogging(const DaqConfig_t *cfg)
   g_daq_ctx.events = DAQ_EVT_CMD_START;
   g_daq_last_op_status = 0;
   return 1U;
+}
+
+int32_t DAQ_LoadOffsetCalibration(void)
+{
+  EmmcFsReadHandle_t handle;
+  DaqOffsetCalibrationFile_t record;
+  uint32_t total_size = 0U;
+  uint16_t bytes_read = 0U;
+  EmmcFsStatus_t fs_status;
+
+  memset(&handle, 0, sizeof(handle));
+  memset(&record, 0, sizeof(record));
+
+  fs_status = EmmcFs_OpenFileRead(DAQ_OFFSET_CAL_FILENAME, &handle, &total_size);
+  if (fs_status != EMMC_FS_OK)
+  {
+    /* First boot/no calibration file is valid: keep the firmware-default zero offsets. */
+    g_calibration_storage_status = (int32_t)fs_status;
+    return (int32_t)fs_status;
+  }
+
+  fs_status = EmmcFs_ReadFileNext(&handle,
+                                  (uint8_t *)&record,
+                                  (uint16_t)sizeof(record),
+                                  &bytes_read);
+  (void)EmmcFs_CloseFileRead(&handle);
+
+  if ((fs_status != EMMC_FS_OK) ||
+      (bytes_read != sizeof(record)) ||
+      (total_size != sizeof(record)) ||
+      (record.magic != DAQ_OFFSET_CAL_MAGIC) ||
+      (record.version != DAQ_OFFSET_CAL_VERSION) ||
+      (record.channel_count != DAQ_OFFSET_CAL_CHANNELS) ||
+      (record.checksum != DAQ_CalibrationChecksum(&record)))
+  {
+    g_calibration_storage_status = (int32_t)EMMC_FS_ERR_READ_FILE;
+    return (int32_t)EMMC_FS_ERR_READ_FILE;
+  }
+
+  memcpy(calibration_values, record.offset, sizeof(calibration_values));
+  g_calibration_samples_averaged = 0U;
+  g_calibration_storage_status = EMMC_FS_OK;
+  return EMMC_FS_OK;
+}
+
+int32_t DAQ_SaveOffsetCalibration(void)
+{
+  EmmcFsWriteHandle_t handle;
+  DaqOffsetCalibrationFile_t record;
+  uint32_t bytes_written = 0U;
+  EmmcFsStatus_t fs_status;
+
+  memset(&handle, 0, sizeof(handle));
+  memset(&record, 0, sizeof(record));
+
+  record.magic = DAQ_OFFSET_CAL_MAGIC;
+  record.version = DAQ_OFFSET_CAL_VERSION;
+  record.channel_count = DAQ_OFFSET_CAL_CHANNELS;
+  memcpy(record.offset, calibration_values, sizeof(calibration_values));
+  record.checksum = DAQ_CalibrationChecksum(&record);
+
+  fs_status = EmmcFs_OpenFileWrite(DAQ_OFFSET_CAL_FILENAME, &handle);
+  if (fs_status == EMMC_FS_OK)
+  {
+    fs_status = EmmcFs_WriteFileNext(&handle,
+                                     (const uint8_t *)&record,
+                                     (uint32_t)sizeof(record),
+                                     &bytes_written);
+  }
+
+  if ((fs_status == EMMC_FS_OK) && (bytes_written != sizeof(record)))
+  {
+    fs_status = EMMC_FS_ERR_READ_FILE;
+  }
+
+  if (handle.is_open != 0U)
+  {
+    EmmcFsStatus_t close_status = EmmcFs_CloseFileWrite(&handle);
+    if (fs_status == EMMC_FS_OK)
+    {
+      fs_status = close_status;
+    }
+  }
+
+  g_calibration_storage_status = (int32_t)fs_status;
+  return (int32_t)fs_status;
+}
+
+void DAQ_GetOffsetCalibration(DaqCalibration_t *calibration)
+{
+  if (calibration == NULL)
+  {
+    return;
+  }
+
+  memset(calibration, 0, sizeof(*calibration));
+  memcpy(calibration->offset, calibration_values, sizeof(calibration_values));
+  calibration->samples_averaged = g_calibration_samples_averaged;
+  calibration->storage_status = g_calibration_storage_status;
+}
+
+int32_t DAQ_RunOffsetCalibration(DaqCalibration_t *calibration)
+{
+  uint32_t ignore_end_tick;
+  uint32_t average_end_tick;
+  uint32_t sample_count = 0U;
+  int64_t sum[DAQ_OFFSET_CAL_CHANNELS] = {0, 0, 0, 0, 0, 0};
+  adc_channel_data raw;
+  int32_t channels[DAQ_OFFSET_CAL_CHANNELS];
+  DaqConfig_t saved_cfg = g_daq_cfg;
+  DaqMode_t saved_mode = g_daq_mode;
+  DaqState_t saved_state = g_daq_ctx.state;
+  int32_t storage_status;
+
+  if (calibration != NULL)
+  {
+    memset(calibration, 0, sizeof(*calibration));
+  }
+
+  if (g_daq_ctx.state != DAQ_STATE_IDLE)
+  {
+    return (int32_t)EMMC_FS_ERR_PARAM;
+  }
+
+  ADS131M08_AbortReadDma();
+  DAQ_ResetSoftwareBuffers();
+  g_daq_ctx.samples_captured = 0U;
+  g_daq_ctx.dropped_buffers = 0U;
+  g_daq_ctx.bytes_written = 0U;
+  g_daq_ctx.adc_ready_pending = 0U;
+  g_daq_ctx.last_error = 0U;
+  g_daq_mode = DAQ_MODE_IDLE;
+
+  g_daq_cfg.sample_rate_hz = 2000U;
+  g_daq_cfg.channel_mask = 0x3FU;
+  g_daq_cfg.block_samples = DAQ_AGGR_SAMPLES_PER_BLOCK;
+  g_daq_cfg.flags = 0U;
+
+  adcMaster_Startup();
+  adcStartup();
+  writeSingleRegister(CLOCK_ADDRESS,
+                      (CLOCK_DEFAULT & ~(CLOCK_EXTREF_EN_MASK | CLOCK_OSR_MASK)) |
+                      CLOCK_EXTREF_EN_ENABLED |
+                      DAQ_OsrForSampleRate(g_daq_cfg.sample_rate_hz));
+  writeSingleRegister(GAIN1_ADDRESS,
+                      ((GAIN1_DEFAULT & ~(GAIN1_PGAGAIN0_MASK |
+                                          GAIN1_PGAGAIN1_MASK |
+                                          GAIN1_PGAGAIN2_MASK))) |
+                      (GAIN1_PGAGAIN0_4 | GAIN1_PGAGAIN1_4 | GAIN1_PGAGAIN2_4));
+  DAQ_ApplyZeroOffsetCalibration();
+
+  ignore_end_tick = HAL_GetTick() + DAQ_OFFSET_CAL_IGNORE_MS;
+  while ((int32_t)(HAL_GetTick() - ignore_end_tick) < 0)
+  {
+    (void)DAQ_WaitAndReadCalibrationSample(&raw, 20U);
+  }
+
+  average_end_tick = HAL_GetTick() + DAQ_OFFSET_CAL_AVERAGE_MS;
+  while ((int32_t)(HAL_GetTick() - average_end_tick) < 0)
+  {
+    if (DAQ_WaitAndReadCalibrationSample(&raw, 20U) != 0U)
+    {
+      DAQ_CopyRawChannels(&raw, channels);
+      for (uint8_t channel = 0U; channel < DAQ_OFFSET_CAL_CHANNELS; channel++)
+      {
+        sum[channel] += channels[channel];
+      }
+      sample_count++;
+    }
+  }
+
+  adcMaster_Shutdown();
+  ADS131M08_AbortReadDma();
+
+  if (sample_count == 0U)
+  {
+    g_daq_cfg = saved_cfg;
+    g_daq_mode = saved_mode;
+    g_daq_ctx.state = saved_state;
+    return (int32_t)EMMC_FS_ERR_READ_FILE;
+  }
+
+  for (uint8_t channel = 0U; channel < DAQ_OFFSET_CAL_CHANNELS; channel++)
+  {
+    calibration_values[channel] = (int32_t)(sum[channel] / (int64_t)sample_count);
+  }
+  g_calibration_samples_averaged = sample_count;
+  storage_status = DAQ_SaveOffsetCalibration();
+
+  g_daq_cfg = saved_cfg;
+  g_daq_mode = saved_mode;
+  g_daq_ctx.state = DAQ_STATE_IDLE;
+  g_daq_ctx.is_adc_armed = 0U;
+  g_daq_ctx.events = 0U;
+  g_daq_ctx.adc_ready_pending = 0U;
+
+  DAQ_GetOffsetCalibration(calibration);
+  return storage_status;
 }
 
 int32_t DAQ_GetLastOpStatus(void)
@@ -628,6 +846,80 @@ static void DAQ_WriteS32Le(uint8_t *data, int32_t value)
   data[1] = (uint8_t)(raw >> 8);
   data[2] = (uint8_t)(raw >> 16);
   data[3] = (uint8_t)(raw >> 24);
+}
+
+static uint32_t DAQ_CalibrationChecksum(const DaqOffsetCalibrationFile_t *record)
+{
+  uint32_t checksum;
+
+  if (record == NULL)
+  {
+    return 0U;
+  }
+
+  checksum = record->magic ^ record->version ^ record->channel_count;
+  for (uint8_t channel = 0U; channel < DAQ_OFFSET_CAL_CHANNELS; channel++)
+  {
+    checksum ^= (uint32_t)record->offset[channel];
+    checksum = (checksum << 5) | (checksum >> 27);
+  }
+
+  return checksum;
+}
+
+static void DAQ_ApplyZeroOffsetCalibration(void)
+{
+  for (uint8_t channel = 0U; channel < DAQ_OFFSET_CAL_CHANNELS; channel++)
+  {
+    calibrate(0, channel);
+  }
+}
+
+static void DAQ_CopyRawChannels(const adc_channel_data *raw, int32_t channels[DAQ_OFFSET_CAL_CHANNELS])
+{
+  if ((raw == NULL) || (channels == NULL))
+  {
+    return;
+  }
+
+  channels[0] = raw->channel0;
+  channels[1] = raw->channel1;
+  channels[2] = raw->channel2;
+  channels[3] = raw->channel3;
+  channels[4] = raw->channel4;
+  channels[5] = raw->channel5;
+}
+
+static uint8_t DAQ_WaitAndReadCalibrationSample(adc_channel_data *raw, uint32_t timeout_ms)
+{
+  uint32_t start_tick;
+
+  if (raw == NULL)
+  {
+    return 0U;
+  }
+
+  start_tick = HAL_GetTick();
+  while (HAL_GPIO_ReadPin(ADS_DRDY_GPIO_Port, ADS_DRDY_Pin) != GPIO_PIN_RESET)
+  {
+    if ((HAL_GetTick() - start_tick) >= timeout_ms)
+    {
+      return 0U;
+    }
+  }
+
+  readAllChannelData(raw);
+
+  start_tick = HAL_GetTick();
+  while (HAL_GPIO_ReadPin(ADS_DRDY_GPIO_Port, ADS_DRDY_Pin) == GPIO_PIN_RESET)
+  {
+    if ((HAL_GetTick() - start_tick) >= timeout_ms)
+    {
+      break;
+    }
+  }
+
+  return 1U;
 }
 
 static uint32_t DAQ_PackBlockSelectedChannels(const DaqWriteBlock_t *blk,

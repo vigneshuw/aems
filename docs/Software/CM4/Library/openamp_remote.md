@@ -103,6 +103,8 @@ The CM4 remote currently implements the following logical services:
 | `82` | close persistent file stream |
 | `83` | read next file stream chunk into shared memory |
 | `84` | shared-memory probe |
+| `85` | get ADC offset calibration values |
+| `86` | run ADC offset calibration and persist values |
 | `90` | DAQ status |
 | `91` | start DAQ log |
 | `92` | start DAQ stream |

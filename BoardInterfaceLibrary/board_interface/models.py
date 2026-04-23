@@ -149,6 +149,19 @@ class DeleteResponse(PacketBase):
 
 
 @dataclass(slots=True)
+class CalibrationResponse(PacketBase):
+    op_status: int
+    offset_ch0: int
+    offset_ch1: int
+    offset_ch2: int
+    offset_ch3: int
+    offset_ch4: int
+    offset_ch5: int
+    samples_averaged: int
+    storage_status: int
+
+
+@dataclass(slots=True)
 class BoardInfo:
     board_key: str
     ip_address: str

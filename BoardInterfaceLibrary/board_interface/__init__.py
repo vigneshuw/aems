@@ -10,6 +10,7 @@ from .daq import (
 )
 from .models import (
     BoardInfo,
+    CalibrationResponse,
     CommandConfig,
     ConfigWriteResponse,
     DaqAckResponse,
@@ -31,6 +32,7 @@ __all__ = [
     "BoardSession",
     "StreamHandle",
     "BoardInfo",
+    "CalibrationResponse",
     "CommandConfig",
     "ConfigWriteResponse",
     "DaqAckResponse",

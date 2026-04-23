@@ -13,6 +13,7 @@ extern "C" {
 #define DAQ_DEFAULT_SAMPLE_RATE_HZ 4000U
 #define DAQ_DEFAULT_CHANNEL_MASK  0xFFU
 #define DAQ_DEFAULT_BLOCK_SAMPLES 128U
+#define DAQ_OFFSET_CAL_CHANNELS   6U
 
 typedef enum
 {
@@ -48,6 +49,13 @@ typedef struct
   uint64_t bytes_written;
   uint32_t adc_ready_pending;
 } DaqStatus_t;
+
+typedef struct
+{
+  int32_t offset[DAQ_OFFSET_CAL_CHANNELS];
+  uint32_t samples_averaged;
+  int32_t storage_status;
+} DaqCalibration_t;
 
 #ifdef __cplusplus
 }

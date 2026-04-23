@@ -207,6 +207,14 @@ class BoardSession:
         self.send_command(command)
         return self.wait_for_command(command, timeout)
 
+    def get_offset_calibration(self, timeout: float = 5.0) -> PacketBase:
+        self.send_command(97)
+        return self.wait_for_command(97, timeout)
+
+    def run_offset_calibration(self, timeout: float = 25.0) -> PacketBase:
+        self.send_command(98)
+        return self.wait_for_command(98, timeout)
+
     def start_daq_log(self, filename: str = "daq.bin", sample_rate_hz: int = 2000, channel_mask: int = 0x3F, block_samples: int = 128, stream_samples: int = 0, timeout: float = 5.0) -> PacketBase:
         config = replace(
             self.default_config,

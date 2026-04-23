@@ -47,6 +47,14 @@ uint8_t DAQ_StopAndClose(void);
 
 void DAQ_GetStatus(DaqStatus_t *status);
 
+int32_t DAQ_LoadOffsetCalibration(void);
+
+int32_t DAQ_SaveOffsetCalibration(void);
+
+void DAQ_GetOffsetCalibration(DaqCalibration_t *calibration);
+
+int32_t DAQ_RunOffsetCalibration(DaqCalibration_t *calibration);
+
 uint8_t DAQ_ReadStreamBlockShared(uint8_t **buffer,
                                   uint16_t max_len,
                                   uint16_t *bytes_read,

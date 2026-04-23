@@ -5,6 +5,7 @@ import time
 
 from .models import (
     CommandConfig,
+    CalibrationResponse,
     ConfigWriteResponse,
     DaqAckResponse,
     DaqStatusResponse,
@@ -114,6 +115,23 @@ def parse_fixed_packet(packet: bytes) -> PacketBase:
             struct.unpack(">I", packet[19:23])[0],
             struct.unpack(">I", packet[23:27])[0],
             struct.unpack(">I", packet[27:31])[0],
+        )
+    if command in {97, 98}:
+        return CalibrationResponse(
+            command,
+            server_id,
+            epoch_time,
+            status,
+            tcp_connected,
+            struct.unpack(">i", packet[15:19])[0],
+            struct.unpack(">i", packet[19:23])[0],
+            struct.unpack(">i", packet[23:27])[0],
+            struct.unpack(">i", packet[27:31])[0],
+            struct.unpack(">i", packet[31:35])[0],
+            struct.unpack(">i", packet[35:39])[0],
+            struct.unpack(">i", packet[39:43])[0],
+            struct.unpack(">I", packet[43:47])[0],
+            struct.unpack(">i", packet[47:51])[0],
         )
     if command == 99:
         return OpenAmpHeartbeatResponse(

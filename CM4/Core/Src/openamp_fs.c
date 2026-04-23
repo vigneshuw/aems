@@ -26,6 +26,8 @@
 #define OPENAMP_OP_STREAM_CLOSE 82U
 #define OPENAMP_OP_STREAM_READ_SHMEM 83U
 #define OPENAMP_OP_SHMEM_PROBE 84U
+#define OPENAMP_OP_DAQ_GET_CAL 85U
+#define OPENAMP_OP_DAQ_RUN_CAL 86U
 #define OPENAMP_OP_DAQ_STATUS  90U
 #define OPENAMP_OP_DAQ_START_LOG 91U
 #define OPENAMP_OP_DAQ_START_STREAM 92U
@@ -151,6 +153,7 @@ static int OpenAmpPing_RxCallback(struct rpmsg_endpoint *ept,
   EmmcFsStatus_t fs_status;
   DaqConfig_t daq_cfg;
   DaqStatus_t daq_status;
+  DaqCalibration_t daq_calibration;
   uint8_t *daq_buffer = NULL;
   uint32_t daq_samples_read = 0U;
 
@@ -371,6 +374,31 @@ static int OpenAmpPing_RxCallback(struct rpmsg_endpoint *ept,
       response.value = OPENAMP_SHMEM_PROBE_MAGIC;
       response.offset = FILE_SHMEM_DATA_ADDR;
       response.length = OPENAMP_SHMEM_PROBE_LEN;
+      break;
+
+    case OPENAMP_OP_DAQ_GET_CAL:
+      memset(&daq_calibration, 0, sizeof(daq_calibration));
+      DAQ_GetOffsetCalibration(&daq_calibration);
+      response.status = 0;
+      response.value = (uint32_t)daq_calibration.offset[0];
+      response.offset = (uint32_t)daq_calibration.offset[1];
+      response.length = (uint32_t)daq_calibration.offset[2];
+      response.arg1 = (uint32_t)daq_calibration.offset[3];
+      response.arg2 = (uint32_t)daq_calibration.offset[4];
+      response.arg3 = (uint32_t)daq_calibration.offset[5];
+      response.arg4 = daq_calibration.samples_averaged;
+      break;
+
+    case OPENAMP_OP_DAQ_RUN_CAL:
+      memset(&daq_calibration, 0, sizeof(daq_calibration));
+      response.status = DAQ_RunOffsetCalibration(&daq_calibration);
+      response.value = (uint32_t)daq_calibration.offset[0];
+      response.offset = (uint32_t)daq_calibration.offset[1];
+      response.length = (uint32_t)daq_calibration.offset[2];
+      response.arg1 = (uint32_t)daq_calibration.offset[3];
+      response.arg2 = (uint32_t)daq_calibration.offset[4];
+      response.arg3 = (uint32_t)daq_calibration.offset[5];
+      response.arg4 = daq_calibration.samples_averaged;
       break;
 
     case OPENAMP_OP_DAQ_STATUS:

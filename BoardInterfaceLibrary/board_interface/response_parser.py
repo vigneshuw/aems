@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Any
 
 from .models import (
+    CalibrationResponse,
     ConfigWriteResponse,
     DaqAckResponse,
     DaqStatusResponse,
@@ -42,6 +43,8 @@ class ResponseParser:
             return cls._parse_openamp_heartbeat(response)
         if isinstance(response, FileSizeResponse):
             return cls._parse_dataclass(response)
+        if isinstance(response, CalibrationResponse):
+            return cls._parse_calibration(response)
         if isinstance(response, (ConfigWriteResponse, FileCountResponse, TotalFileCountResponse, DeleteResponse, PacketBase)):
             return cls._parse_dataclass(response)
         if is_dataclass(response):
@@ -93,6 +96,19 @@ class ResponseParser:
         data["reply_value_hex"] = f"0x{response.reply_value:08X}"
         data["shmem_probe_bad_index_hex"] = f"0x{response.shmem_probe_bad_index:08X}"
         data["adc_device_id_hex"] = f"0x{response.adc_device_id:04X}"
+        return data
+
+    @classmethod
+    def _parse_calibration(cls, response: CalibrationResponse) -> dict[str, Any]:
+        data = cls._parse_dataclass(response)
+        data["offsets"] = [
+            response.offset_ch0,
+            response.offset_ch1,
+            response.offset_ch2,
+            response.offset_ch3,
+            response.offset_ch4,
+            response.offset_ch5,
+        ]
         return data
 
     @classmethod

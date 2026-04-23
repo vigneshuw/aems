@@ -747,6 +747,42 @@ void ControllerTask(void const * argument)
           break;
         }
 
+        case 97U:
+        case 98U:
+        {
+          uint8_t tx[TCP_FIXED_RESPONSE_LEN];
+          DaqCalibration_t calibration;
+          int32_t op_status;
+
+          memset(&calibration, 0, sizeof(calibration));
+          if (msg.command == 97U)
+          {
+            op_status = OpenAmpFs_DaqGetCalibration(&calibration);
+          }
+          else
+          {
+            op_status = OpenAmpFs_DaqRunCalibration(&calibration);
+          }
+
+          memset(tx, 0, sizeof(tx));
+          tx[0] = msg.command;
+          WriteU32Be(&tx[1], msg.server_id);
+          WriteU64Be(&tx[5], msg.epoch_time);
+          tx[13] = (op_status == 0) ? 0U : 1U;
+          tx[14] = TcpClient_IsConnected();
+          WriteU32Be(&tx[15], (uint32_t)op_status);
+          WriteU32Be(&tx[19], (uint32_t)calibration.offset[0]);
+          WriteU32Be(&tx[23], (uint32_t)calibration.offset[1]);
+          WriteU32Be(&tx[27], (uint32_t)calibration.offset[2]);
+          WriteU32Be(&tx[31], (uint32_t)calibration.offset[3]);
+          WriteU32Be(&tx[35], (uint32_t)calibration.offset[4]);
+          WriteU32Be(&tx[39], (uint32_t)calibration.offset[5]);
+          WriteU32Be(&tx[43], calibration.samples_averaged);
+          WriteU32Be(&tx[47], (uint32_t)calibration.storage_status);
+          (void)TcpClient_SendBuffer(tx, sizeof(tx));
+          break;
+        }
+
         default:
           break;
       }

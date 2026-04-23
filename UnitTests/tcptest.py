@@ -348,6 +348,30 @@ def parse_daq_ack(packet):
         daq_log_stop_time = time.time()
         print("DAQ eMMC logging stopped and file closed. Send 110 for metrics.")
 
+def parse_calibration(packet):
+    command = packet[0]
+    server_id = struct.unpack(">I", packet[1:5])[0]
+    epoch_time = struct.unpack(">Q", packet[5:13])[0]
+    system_status = packet[13]
+    tcp_connected = packet[14]
+    op_status = struct.unpack(">i", packet[15:19])[0]
+    offsets = [struct.unpack(">i", packet[offset:offset + 4])[0] for offset in range(19, 43, 4)]
+    samples_averaged = struct.unpack(">I", packet[43:47])[0]
+    storage_status = struct.unpack(">i", packet[47:51])[0]
+
+    print(
+        "RX offset-calibration: "
+        f"cmd={command}, "
+        f"id={server_id}, "
+        f"time={epoch_time}, "
+        f"status={system_status}, "
+        f"tcp={tcp_connected}, "
+        f"op_status={op_status}, "
+        f"offsets={offsets}, "
+        f"samples_averaged={samples_averaged}, "
+        f"storage_status={storage_status}"
+    )
+
 
 def parse_adc_value_voltage(adc_value):
     if adc_value > INT24_MAX:
@@ -652,6 +676,8 @@ def parse_packet(packet):
         parse_daq_status(packet)
     elif command in {11, 12, 112}:
         parse_daq_ack(packet)
+    elif command in {97, 98}:
+        parse_calibration(packet)
     elif command == 99:
         parse_openamp_heartbeat(packet)
     else:
@@ -797,7 +823,7 @@ def main():
 
             while True:
                 try:
-                    user_input = input("Enter command (0=heartbeat, 1=write config, 2=dat count, 3=all file count, 4=file list, 5=file size [asks filename], 6=delete .bin/.dat, 7=delete file [asks filename], 8=stream file, 9=test stream, 10=daq status, 11=daq log [asks filename], 12=daq stop, 13=daq stream [asks filename], 110=daq log status, 112=daq log stop/close, 99=openamp heartbeat, q=quit): ").strip()
+                    user_input = input("Enter command (0=heartbeat, 1=write config, 2=dat count, 3=all file count, 4=file list, 5=file size [asks filename], 6=delete .bin/.dat, 7=delete file [asks filename], 8=stream file, 9=test stream, 10=daq status, 11=daq log [asks filename], 12=daq stop, 13=daq stream [asks filename], 97=get offsets, 98=run offset cal, 110=daq log status, 112=daq log stop/close, 99=openamp heartbeat, q=quit): ").strip()
                 except (EOFError, KeyboardInterrupt):
                     print("\nExiting.")
                     break
@@ -806,8 +832,8 @@ def main():
                     close_daq_csv()
                     break
 
-                if user_input not in {"0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "110", "112", "99"}:
-                    print("Only commands 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 110, 112, and 99 are implemented in this test.")
+                if user_input not in {"0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "97", "98", "110", "112", "99"}:
+                    print("Only commands 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 97, 98, 110, 112, and 99 are implemented in this test.")
                     continue
 
                 command = int(user_input)
@@ -893,6 +919,10 @@ def main():
                         "stop with command 12"
                     )
                     file_read_in_progress = True
+                elif command == 97:
+                    print("TX offset calibration read request")
+                elif command == 98:
+                    print("TX offset calibration run request; this takes about 15 seconds")
                 elif command == 110:
                     print("TX DAQ eMMC log status request")
                 elif command == 112:

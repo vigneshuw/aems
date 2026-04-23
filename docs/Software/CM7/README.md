@@ -77,6 +77,8 @@ TCP receive bytes are handed to `ProcessTcpData()`, which converts them into `Co
 | `11` | start DAQ log to eMMC |
 | `12` | stop DAQ |
 | `13` | start DAQ live stream |
+| `97` | get current CM4 ADC offset calibration values |
+| `98` | run CM4 ADC offset calibration and persist the new values |
 | `99` | OpenAMP heartbeat / diagnostic snapshot |
 | `112` | stop and close DAQ log |
 

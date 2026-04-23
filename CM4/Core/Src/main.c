@@ -140,6 +140,10 @@ int main(void)
   }
 
   g_cm4_emmc_mount_status = (int32_t)EmmcFs_MountOrFormat();
+  if (g_cm4_emmc_mount_status == EMMC_FS_OK)
+  {
+    (void)DAQ_LoadOffsetCalibration();
+  }
 
   g_cm4_emmc_create_status = EMMC_FS_OK;
 
