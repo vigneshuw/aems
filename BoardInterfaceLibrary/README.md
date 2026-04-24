@@ -13,6 +13,8 @@ Examples are under `examples/`:
 - `examples/commands_example.py`
 - `examples/daq_log_example.py`
 - `examples/stream_example.py`
+- `examples/stream_on_command.py`
+- `examples/stream_gui.py`
 - `examples/multi_board_stream_example.py`
 - `examples/multi_board_daq_log_example.py`
 - `examples/README.md`
@@ -25,6 +27,7 @@ The library currently supports:
 - remote file streaming and live DAQ streaming
 - host-side parsing of ACKs/responses into stable dictionaries with `ResponseParser`
 - raw binary DAQ capture and offline conversion to parsed CSV
+- live Tkinter-based RMS visualization for DAQ stream data through the example layer
 
 For streamed or logged DAQ data, there are now two host-side output styles:
 - raw `.bin`
@@ -118,6 +121,12 @@ Stream live DAQ data to parsed CSV:
 
 ```powershell
 python .\examples\stream_example.py --mode daq --daq-output-format csv --board-ip 192.168.0.10 --remote-file daq0.bin --duration 30 --output captures\daq0.csv
+```
+
+Open a live RMS GUI for the DAQ stream:
+
+```powershell
+python .\examples\stream_gui.py --mode daq --board-ip 192.168.0.10 --remote-file daq0.bin --sample-rate 2000 --channel-mask 0x3F --block-samples 128
 ```
 
 Use `examples/README.md` for the full command reference and all example flows.

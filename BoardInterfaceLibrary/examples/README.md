@@ -76,6 +76,9 @@ Until that firmware update exists, the current heuristic should be treated as a 
 - `stream_on_command.py`
   - same core arguments as `stream_example.py`, but DAQ/file streaming starts when you press Enter
   - for DAQ mode, pressing Enter a second time sends command `12` to stop the stream
+- `stream_gui.py`
+  - starts a live DAQ stream and displays 0.25 second RMS values in a Tkinter GUI
+  - shows channels 0 through 5 as Voltage-Ph1, Voltage-Ph2, Voltage-Ph3, Current-Ph1, Current-Ph2, Current-Ph3
 - `multi_board_stream_example.py`
   - waits for multiple boards and starts simultaneous streams on all of them
 - `multi_board_daq_log_example.py`
@@ -194,6 +197,25 @@ Raw file stream with manual start:
 
 ```powershell
 python .\examples\stream_on_command.py --mode file --file-output-format bin --board-ip 192.168.0.10 --remote-file daq0.bin --output captures\daq0.bin
+```
+
+#### Live RMS GUI
+
+This example starts a command `13` live DAQ stream and opens a Tkinter GUI. Incoming stream frames are decoded directly in memory; no `.csv` or `.bin` file is written.
+
+The GUI displays RMS values over 0.25 second windows:
+
+- `ch0` -> `Voltage-Ph1`
+- `ch1` -> `Voltage-Ph2`
+- `ch2` -> `Voltage-Ph3`
+- `ch3` -> `Current-Ph1`
+- `ch4` -> `Current-Ph2`
+- `ch5` -> `Current-Ph3`
+
+Stop the stream with the GUI's `Stop Stream` button.
+
+```powershell
+python .\examples\stream_gui.py --mode daq --board-ip 192.168.0.10 --remote-file daq0.bin --sample-rate 2000 --channel-mask 0x3F --block-samples 128
 ```
 
 #### Stream a remote file to the host

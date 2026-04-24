@@ -7,7 +7,7 @@ import time
 from collections import defaultdict, deque
 from dataclasses import replace
 from pathlib import Path
-from typing import Optional
+from typing import Callable, Optional
 
 from .daq import DAQ_FRAME_LEN, decode_daq_frame
 from .models import BoardInfo, CommandConfig, FileListResponse, OpenAmpHeartbeatResponse, PacketBase, StreamResult
@@ -239,7 +239,17 @@ class BoardSession:
         self.send_command(112)
         return self.wait_for_command(112, timeout)
 
-    def start_daq_stream_async(self, filename: str = "daq.bin", sample_rate_hz: int = 2000, channel_mask: int = 0x3F, block_samples: int = 128, stream_samples: int = 0, csv_path: str | Path | None = None, local_path: str | Path | None = None) -> StreamHandle:
+    def start_daq_stream_async(
+        self,
+        filename: str = "daq.bin",
+        sample_rate_hz: int = 2000,
+        channel_mask: int = 0x3F,
+        block_samples: int = 128,
+        stream_samples: int = 0,
+        csv_path: str | Path | None = None,
+        local_path: str | Path | None = None,
+        sample_callback: Callable[[int, list[float]], None] | None = None,
+    ) -> StreamHandle:
         config = replace(
             self.default_config,
             daq_filename=filename,
@@ -255,7 +265,8 @@ class BoardSession:
             capture_bytes=False,
             verify_pattern=False,
             local_path=Path(local_path) if local_path else None,
-            csv_path=Path(csv_path) if csv_path else (self._default_stream_csv_path(filename) if local_path is None else None),
+            csv_path=Path(csv_path) if csv_path else (None if sample_callback is not None else (self._default_stream_csv_path(filename) if local_path is None else None)),
+            sample_callback=sample_callback,
         )
         self.send_command(13, config=config)
         return handle
@@ -275,7 +286,16 @@ class BoardSession:
         self.send_command(99)
         return self.wait_for_command(99, timeout)
 
-    def _prepare_stream(self, *, command: int, capture_bytes: bool, verify_pattern: bool, local_path: Path | None, csv_path: Path | None) -> StreamHandle:
+    def _prepare_stream(
+        self,
+        *,
+        command: int,
+        capture_bytes: bool,
+        verify_pattern: bool,
+        local_path: Path | None,
+        csv_path: Path | None,
+        sample_callback: Callable[[int, list[float]], None] | None = None,
+    ) -> StreamHandle:
         if self._active_stream is not None:
             raise RuntimeError(f"Board {self.ip_address} already has an active stream")
 
@@ -287,6 +307,7 @@ class BoardSession:
             "verify_pattern": verify_pattern,
             "local_path": local_path,
             "csv_path": csv_path,
+            "sample_callback": sample_callback,
             "server_id": 0,
             "epoch_time": 0,
             "total_size": 0,
@@ -515,18 +536,24 @@ class BoardSession:
                     state["binary_file"] = state["local_path"].open("wb")
                 state["binary_file"].write(payload)
                 state["binary_file"].flush()
-            if state["csv_path"] is not None:
+            if (state["csv_path"] is not None) or (state["sample_callback"] is not None):
                 if state["csv_file"] is None:
-                    state["csv_file"] = state["csv_path"].open("w", newline="")
-                    state["csv_writer"] = csv.writer(state["csv_file"])
-                    state["csv_writer"].writerow(["sample_index", "ch0", "ch1", "ch2", "ch3", "ch4", "ch5"])
+                    if state["csv_path"] is not None:
+                        state["csv_file"] = state["csv_path"].open("w", newline="")
+                        state["csv_writer"] = csv.writer(state["csv_file"])
+                        state["csv_writer"].writerow(["sample_index", "ch0", "ch1", "ch2", "ch3", "ch4", "ch5"])
                 state["remainder"].extend(payload)
                 while len(state["remainder"]) >= DAQ_FRAME_LEN:
                     frame = bytes(state["remainder"][:DAQ_FRAME_LEN])
                     del state["remainder"][:DAQ_FRAME_LEN]
-                    state["csv_writer"].writerow([state["sample_index"], *decode_daq_frame(frame)])
+                    values = decode_daq_frame(frame)
+                    if state["csv_writer"] is not None:
+                        state["csv_writer"].writerow([state["sample_index"], *values])
+                    if state["sample_callback"] is not None:
+                        state["sample_callback"](state["sample_index"], values)
                     state["sample_index"] += 1
-                state["csv_file"].flush()
+                if state["csv_file"] is not None:
+                    state["csv_file"].flush()
 
         state["bytes_received"] += len(payload)
         state["handle"].set_progress(state["bytes_received"], state["total_size"])
