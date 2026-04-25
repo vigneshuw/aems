@@ -5,6 +5,7 @@ import queue
 import threading
 import tkinter as tk
 from tkinter import ttk
+from collections import deque
 
 from common import build_parser, open_server, wait_for_session
 
@@ -17,6 +18,13 @@ CHANNEL_LABELS = [
     "Current-Ph2",
     "Current-Ph3",
 ]
+
+PHASE_LABELS = ["Phase-1", "Phase-2", "Phase-3"]
+PHASE_COLORS = ["#000000", "#C62828", "#1565C0"]  # US 3-phase convention: black, red, blue
+PLOT_BG = "#fbfdfc"
+PLOT_GRID = "#d9e4df"
+PLOT_BORDER = "#c7d6d1"
+MAX_HISTORY_POINTS = 240
 
 
 class RmsAccumulator:
@@ -50,11 +58,15 @@ class StreamRmsGui:
         self.value_vars = [tk.StringVar(value="--") for _ in range(6)]
         self.status_var = tk.StringVar(value="Streaming")
         self.frames_var = tk.StringVar(value="Frames: 0")
+        self.voltage_phase_enabled = [tk.BooleanVar(value=True) for _ in range(3)]
+        self.current_phase_enabled = [tk.BooleanVar(value=True) for _ in range(3)]
+        self.voltage_history = [deque(maxlen=MAX_HISTORY_POINTS) for _ in range(3)]
+        self.current_history = [deque(maxlen=MAX_HISTORY_POINTS) for _ in range(3)]
         self._stopping = False
 
         self.root.title("AEMS Live RMS Monitor")
-        self.root.geometry("860x520")
-        self.root.minsize(760, 460)
+        self.root.geometry("1080x820")
+        self.root.minsize(960, 720)
         self.root.configure(bg="#eef4f1")
 
         self._build_styles()
@@ -68,6 +80,8 @@ class StreamRmsGui:
         style.configure("Subtitle.TLabel", background="#eef4f1", foreground="#55716a", font=("Segoe UI", 10))
         style.configure("Status.TLabel", background="#eef4f1", foreground="#2f5d54", font=("Segoe UI", 11, "bold"))
         style.configure("Stop.TButton", font=("Segoe UI", 12, "bold"), padding=(18, 10))
+        style.configure("PlotTitle.TLabel", background="#eef4f1", foreground="#244640", font=("Segoe UI", 12, "bold"))
+        style.configure("PlotCheck.TCheckbutton", background="#eef4f1", foreground="#355a52", font=("Segoe UI", 10))
 
     def _build_layout(self) -> None:
         header = tk.Frame(self.root, bg="#eef4f1")
@@ -81,7 +95,7 @@ class StreamRmsGui:
         ).pack(anchor="w", pady=(4, 0))
 
         cards = tk.Frame(self.root, bg="#eef4f1")
-        cards.pack(fill="both", expand=True, padx=24, pady=16)
+        cards.pack(fill="x", padx=24, pady=16)
         for column in range(3):
             cards.grid_columnconfigure(column, weight=1)
         for row in range(2):
@@ -95,6 +109,25 @@ class StreamRmsGui:
                 padx=10,
                 pady=10,
             )
+
+        plots = tk.Frame(self.root, bg="#eef4f1")
+        plots.pack(fill="both", expand=True, padx=24, pady=(4, 16))
+        plots.grid_columnconfigure(0, weight=1)
+        plots.grid_columnconfigure(1, weight=1)
+        plots.grid_rowconfigure(0, weight=1)
+
+        self.voltage_canvas = self._make_plot_panel(
+            plots,
+            column=0,
+            title="Voltage RMS History",
+            phase_vars=self.voltage_phase_enabled,
+        )
+        self.current_canvas = self._make_plot_panel(
+            plots,
+            column=1,
+            title="Current RMS History",
+            phase_vars=self.current_phase_enabled,
+        )
 
         footer = tk.Frame(self.root, bg="#eef4f1")
         footer.pack(fill="x", padx=28, pady=(0, 22))
@@ -123,13 +156,121 @@ class StreamRmsGui:
         tk.Label(frame, text=unit, bg=bg, fg="#78908a", font=("Segoe UI", 10, "bold")).pack(anchor="w", padx=20, pady=(0, 16))
         return frame
 
+    def _make_plot_panel(self, parent: tk.Widget, column: int, title: str, phase_vars: list[tk.BooleanVar]) -> tk.Canvas:
+        panel = tk.Frame(parent, bg="#eef4f1")
+        panel.grid(row=0, column=column, sticky="nsew", padx=10, pady=10)
+        panel.grid_rowconfigure(1, weight=1)
+        panel.grid_columnconfigure(0, weight=1)
+
+        header = tk.Frame(panel, bg="#eef4f1")
+        header.grid(row=0, column=0, sticky="ew", pady=(0, 8))
+        ttk.Label(header, text=title, style="PlotTitle.TLabel").pack(anchor="w")
+
+        checks = tk.Frame(header, bg="#eef4f1")
+        checks.pack(anchor="w", pady=(6, 0))
+        for index, label in enumerate(PHASE_LABELS):
+            ttk.Checkbutton(
+                checks,
+                text=label,
+                variable=phase_vars[index],
+                style="PlotCheck.TCheckbutton",
+                command=self._redraw_plots,
+            ).pack(side="left", padx=(0, 16))
+
+        canvas = tk.Canvas(panel, bg=PLOT_BG, highlightbackground=PLOT_BORDER, highlightthickness=1, height=280)
+        canvas.grid(row=1, column=0, sticky="nsew")
+        canvas.bind("<Configure>", lambda _event: self._redraw_plots())
+        return canvas
+
     def update_values(self, rms: list[float], total_frames: int) -> None:
         for index, value in enumerate(rms):
             self.value_vars[index].set(f"{value:.4g}")
         self.frames_var.set(f"Frames: {total_frames}")
+        for index in range(3):
+            self.voltage_history[index].append(float(rms[index]))
+            self.current_history[index].append(float(rms[index + 3]))
+        self._redraw_plots()
 
     def set_status(self, text: str) -> None:
         self.status_var.set(text)
+
+    def _redraw_plots(self) -> None:
+        self._draw_plot(
+            self.voltage_canvas,
+            self.voltage_history,
+            self.voltage_phase_enabled,
+            "V RMS",
+        )
+        self._draw_plot(
+            self.current_canvas,
+            self.current_history,
+            self.current_phase_enabled,
+            "A RMS",
+        )
+
+    def _draw_plot(
+        self,
+        canvas: tk.Canvas,
+        histories: list[deque[float]],
+        phase_vars: list[tk.BooleanVar],
+        unit_label: str,
+    ) -> None:
+        canvas.delete("all")
+        width = max(canvas.winfo_width(), 200)
+        height = max(canvas.winfo_height(), 200)
+
+        left = 68
+        right = width - 26
+        top = 52
+        bottom = height - 52
+        plot_width = max(1, right - left)
+        plot_height = max(1, bottom - top)
+
+        canvas.create_rectangle(left, top, right, bottom, outline=PLOT_BORDER, width=1)
+
+        active_values: list[float] = []
+        for index in range(3):
+            if phase_vars[index].get():
+                active_values.extend(histories[index])
+
+        y_max = max(active_values) if active_values else 1.0
+        if y_max <= 0.0:
+            y_max = 1.0
+        y_max *= 1.10
+
+        for grid_index in range(5):
+            y = top + (plot_height * grid_index / 4.0)
+            canvas.create_line(left, y, right, y, fill=PLOT_GRID, width=1)
+            value = y_max * (1.0 - grid_index / 4.0)
+            canvas.create_text(left - 8, y, text=f"{value:.4g}", anchor="e", fill="#5f7771", font=("Segoe UI", 9))
+
+        canvas.create_text((left + right) / 2, bottom + 26, text="History", anchor="center", fill="#5f7771", font=("Segoe UI", 9, "bold"))
+        canvas.create_text(14, top - 16, text=unit_label, anchor="w", fill="#5f7771", font=("Segoe UI", 9, "bold"))
+
+        legend_x = left
+        legend_y = 18
+        for index, label in enumerate(PHASE_LABELS):
+            if not phase_vars[index].get():
+                continue
+            color = PHASE_COLORS[index]
+            canvas.create_line(legend_x, legend_y + 7, legend_x + 20, legend_y + 7, fill=color, width=3)
+            canvas.create_text(legend_x + 26, legend_y + 7, text=label, anchor="w", fill="#28463f", font=("Segoe UI", 9))
+            legend_x += 110
+
+        for index in range(3):
+            if not phase_vars[index].get():
+                continue
+            values = list(histories[index])
+            if len(values) < 2:
+                continue
+            x_step = plot_width / max(1, MAX_HISTORY_POINTS - 1)
+            points: list[float] = []
+            start_x = right - x_step * (len(values) - 1)
+            for value_index, value in enumerate(values):
+                x = start_x + value_index * x_step
+                y = bottom - (float(value) / y_max) * plot_height
+                points.extend((x, y))
+            canvas.create_line(*points, fill=PHASE_COLORS[index], width=2, smooth=True)
 
     def stop(self) -> None:
         if self._stopping:
