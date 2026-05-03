@@ -116,6 +116,16 @@
 /*-----------------------------------------------------------------------------*/
 /* USER CODE BEGIN 1 */
 
+/*
+ * The TCP client reconnect path can temporarily leave a PCB in closing/TIME_WAIT
+ * state. Keep more than one active TCP PCB so repeated resets or late server
+ * startup do not starve the board of TCP control blocks.
+ */
+#ifdef MEMP_NUM_TCP_PCB
+#undef MEMP_NUM_TCP_PCB
+#endif
+#define MEMP_NUM_TCP_PCB 8
+
 /* Enable netconn receive timeouts used by the TCP client. */
 #define LWIP_SO_RCVTIMEO 1
 

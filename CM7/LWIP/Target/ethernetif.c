@@ -158,6 +158,43 @@ lan8742_IOCtx_t  LAN8742_IOCtx = {ETH_PHY_IO_Init,
                                   ETH_PHY_IO_GetTick};
 
 /* USER CODE BEGIN 3 */
+#define ETH_PHY_INIT_RETRY_COUNT     5U
+#define ETH_PHY_INIT_RETRY_DELAY_MS  100U
+#define ETH_PHY_RECOVERY_DELAY_MS    500U
+#define ETH_PHY_RESET_ASSERT_MS      10U
+#define ETH_PHY_RESET_SETTLE_MS      150U
+
+static volatile uint8_t s_eth_phy_initialized;
+
+static void EthernetIf_HardResetPhy(void)
+{
+  HAL_GPIO_WritePin(ETH_NRST_GPIO_Port, ETH_NRST_Pin, GPIO_PIN_RESET);
+  osDelay(ETH_PHY_RESET_ASSERT_MS);
+  HAL_GPIO_WritePin(ETH_NRST_GPIO_Port, ETH_NRST_Pin, GPIO_PIN_SET);
+  osDelay(ETH_PHY_RESET_SETTLE_MS);
+}
+
+static int32_t EthernetIf_InitPhyWithRetry(void)
+{
+  int32_t status = LAN8742_STATUS_ERROR;
+
+  for (uint32_t attempt = 0U; attempt < ETH_PHY_INIT_RETRY_COUNT; attempt++)
+  {
+    EthernetIf_HardResetPhy();
+
+    status = LAN8742_Init(&LAN8742);
+    if (status == LAN8742_STATUS_OK)
+    {
+      s_eth_phy_initialized = 1U;
+      return LAN8742_STATUS_OK;
+    }
+
+    osDelay(ETH_PHY_INIT_RETRY_DELAY_MS);
+  }
+
+  s_eth_phy_initialized = 0U;
+  return status;
+}
 
 /* USER CODE END 3 */
 
@@ -289,6 +326,11 @@ static void low_level_init(struct netif *netif)
 /* USER CODE END OS_THREAD_DEF_CREATE_CMSIS_RTOS_V1 */
 
 /* USER CODE BEGIN PHY_PRE_CONFIG */
+  /*
+   * CubeMX owns the LAN8742_Init call below. Wrap it with a USER CODE macro so
+   * the generated call keeps PHY-init retry behavior after code regeneration.
+   */
+#define LAN8742_Init(obj) EthernetIf_InitPhyWithRetry()
 
 /* USER CODE END PHY_PRE_CONFIG */
   /* Set PHY IO functions */
@@ -348,6 +390,7 @@ static void low_level_init(struct netif *netif)
     netif_set_up(netif);
     netif_set_link_up(netif);
 /* USER CODE BEGIN PHY_POST_CONFIG */
+#undef LAN8742_Init
 
 /* USER CODE END PHY_POST_CONFIG */
     }
@@ -813,7 +856,29 @@ void ethernet_link_thread(void const * argument)
 
   for(;;)
   {
+  linkchanged = 0U;
+  if (s_eth_phy_initialized == 0U)
+  {
+    if (EthernetIf_InitPhyWithRetry() != LAN8742_STATUS_OK)
+    {
+      netif_set_link_down(netif);
+      netif_set_down(netif);
+      osDelay(ETH_PHY_RECOVERY_DELAY_MS);
+      continue;
+    }
+  }
+
   PHYLinkState = LAN8742_GetLinkState(&LAN8742);
+
+  if (PHYLinkState < LAN8742_STATUS_OK)
+  {
+    s_eth_phy_initialized = 0U;
+    HAL_ETH_Stop_IT(&heth);
+    netif_set_down(netif);
+    netif_set_link_down(netif);
+    osDelay(ETH_PHY_RECOVERY_DELAY_MS);
+    continue;
+  }
 
   if(netif_is_link_up(netif) && (PHYLinkState <= LAN8742_STATUS_LINK_DOWN))
   {

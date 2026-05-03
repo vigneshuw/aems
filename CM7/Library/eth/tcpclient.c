@@ -7,6 +7,7 @@
 #include "lwip/sockets.h"
 #include "lwip/sys.h"
 
+#include "main.h"
 #include "tcpclient.h"
 
 #include <string.h>
@@ -14,6 +15,11 @@
 #define TCPCLIENT_CONNECT_TIMEOUT_MS   1000U
 #define TCPCLIENT_RX_BUFFER_LEN        100U
 #define TCPCLIENT_STREAM_CHUNK_LEN     (16U * 1024U)
+#define TCPCLIENT_LOCAL_PORT_MIN       49152U
+#define TCPCLIENT_LOCAL_PORT_RANGE     12000U
+#define TCPCLIENT_LOCAL_PORT_TRIES     8U
+#define TCPCLIENT_RECONNECT_MIN_MS     700U
+#define TCPCLIENT_RECONNECT_SPAN_MS    1000U
 
 typedef struct
 {
@@ -47,6 +53,9 @@ typedef struct
     sys_mbox_t tx_mbox;
     sys_mutex_t tx_mutex;
     volatile uint32_t pending_tx_msgs;
+    uint32_t connect_attempt;
+    uint32_t network_ready_since_ms;
+    uint8_t network_ready_valid;
     TcpClientStreamState_t stream;
 } TcpClientState_t;
 
@@ -91,6 +100,111 @@ static int32_t TcpClient_SetSocketBlockingMode(int sock, int nonblocking)
     return 0;
 }
 
+static uint32_t TcpClient_Mix32(uint32_t value)
+{
+    value ^= value >> 16;
+    value *= 0x7feb352dUL;
+    value ^= value >> 15;
+    value *= 0x846ca68bUL;
+    value ^= value >> 16;
+    return value;
+}
+
+static uint32_t TcpClient_BoardSeed(void)
+{
+    uint32_t seed = 0xA53C5A17UL;
+
+    seed ^= HAL_GetUIDw0();
+    seed = TcpClient_Mix32(seed ^ HAL_GetUIDw1());
+    seed = TcpClient_Mix32(seed ^ HAL_GetUIDw2());
+
+    if (gTcpClient.cfg.Netif != NULL)
+    {
+        for (uint8_t index = 0U; index < gTcpClient.cfg.Netif->hwaddr_len; index++)
+        {
+            seed ^= ((uint32_t)gTcpClient.cfg.Netif->hwaddr[index]) << ((index & 3U) * 8U);
+            seed = TcpClient_Mix32(seed);
+        }
+    }
+
+    return seed;
+}
+
+static uint16_t TcpClient_LocalPortForAttempt(uint32_t salt)
+{
+    uint32_t seed = TcpClient_BoardSeed();
+
+    seed ^= gTcpClient.connect_attempt * 0x9E3779B9UL;
+    seed ^= sys_now() * 0x27D4EB2DUL;
+    seed ^= salt * 0x85EBCA6BUL;
+    seed = TcpClient_Mix32(seed);
+    return (uint16_t)(TCPCLIENT_LOCAL_PORT_MIN + (seed % TCPCLIENT_LOCAL_PORT_RANGE));
+}
+
+static int32_t TcpClient_BindRotatingLocalPort(void)
+{
+    struct sockaddr_in local_addr;
+
+    for (uint32_t index = 0U; index < TCPCLIENT_LOCAL_PORT_TRIES; index++)
+    {
+        memset(&local_addr, 0, sizeof(local_addr));
+        local_addr.sin_family = AF_INET;
+        local_addr.sin_port = htons(TcpClient_LocalPortForAttempt(index));
+        local_addr.sin_addr.s_addr = 0U;
+
+        if (lwip_bind(gTcpClient.sock, (struct sockaddr *)&local_addr, sizeof(local_addr)) == 0)
+        {
+            return 0;
+        }
+    }
+
+    return -1;
+}
+
+static uint32_t TcpClient_ReconnectDelayMs(void)
+{
+    uint32_t seed = TcpClient_BoardSeed();
+
+    seed ^= gTcpClient.connect_attempt * 0x45D9F3BUL;
+    seed ^= sys_now() * 0x119DE1F3UL;
+    seed = TcpClient_Mix32(seed);
+    return TCPCLIENT_RECONNECT_MIN_MS + (seed % (TCPCLIENT_RECONNECT_SPAN_MS + 1U));
+}
+
+static void TcpClient_SleepBeforeReconnect(void)
+{
+    sys_msleep(TcpClient_ReconnectDelayMs());
+}
+
+static uint8_t TcpClient_IsNetworkStable(void)
+{
+    uint32_t now_ms;
+
+    if ((gTcpClient.cfg.Netif == NULL) ||
+        (!netif_is_up(gTcpClient.cfg.Netif)) ||
+        (!netif_is_link_up(gTcpClient.cfg.Netif)))
+    {
+        gTcpClient.network_ready_valid = 0U;
+        gTcpClient.network_ready_since_ms = 0U;
+        return 0U;
+    }
+
+    now_ms = sys_now();
+    if (gTcpClient.network_ready_valid == 0U)
+    {
+        gTcpClient.network_ready_valid = 1U;
+        gTcpClient.network_ready_since_ms = now_ms;
+        return 0U;
+    }
+
+    if ((uint32_t)(now_ms - gTcpClient.network_ready_since_ms) < TCPCLIENT_LINK_STABLE_MS)
+    {
+        return 0U;
+    }
+
+    return 1U;
+}
+
 /*
  * @brief Make a connect to the server once in a non-blocking fashion
  */
@@ -104,15 +218,15 @@ static int32_t TcpClient_ConnectOnce(void)
     socklen_t so_error_len;
 
     /*
-     * Check for the network to be ready. Basically if the link is up.
-     * If network link is not ready, return -1
+     * LAN8742_Init() can finish before the switch/PHY/lwIP path is truly
+     * usable. Require the netif link to remain stable before opening a socket.
      */
-    if ((gTcpClient.cfg.Netif == NULL) ||
-        (!netif_is_up(gTcpClient.cfg.Netif)) ||
-        (!netif_is_link_up(gTcpClient.cfg.Netif)))
+    if (TcpClient_IsNetworkStable() == 0U)
     {
         return -1;
     }
+
+    gTcpClient.connect_attempt++;
 
     /*
      * Create a socket Ipv4, fails we get a return code of -2
@@ -121,6 +235,16 @@ static int32_t TcpClient_ConnectOnce(void)
     if (gTcpClient.sock < 0)
     {
         return -2;
+    }
+
+    /*
+     * Bind to a rotating ephemeral local port. This prevents a board reset from
+     * reusing the same 4-tuple while the host still has stale TCP state.
+     */
+    if (TcpClient_BindRotatingLocalPort() != 0)
+    {
+        TcpClient_CloseSocket();
+        return -9;
     }
 
     /*
@@ -414,10 +538,16 @@ static void TcpClient_Task(void *arg)
     {
         if (gTcpClient.connected == 0U)
         {
+            if (TcpClient_IsNetworkStable() == 0U)
+            {
+                sys_msleep(TCPCLIENT_LINK_WAIT_MS);
+                continue;
+            }
+
             (void)TcpClient_ConnectOnce();
             if (gTcpClient.connected == 0U)
             {
-                sys_msleep(TCPCLIENT_RECONNECT_DELAY_MS);
+                TcpClient_SleepBeforeReconnect();
                 continue;
             }
         }
@@ -426,7 +556,7 @@ static void TcpClient_Task(void *arg)
         {
             gTcpClient.reconnect_requested = 0U;
             TcpClient_CloseSocket();
-            sys_msleep(TCPCLIENT_RECONNECT_DELAY_MS);
+            TcpClient_SleepBeforeReconnect();
             continue;
         }
 
@@ -461,7 +591,7 @@ static void TcpClient_Task(void *arg)
         if (rx_len < 0)
         {
             TcpClient_CloseSocket();
-            sys_msleep(TCPCLIENT_RECONNECT_DELAY_MS);
+            TcpClient_SleepBeforeReconnect();
             continue;
         }
 
@@ -476,7 +606,7 @@ static void TcpClient_Task(void *arg)
             if (rx_len <= 0)
             {
                 TcpClient_CloseSocket();
-                sys_msleep(TCPCLIENT_RECONNECT_DELAY_MS);
+                TcpClient_SleepBeforeReconnect();
                 continue;
             }
 

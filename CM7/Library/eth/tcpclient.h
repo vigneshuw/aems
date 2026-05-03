@@ -29,6 +29,10 @@ extern "C" {
 #define TCPCLIENT_LINK_WAIT_MS          250U
 #endif
 
+#ifndef TCPCLIENT_LINK_STABLE_MS
+#define TCPCLIENT_LINK_STABLE_MS        1000U
+#endif
+
 typedef void (*TcpClientRxHandler_t)(const char *data, uint16_t length);
 typedef int32_t (*TcpClientStreamReadFn)(void *context, uint8_t *buffer, uint16_t max_len, uint16_t *out_len);
 typedef int32_t (*TcpClientStreamReadPtrFn)(void *context, const uint8_t **out_data, uint16_t max_len, uint16_t *out_len);
