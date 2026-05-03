@@ -234,6 +234,28 @@ Common actions:
 - inspect DAQ status and throughput
 - run offset calibration
 
+## RGB LED Status Guide
+
+The onboard RGB LED is driven by CM7 and gives a quick visual status of the board. The LED is useful when several boards are connected to a switch and the host is not yet running.
+
+| LED | Board status | What to do |
+|---|---|---|
+| White solid | Booting | Firmware has started and initialization is in progress. |
+| Blue slow blink | Ethernet / PHY init | LAN8742 PHY reset, Ethernet MAC/PHY bring-up, or no stable link yet. Check cable/switch if it stays here. |
+| Blue solid | Ethernet link up, TCP not connected | Board has link but has not connected to the Python host server. Start the host server and check host IP/port. |
+| Green solid | TCP connected / idle | Board is connected to the host and ready for commands. |
+| Yellow blink | CM4 / OpenAMP not ready | CM7 is alive, but CM4/OpenAMP service is not healthy yet. Run command `99` for detail. |
+| Red slow blink | eMMC error | Storage is unavailable or mount failed. Run command `99` and inspect eMMC mount diagnostics. |
+| Purple slow blink | eMMC formatting | Blank eMMC was detected and filesystem creation is in progress. Wait for it to finish. |
+| Cyan pulse | DAQ logging to eMMC | Command `11` DAQ capture is active and writing to eMMC. |
+| Green fast blink | Live DAQ streaming | Command `13` live stream is active over TCP. |
+| Cyan fast blink | File streaming | Command `8` file readback stream is active. |
+| Yellow solid | Offset calibration | Command `98` offset calibration is running. |
+| Orange blink | Recoverable warning | Nonfatal issue such as dropped samples, command failure, stream start failure, or retry condition. Query status. |
+| Red solid | Fatal error | Firmware entered `Error_Handler()`. Reset/debug the board. |
+
+Priority is error-first. For example, an eMMC error overrides the normal green connected state.
+
 ### Host-side application and automation development
 
 Typical users:

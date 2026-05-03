@@ -1,5 +1,52 @@
 #include "led.h"
 
+typedef struct {
+    uint8_t red;
+    uint8_t green;
+    uint8_t blue;
+} LedRgbPercent_t;
+
+static volatile LED_Status_t g_led_status = LED_STATUS_BOOTING;
+
+static uint8_t LED_IsValidStatus(LED_Status_t status)
+{
+    return (status <= LED_STATUS_FATAL) ? 1U : 0U;
+}
+
+static LedRgbPercent_t LED_ScaleColor(LedRgbPercent_t color, uint8_t scale_percent)
+{
+    LedRgbPercent_t scaled;
+
+    scaled.red = (uint8_t)(((uint16_t)color.red * scale_percent) / 100U);
+    scaled.green = (uint8_t)(((uint16_t)color.green * scale_percent) / 100U);
+    scaled.blue = (uint8_t)(((uint16_t)color.blue * scale_percent) / 100U);
+    return scaled;
+}
+
+static uint8_t LED_TrianglePercent(uint32_t elapsed_ms, uint16_t period_ms)
+{
+    uint32_t phase;
+    uint32_t half_period;
+
+    if (period_ms == 0U)
+    {
+        return 100U;
+    }
+
+    phase = elapsed_ms % period_ms;
+    half_period = (uint32_t)period_ms / 2U;
+    if (half_period == 0U)
+    {
+        return 100U;
+    }
+
+    if (phase < half_period)
+    {
+        return (uint8_t)((phase * 100U) / half_period);
+    }
+
+    return (uint8_t)(((period_ms - phase) * 100U) / half_period);
+}
 
 // Initialize the LED structure
 void LED_Init(LED* led, TIM_HandleTypeDef* htim, uint32_t red, uint32_t green, uint32_t blue) {
@@ -41,6 +88,121 @@ void LED_SetBrightness(LED* led, uint8_t redPercent, uint8_t greenPercent, uint8
     __HAL_TIM_SET_COMPARE(led->timer, led->redChannel, redValue);
     __HAL_TIM_SET_COMPARE(led->timer, led->greenChannel, greenValue);
     __HAL_TIM_SET_COMPARE(led->timer, led->blueChannel, blueValue);
+}
+
+void LED_SetStatus(LED_Status_t status)
+{
+    if (LED_IsValidStatus(status) != 0U)
+    {
+        g_led_status = status;
+    }
+}
+
+LED_Status_t LED_GetStatus(void)
+{
+    return g_led_status;
+}
+
+void LED_Service(LED* led)
+{
+    static LED_Status_t last_status = LED_STATUS_BOOTING;
+    static uint32_t status_start_ms = 0U;
+    static LedRgbPercent_t last_color = { 255U, 255U, 255U };
+    LED_Status_t status;
+    LedRgbPercent_t color = { 0U, 0U, 0U };
+    LedRgbPercent_t target;
+    uint32_t now_ms;
+    uint32_t elapsed_ms;
+    uint8_t on_phase;
+    uint8_t pulse;
+
+    if (led == NULL)
+    {
+        return;
+    }
+
+    status = g_led_status;
+    now_ms = HAL_GetTick();
+    if (status != last_status)
+    {
+        last_status = status;
+        status_start_ms = now_ms;
+    }
+
+    elapsed_ms = now_ms - status_start_ms;
+
+    switch (status)
+    {
+        case LED_STATUS_BOOTING:
+            color = (LedRgbPercent_t){ 35U, 35U, 35U };
+            break;
+
+        case LED_STATUS_ETH_INIT:
+            on_phase = (((elapsed_ms / 500U) & 1U) == 0U) ? 1U : 0U;
+            color = (on_phase != 0U) ? (LedRgbPercent_t){ 0U, 0U, 60U } : (LedRgbPercent_t){ 0U, 0U, 0U };
+            break;
+
+        case LED_STATUS_ETH_LINK_WAIT_TCP:
+            color = (LedRgbPercent_t){ 0U, 0U, 60U };
+            break;
+
+        case LED_STATUS_TCP_CONNECTED:
+            color = (LedRgbPercent_t){ 0U, 50U, 0U };
+            break;
+
+        case LED_STATUS_OPENAMP_NOT_READY:
+            on_phase = (((elapsed_ms / 500U) & 1U) == 0U) ? 1U : 0U;
+            color = (on_phase != 0U) ? (LedRgbPercent_t){ 70U, 60U, 0U } : (LedRgbPercent_t){ 0U, 0U, 0U };
+            break;
+
+        case LED_STATUS_EMMC_ERROR:
+            on_phase = (((elapsed_ms / 500U) & 1U) == 0U) ? 1U : 0U;
+            color = (on_phase != 0U) ? (LedRgbPercent_t){ 80U, 0U, 0U } : (LedRgbPercent_t){ 0U, 0U, 0U };
+            break;
+
+        case LED_STATUS_EMMC_FORMATTING:
+            on_phase = (((elapsed_ms / 500U) & 1U) == 0U) ? 1U : 0U;
+            color = (on_phase != 0U) ? (LedRgbPercent_t){ 55U, 0U, 60U } : (LedRgbPercent_t){ 0U, 0U, 0U };
+            break;
+
+        case LED_STATUS_DAQ_LOGGING:
+            target = (LedRgbPercent_t){ 0U, 55U, 55U };
+            pulse = (uint8_t)(20U + ((((uint16_t)LED_TrianglePercent(elapsed_ms, 1200U)) * 80U) / 100U));
+            color = LED_ScaleColor(target, pulse);
+            break;
+
+        case LED_STATUS_DAQ_STREAMING:
+            on_phase = (((elapsed_ms / 125U) & 1U) == 0U) ? 1U : 0U;
+            color = (on_phase != 0U) ? (LedRgbPercent_t){ 0U, 60U, 0U } : (LedRgbPercent_t){ 0U, 0U, 0U };
+            break;
+
+        case LED_STATUS_FILE_STREAMING:
+            on_phase = (((elapsed_ms / 125U) & 1U) == 0U) ? 1U : 0U;
+            color = (on_phase != 0U) ? (LedRgbPercent_t){ 0U, 55U, 55U } : (LedRgbPercent_t){ 0U, 0U, 0U };
+            break;
+
+        case LED_STATUS_OFFSET_CALIBRATING:
+            color = (LedRgbPercent_t){ 70U, 60U, 0U };
+            break;
+
+        case LED_STATUS_RECOVERABLE_WARNING:
+            on_phase = (((elapsed_ms / 300U) & 1U) == 0U) ? 1U : 0U;
+            color = (on_phase != 0U) ? (LedRgbPercent_t){ 80U, 28U, 0U } : (LedRgbPercent_t){ 0U, 0U, 0U };
+            break;
+
+        case LED_STATUS_FATAL:
+        default:
+            color = (LedRgbPercent_t){ 100U, 0U, 0U };
+            break;
+    }
+
+    if ((color.red != last_color.red) ||
+        (color.green != last_color.green) ||
+        (color.blue != last_color.blue))
+    {
+        LED_SetBrightness(led, color.red, color.green, color.blue);
+        last_color = color;
+    }
 }
 
 

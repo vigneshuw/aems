@@ -26,8 +26,10 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "lwip/ip_addr.h"
+#include "lwip/netif.h"
 #include "queue.h"
 #include <string.h>
+#include "led.h"
 #include "tcpclient.h"
 #include "openamp_fs.h"
 #include "file_shmem.h"
@@ -96,7 +98,14 @@ static uint16_t g_last_stream_prefetch_len;
 static TcpClientConfig_t tcpCfg;
 static ip_addr_t tcpServerIp;
 static ControlMessage_t msg;
+static volatile uint8_t g_led_file_stream_active;
+static volatile uint8_t g_led_daq_stream_active;
+static volatile uint8_t g_led_daq_log_active;
+static volatile uint8_t g_led_calibration_active;
+static volatile uint8_t g_led_openamp_not_ready;
+static volatile uint32_t g_led_warning_until_ms;
 extern struct netif gnetif;
+extern LED rgbLed;
 /* USER CODE END Variables */
 osThreadId defaultTaskHandle;
 osThreadId controllerTaskHandle;
@@ -127,6 +136,8 @@ static void DaqConfigFromPayload(const uint8_t *payload,
                                  uint16_t payload_len,
                                  DaqConfig_t *config,
                                  uint32_t *sample_count);
+static void LedRaiseRecoverableWarning(uint32_t duration_ms);
+static LED_Status_t Telemetry_SelectLedStatus(void);
 /* USER CODE END FunctionPrototypes */
 
 void StartDefaultTask(void const * argument);
@@ -354,6 +365,7 @@ void ControllerTask(void const * argument)
 
           if (fs_status == 0)
           {
+            g_led_file_stream_active = 0U;
             stream_status = TcpClient_StartStreamPtr(header,
                                                      sizeof(header),
                                                      stream_size,
@@ -364,11 +376,17 @@ void ControllerTask(void const * argument)
             {
               g_openamp_file_stream_ctx.last_status = stream_status;
               (void)OpenAmpFs_CloseFileStream();
+              LedRaiseRecoverableWarning(5000U);
+            }
+            else
+            {
+              g_led_file_stream_active = 1U;
             }
           }
           else
           {
             (void)TcpClient_SendBuffer(header, sizeof(header));
+            LedRaiseRecoverableWarning(5000U);
           }
           break;
         }
@@ -570,6 +588,10 @@ void ControllerTask(void const * argument)
 
           memset(&daq_status, 0, sizeof(daq_status));
           op_status = OpenAmpFs_DaqGetStatus(&daq_status);
+          if ((op_status == 0) && ((daq_status.last_error != 0U) || (daq_status.dropped_buffers != 0U)))
+          {
+            LedRaiseRecoverableWarning(5000U);
+          }
 
           memset(tx, 0, sizeof(tx));
           tx[0] = msg.command;
@@ -602,6 +624,15 @@ void ControllerTask(void const * argument)
           DaqConfigFromPayload(msg.payload, msg.payload_len, &daq_config, &sample_count);
           (void)sample_count;
           op_status = OpenAmpFs_DaqStartLog(&daq_config);
+          if (op_status == 0)
+          {
+            g_led_daq_log_active = 1U;
+            g_led_daq_stream_active = 0U;
+          }
+          else
+          {
+            LedRaiseRecoverableWarning(5000U);
+          }
 
           // Send acknowledgment over TCP
           memset(tx, 0, sizeof(tx));
@@ -624,6 +655,15 @@ void ControllerTask(void const * argument)
           int32_t op_status;
 
           op_status = OpenAmpFs_DaqStop();
+          if (op_status == 0)
+          {
+            g_led_daq_log_active = 0U;
+            g_led_daq_stream_active = 0U;
+          }
+          else
+          {
+            LedRaiseRecoverableWarning(5000U);
+          }
 
           memset(tx, 0, sizeof(tx));
           tx[0] = msg.command;
@@ -642,6 +682,15 @@ void ControllerTask(void const * argument)
           int32_t op_status;
 
           op_status = OpenAmpFs_DaqStopAndClose();
+          if (op_status == 0)
+          {
+            g_led_daq_log_active = 0U;
+            g_led_daq_stream_active = 0U;
+          }
+          else
+          {
+            LedRaiseRecoverableWarning(5000U);
+          }
 
           memset(tx, 0, sizeof(tx));
           tx[0] = msg.command;
@@ -690,6 +739,7 @@ void ControllerTask(void const * argument)
             memset(&g_openamp_daq_stream_ctx, 0, sizeof(g_openamp_daq_stream_ctx));
             g_openamp_daq_stream_ctx.bytes_remaining = stream_size;
             g_openamp_daq_stream_ctx.samples_requested = sample_count;
+            g_led_daq_stream_active = 0U;
             stream_status = TcpClient_StartStreamPtr(header,
                                                      sizeof(header),
                                                      stream_size,
@@ -700,11 +750,18 @@ void ControllerTask(void const * argument)
             {
               g_openamp_daq_stream_ctx.last_status = stream_status;
               (void)OpenAmpFs_DaqStop();
+              LedRaiseRecoverableWarning(5000U);
+            }
+            else
+            {
+              g_led_daq_stream_active = 1U;
+              g_led_daq_log_active = 0U;
             }
           }
           else
           {
             (void)TcpClient_SendBuffer(header, sizeof(header));
+            LedRaiseRecoverableWarning(5000U);
           }
           break;
         }
@@ -722,6 +779,7 @@ void ControllerTask(void const * argument)
           request_value = (uint32_t)msg.epoch_time ^ msg.server_id ^ 0x00000063U;
           ping_status = OpenAmpFs_Ping(request_value, &reply_value);
           shmem_probe_status = OpenAmpFs_ProbeSharedMemory(&shmem_probe_len, &shmem_probe_bad_index);
+          g_led_openamp_not_ready = ((ping_status == 0) && (shmem_probe_status == 0)) ? 0U : 1U;
 
           memset(tx, 0, sizeof(tx));
           tx[0] = msg.command;
@@ -765,7 +823,14 @@ void ControllerTask(void const * argument)
           }
           else
           {
+            g_led_calibration_active = 1U;
             op_status = OpenAmpFs_DaqRunCalibration(&calibration);
+            g_led_calibration_active = 0U;
+          }
+
+          if (op_status != 0)
+          {
+            LedRaiseRecoverableWarning(5000U);
           }
 
           memset(tx, 0, sizeof(tx));
@@ -807,7 +872,9 @@ void TelemetryTask(void const * argument)
   /* USER CODE BEGIN TelemetryTask */
   for(;;)
   {
-    osDelay(1);
+    LED_SetStatus(Telemetry_SelectLedStatus());
+    LED_Service(&rgbLed);
+    osDelay(25);
   }
   /* USER CODE END TelemetryTask */
 }
@@ -816,6 +883,72 @@ void TelemetryTask(void const * argument)
 /* USER CODE BEGIN Application */
 
 /* USER CODE BEGIN Helpers */
+static void LedRaiseRecoverableWarning(uint32_t duration_ms)
+{
+  g_led_warning_until_ms = HAL_GetTick() + duration_ms;
+}
+
+static LED_Status_t Telemetry_SelectLedStatus(void)
+{
+  uint32_t now_ms;
+  int32_t remote_mount_status;
+
+  if ((!netif_is_up(&gnetif)) || (!netif_is_link_up(&gnetif)))
+  {
+    return LED_STATUS_ETH_INIT;
+  }
+
+  if (TcpClient_IsConnected() == 0U)
+  {
+    return LED_STATUS_ETH_LINK_WAIT_TCP;
+  }
+
+  if ((OpenAmpFs_GetInitStatus() != 0) || (g_led_openamp_not_ready != 0U))
+  {
+    return LED_STATUS_OPENAMP_NOT_READY;
+  }
+
+  remote_mount_status = OpenAmpFs_GetRemoteMountStatus();
+  if (remote_mount_status != 0)
+  {
+    if (OpenAmpFs_GetRemoteMountDiagStage() == 3U)
+    {
+      return LED_STATUS_EMMC_FORMATTING;
+    }
+
+    return LED_STATUS_EMMC_ERROR;
+  }
+
+  if (g_led_calibration_active != 0U)
+  {
+    return LED_STATUS_OFFSET_CALIBRATING;
+  }
+
+  if (g_led_daq_log_active != 0U)
+  {
+    return LED_STATUS_DAQ_LOGGING;
+  }
+
+  if (g_led_daq_stream_active != 0U)
+  {
+    return LED_STATUS_DAQ_STREAMING;
+  }
+
+  if (g_led_file_stream_active != 0U)
+  {
+    return LED_STATUS_FILE_STREAMING;
+  }
+
+  now_ms = HAL_GetTick();
+  if ((g_led_warning_until_ms != 0U) && ((int32_t)(g_led_warning_until_ms - now_ms) > 0))
+  {
+    return LED_STATUS_RECOVERABLE_WARNING;
+  }
+  g_led_warning_until_ms = 0U;
+
+  return LED_STATUS_TCP_CONNECTED;
+}
+
 static uint32_t ReadU32Be(const uint8_t *data)
 {
   return ((uint32_t)data[0] << 24) |
@@ -1131,6 +1264,8 @@ static void OpenAmpFileStreamDone(void *context)
 {
   OpenAmpFileStreamContext_t *stream_ctx = (OpenAmpFileStreamContext_t *)context;
 
+  g_led_file_stream_active = 0U;
+
   if (stream_ctx != NULL)
   {
     stream_ctx->offset = stream_ctx->total_size;
@@ -1206,6 +1341,8 @@ static int32_t OpenAmpDaqStreamReadPtr(void *context, const uint8_t **out_data, 
 static void OpenAmpDaqStreamDone(void *context)
 {
   OpenAmpDaqStreamContext_t *stream_ctx = (OpenAmpDaqStreamContext_t *)context;
+
+  g_led_daq_stream_active = 0U;
 
   if (stream_ctx != NULL)
   {

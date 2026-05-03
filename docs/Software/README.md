@@ -223,6 +223,44 @@ Important storage fields:
 
 A blank eMMC can validly report `remote_mount_status=0`, `emmc_mount_fresult=13`, `emmc_mkfs_fresult=0`, and `emmc_post_mount_fresult=0`. That means the first mount found no filesystem, firmware created one, and the post-format mount succeeded.
 
+## RGB LED Board Status
+
+CM7 owns the onboard RGB LED and updates it from `TelemetryTask`. The LED service is non-blocking: the telemetry task selects a board status and calls `LED_Service(&rgbLed)` every 25 ms. Blink and pulse effects are generated from `HAL_GetTick()` and do not block TCP, OpenAMP, or DAQ work.
+
+The LED is intended as the first field diagnostic. An end user should be able to look at the board and know whether the issue is network, host connection, CM4/OpenAMP, eMMC, active acquisition, or a fatal fault.
+
+### Status Colors
+
+| Priority | LED | Meaning | Typical trigger |
+|---:|---|---|---|
+| 1 | Red solid | Fatal firmware error | `Error_Handler()` |
+| 2 | Red slow blink | eMMC/storage error | CM4 mount status is nonzero after command `99` diagnostics are available |
+| 3 | Yellow blink | CM4/OpenAMP not ready | OpenAMP init failed or latest heartbeat/probe showed CM4 service not healthy |
+| 4 | Yellow solid | Offset calibration active | command `98` is running |
+| 5 | Cyan pulse | DAQ logging to eMMC | command `11` succeeded and logging is active |
+| 6 | Green fast blink | Live DAQ streaming | command `13` stream is active |
+| 7 | Cyan fast blink | File stream active | command `8` stream is active |
+| 8 | Orange blink | Recoverable warning | command/stream failure, dropped samples reported by command `10`/`110`, or retry condition |
+| 9 | Green solid | TCP connected and idle | board is connected to host and no higher-priority activity/error is active |
+| 10 | Blue solid | Ethernet link up, TCP not connected | PHY/link is up but Python host server is not connected |
+| 11 | Blue slow blink | Ethernet/PHY initialization or no link | PHY reset/link bring-up, cable/switch missing, or link not stable |
+| 12 | White solid | Booting | LED initialized before runtime status is known |
+
+### How to Interpret the LED
+
+- **White solid** should be brief. If it stays white, CM7 likely did not reach the FreeRTOS telemetry loop.
+- **Blue slow blink** points at physical Ethernet: cable, switch, PHY reset/init, or link negotiation.
+- **Blue solid** means Ethernet is good but the host TCP server is not connected. Start the Python tool and verify the configured host IP is reachable.
+- **Green solid** is the normal idle state after the board connects to the host.
+- **Yellow blink** means CM7 is alive but cannot confirm CM4/OpenAMP health. Use command `99`.
+- **Red slow blink** means eMMC is not usable. Use command `99` and check `remote_mount_status`, `emmc_mount_stage`, and FatFs `FRESULT` fields.
+- **Purple slow blink** means the eMMC filesystem creation path is active. This can happen on a new blank eMMC.
+- **Cyan pulse / green fast blink / cyan fast blink** identify active data movement: eMMC DAQ logging, live DAQ streaming, or file streaming.
+- **Orange blink** is intentionally nonfatal. It tells the user to query command `10`, `110`, or `99` for detail.
+- **Red solid** means fatal firmware error and requires reset/debug.
+
+See also: [CM7 LED helper library](CM7/Library/led.md)
+
 ## Recommended reading order
 
 1. read this page first

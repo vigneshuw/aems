@@ -149,7 +149,8 @@ Error_Handler();
   HAL_TIM_Base_Start_IT(&htim1);
   LED_Init(&rgbLed, &htim1, TIM_CHANNEL_1, TIM_CHANNEL_2, TIM_CHANNEL_3);
   LED_ON(&rgbLed);
-  LED_SetBrightness(&rgbLed, 0, 40, 0);
+  LED_SetStatus(LED_STATUS_BOOTING);
+  LED_SetBrightness(&rgbLed, 35, 35, 35);
 
   /* USER CODE END 2 */
 
@@ -339,6 +340,8 @@ void Error_Handler(void)
 {
   /* USER CODE BEGIN Error_Handler_Debug */
   /* User can add his own implementation to report the HAL error return state */
+  LED_SetStatus(LED_STATUS_FATAL);
+  LED_SetBrightness(&rgbLed, 100, 0, 0);
   __disable_irq();
   while (1)
   {
