@@ -743,6 +743,10 @@ void ControllerTask(void const * argument)
           WriteU32Be(&tx[59], (uint32_t)g_last_stream_prefetch_status);
           WriteU32Be(&tx[63], (uint32_t)g_last_stream_prefetch_len);
           WriteU32Be(&tx[67], OpenAmpFs_GetRemoteAdcDeviceId());
+          WriteU32Be(&tx[71], OpenAmpFs_GetRemoteMountDiagStage());
+          WriteU32Be(&tx[75], OpenAmpFs_GetRemoteMountDiagMountFresult());
+          WriteU32Be(&tx[79], OpenAmpFs_GetRemoteMountDiagMkfsFresult());
+          WriteU32Be(&tx[83], OpenAmpFs_GetRemoteMountDiagPostMountFresult());
           (void)TcpClient_SendBuffer(tx, sizeof(tx));
           break;
         }

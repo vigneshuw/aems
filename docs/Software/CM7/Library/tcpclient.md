@@ -204,6 +204,16 @@ Most commands use a fixed 100-byte reply format:
 | `14` | 1 | TCP connected flag |
 | `15+` | command-specific fields |
 
+Command `99` uses this fixed response to expose the board diagnostic snapshot. Its storage-specific tail fields currently are:
+
+| Offset | Size | Meaning |
+|---:|---:|---|
+| `39` | 4 | CM4 public eMMC mount status |
+| `71` | 4 | eMMC mount lifecycle stage |
+| `75` | 4 | first `f_mount()` FatFs `FRESULT` |
+| `79` | 4 | `f_mkfs()` FatFs `FRESULT` |
+| `83` | 4 | post-format `f_mount()` FatFs `FRESULT` |
+
 ### 18-byte stream header
 
 Commands `8`, `9`, and `13` use an 18-byte stream header before raw payload bytes:

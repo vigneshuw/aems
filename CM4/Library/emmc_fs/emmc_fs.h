@@ -32,6 +32,24 @@ typedef enum
     EMMC_FS_CREATE_STAGE_SYNC = 4
 } EmmcFsCreateStage_t;
 
+typedef enum
+{
+    EMMC_FS_MOUNT_STAGE_NONE = 0,
+    EMMC_FS_MOUNT_STAGE_LINK = 1,
+    EMMC_FS_MOUNT_STAGE_MOUNT = 2,
+    EMMC_FS_MOUNT_STAGE_MKFS = 3,
+    EMMC_FS_MOUNT_STAGE_POST_MOUNT = 4
+} EmmcFsMountStage_t;
+
+typedef struct
+{
+    uint32_t stage;
+    int32_t status;
+    uint32_t mount_fresult;
+    uint32_t mkfs_fresult;
+    uint32_t post_mount_fresult;
+} EmmcFsMountDiagnostics_t;
+
 typedef struct
 {
     uint32_t total_file_count;
@@ -67,6 +85,8 @@ EmmcFsStatus_t EmmcFs_Init(void);
  * @return `EMMC_FS_ERR_MKFS` if formatting or the post-format mount fails.
  */
 EmmcFsStatus_t EmmcFs_MountOrFormat(void);
+
+void EmmcFs_GetMountDiagnostics(EmmcFsMountDiagnostics_t *diagnostics);
 
 /**
  * @brief Rewrite `config_main.conf` with server ID, epoch time, and payload bytes.

@@ -21,6 +21,8 @@ CM4 is responsible for:
 - booting after CM7 releases it through HSEM
 - initializing the ADC-facing SPI and the eMMC interface
 - mounting the filesystem
+- creating the filesystem on first boot when eMMC is blank
+- recording eMMC mount/format diagnostics for command `99`
 - creating the OpenAMP RPMsg service used by CM7
 - running the DAQ state machine
 - packaging and writing raw samples into eMMC log files
@@ -55,9 +57,13 @@ That is the whole model:
 2. initialize HAL and CM4-owned peripherals
 3. probe the ADC device ID using the master clock
 4. initialize DAQ context and DAQ engine
-5. initialize and mount eMMC filesystem through `EmmcFs_*`
-6. initialize OpenAMP remote endpoint through `OpenAmpFs_RemoteInit()`
-7. enter the superloop
+5. set SDMMC1 to mount ClockDiv `10`
+6. initialize and mount-or-format eMMC filesystem through `EmmcFs_*`
+7. snapshot mount diagnostics for command `99`
+8. if mount succeeded, switch SDMMC1 to runtime ClockDiv `8`
+9. load persisted ADC offset calibration from `ocal.cfg` when present
+10. initialize OpenAMP remote endpoint through `OpenAmpFs_RemoteInit()`
+11. enter the superloop
 
 ## Interrupts and callback ownership
 
@@ -158,9 +164,10 @@ This distinction is important because the binary layout differs.
 
 ### Command 11 log layout
 
-For current board assumptions:
+For current board/host assumptions:
 
-- channel mask currently constrained to `0x3F`
+- workflows currently use `channel_mask = 0x3F`
+- the firmware validates an 8-bit mask, but host physical-value conversion and CSV examples are defined for channels `0..5`
 - channels `0..5` are packed
 - each channel is written as signed 32-bit little-endian
 - no response field or CRC field is written
@@ -195,11 +202,15 @@ CM4 implements the RPMsg service endpoint named `openamp_pingpong_demo`. This se
 
 The operation IDs are defined locally in `CM4/Core/Src/openamp_fs.c`.
 
+Command `99` exposes both the public mount status and lower-level FatFs mount lifecycle diagnostics. A newly formatted blank eMMC commonly reports `remote_mount_status=0`, `emmc_mount_fresult=13`, `emmc_mkfs_fresult=0`, and `emmc_post_mount_fresult=0`.
+
 ## Filesystem ownership
 
 CM4 owns eMMC and all FatFs access in the current architecture. CM7 does not mount or write the volume directly; it proxies through CM4 using OpenAMP.
 
 That ownership model reduces concurrency problems and keeps storage timing under CM4 control.
+
+The eMMC boot policy is also CM4-owned. `CM4/Core/Inc/sdmmc.h` defines a slower mount/format ClockDiv (`10`) and a runtime ClockDiv (`8`). The helper functions live in CubeMX USER CODE blocks, so regenerating SDMMC setup should not remove the policy.
 
 ## Key source files
 

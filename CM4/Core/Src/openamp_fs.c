@@ -178,6 +178,10 @@ static int OpenAmpPing_RxCallback(struct rpmsg_endpoint *ept,
   response.init_status = CM4_GetEmmcInitStatus();
   response.mount_status = CM4_GetEmmcMountStatus();
   response.arg0 = (uint32_t)CM4_GetAdcDeviceId();
+  response.arg1 = CM4_GetEmmcMountDiagStage();
+  response.arg2 = CM4_GetEmmcMountDiagMountFresult();
+  response.arg3 = CM4_GetEmmcMountDiagMkfsFresult();
+  response.arg4 = CM4_GetEmmcMountDiagPostMountFresult();
 
   switch (request_copy.op)
   {

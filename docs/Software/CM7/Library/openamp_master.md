@@ -27,6 +27,8 @@ Internally, each helper:
 3. waits for the reply
 4. optionally exposes shared-memory metadata or copies RPMsg chunk payload data
 
+OpenAMP operation IDs are internal RPC IDs. They do not always match host TCP command numbers; `ControllerTask()` performs that mapping in `CM7/Core/Src/freertos.c`.
+
 ## Why this layer exists
 
 CM7 owns host networking but does not own eMMC or DAQ sampling. So many host commands require a synchronous CM7-to-CM4 transaction before TCP can respond.
@@ -57,6 +59,10 @@ Returns:
 | `OpenAmpFs_GetInitStatus()` | CM7 init status |
 | `OpenAmpFs_GetRemoteInitStatus()` | CM4 init status |
 | `OpenAmpFs_GetRemoteMountStatus()` | CM4 eMMC mount status |
+| `OpenAmpFs_GetRemoteMountDiagStage()` | CM4 eMMC mount lifecycle stage |
+| `OpenAmpFs_GetRemoteMountDiagMountFresult()` | FatFs result from CM4 first `f_mount()` |
+| `OpenAmpFs_GetRemoteMountDiagMkfsFresult()` | FatFs result from CM4 `f_mkfs()` |
+| `OpenAmpFs_GetRemoteMountDiagPostMountFresult()` | FatFs result from CM4 post-format `f_mount()` |
 | `OpenAmpFs_GetRemoteAdcDeviceId()` | ADC device ID reported by CM4 |
 
 ### Filesystem metadata
@@ -92,6 +98,20 @@ Returns:
 | `OpenAmpFs_DaqStopAndClose()` | stop and close DAQ log |
 
 ## Function-level notes
+
+### Diagnostic getters used by command `99`
+
+The latest OpenAMP response is cached in `g_last_response`. After `OpenAmpFs_Ping()` and `OpenAmpFs_ProbeSharedMemory()` complete, CM7 reads cached remote diagnostics through getter functions and places them into the command `99` TCP response.
+
+Important command `99` storage fields:
+
+| TCP offset | Getter | Meaning |
+|---:|---|---|
+| `39` | `OpenAmpFs_GetRemoteMountStatus()` | public CM4 mount status |
+| `71` | `OpenAmpFs_GetRemoteMountDiagStage()` | mount lifecycle stage |
+| `75` | `OpenAmpFs_GetRemoteMountDiagMountFresult()` | first `f_mount()` result |
+| `79` | `OpenAmpFs_GetRemoteMountDiagMkfsFresult()` | `f_mkfs()` result |
+| `83` | `OpenAmpFs_GetRemoteMountDiagPostMountFresult()` | post-format `f_mount()` result |
 
 ### `OpenAmpFs_ListFilesShared(uint8_t **buffer, uint32_t *bytes_read)`
 

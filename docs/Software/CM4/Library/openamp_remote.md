@@ -84,9 +84,23 @@ Two response forms exist:
 
 High-throughput file and DAQ streaming avoid large RPMsg payloads by placing bytes in shared SRAM and returning only metadata.
 
+For the default small response, CM4 preloads diagnostic fields before command-specific dispatch:
+
+| Field | Default diagnostic value |
+|---|---|
+| `arg0` | ADC device ID from `CM4_GetAdcDeviceId()` |
+| `arg1` | eMMC mount stage |
+| `arg2` | first `f_mount()` FatFs `FRESULT` |
+| `arg3` | `f_mkfs()` FatFs `FRESULT` |
+| `arg4` | post-format `f_mount()` FatFs `FRESULT` |
+
+Some operations overwrite these fields with operation-specific results. Command `99` preserves and forwards them as the host-visible eMMC mount diagnostics.
+
 ## Current operation IDs
 
 The CM4 remote currently implements the following logical services:
+
+These are **OpenAMP internal operation IDs**, not necessarily the same numbers as host TCP commands. For example, host command `97` gets offset calibration values, while OpenAMP operation `97` deletes one file.
 
 | Operation ID | Purpose |
 |---:|---|
@@ -184,6 +198,8 @@ CM4 replies often include:
 
 - CM4 eMMC init status
 - CM4 mount status
+- eMMC mount lifecycle stage
+- first-mount, mkfs, and post-mount FatFs `FRESULT` values
 - ADC device ID
 
 That data is surfaced by CM7 in TCP command `99`.

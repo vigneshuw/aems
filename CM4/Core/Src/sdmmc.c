@@ -165,5 +165,26 @@ void HAL_MMC_MspDeInit(MMC_HandleTypeDef* mmcHandle)
 }
 
 /* USER CODE BEGIN 1 */
+HAL_StatusTypeDef SDMMC1_SetClockDiv(uint32_t clock_div)
+{
+  if (hmmc1.Instance != SDMMC1)
+  {
+    return HAL_ERROR;
+  }
+
+  if (clock_div > 0x3FFU)
+  {
+    return HAL_ERROR;
+  }
+
+  hmmc1.Init.ClockDiv = clock_div;
+  MODIFY_REG(hmmc1.Instance->CLKCR, SDMMC_CLKCR_CLKDIV, clock_div);
+  return HAL_OK;
+}
+
+uint32_t SDMMC1_GetClockDiv(void)
+{
+  return READ_BIT(hmmc1.Instance->CLKCR, SDMMC_CLKCR_CLKDIV);
+}
 
 /* USER CODE END 1 */

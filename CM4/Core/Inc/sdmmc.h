@@ -35,12 +35,16 @@ extern "C" {
 extern MMC_HandleTypeDef hmmc1;
 
 /* USER CODE BEGIN Private defines */
+#define SDMMC1_EMMC_MOUNT_CLOCK_DIV    10U
+#define SDMMC1_EMMC_RUNTIME_CLOCK_DIV  8U
 
 /* USER CODE END Private defines */
 
 void MX_SDMMC1_MMC_Init(void);
 
 /* USER CODE BEGIN Prototypes */
+HAL_StatusTypeDef SDMMC1_SetClockDiv(uint32_t clock_div);
+uint32_t SDMMC1_GetClockDiv(void);
 
 /* USER CODE END Prototypes */
 

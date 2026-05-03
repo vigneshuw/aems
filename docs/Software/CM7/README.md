@@ -79,7 +79,7 @@ TCP receive bytes are handed to `ProcessTcpData()`, which converts them into `Co
 | `13` | start DAQ live stream |
 | `97` | get current CM4 ADC offset calibration values |
 | `98` | run CM4 ADC offset calibration and persist the new values |
-| `99` | OpenAMP heartbeat / diagnostic snapshot |
+| `99` | OpenAMP heartbeat / diagnostic snapshot, including eMMC mount/format diagnostics |
 | `112` | stop and close DAQ log |
 
 ## CM7 to CM4 command path
@@ -124,6 +124,19 @@ CM7 provides two kinds of host-visible streams:
 - CM7 repeatedly asks CM4 for the next DAQ block in shared SRAM
 - each block contains full `DaqSampleFrame_t` frames
 - `TcpClient_StartStreamPtr()` sends those bytes directly to the host
+
+### Diagnostic heartbeat (`command 99`)
+
+Command `99` is the main cross-core bring-up snapshot. CM7 performs an OpenAMP ping, probes shared memory, then returns a fixed 100-byte TCP response containing:
+
+- OpenAMP service creation and RX counters
+- CM7 OpenAMP init status
+- CM4 OpenAMP init status
+- CM4 eMMC public mount status
+- shared-memory probe status/length/bad-index
+- last file-stream open/prefetch status
+- CM4 ADC device ID
+- CM4 eMMC mount lifecycle diagnostics: stage, first `f_mount()` result, `f_mkfs()` result, and post-format `f_mount()` result
 
 ## Shared-memory role
 

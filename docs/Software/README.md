@@ -25,15 +25,19 @@ The current codebase implements the following board-level capabilities:
 - CM4 OpenAMP remote service for filesystem and DAQ control
 - CM4 ADS131M08 acquisition pipeline using SPI + DMA + cooperative superloop
 - CM4 eMMC filesystem wrapper using FatFs on SDMMC1/MMC
+- CM4 eMMC first-mount/format recovery with command `99` diagnostics
+- CM4 SDMMC1 ClockDiv boot policy: slower ClockDiv during mount/format, runtime ClockDiv after success
 - DAQ logging to eMMC files
 - DAQ live streaming from CM4 to CM7 via shared memory
 - file count, file list, file size, file delete, and file stream operations
+- persistent ADC offset calibration commands `97` / `98`
 
 Known current constraints:
 
 - the host tooling and most workflows currently assume **channel mask `0x3F`**
 - command `11` eMMC DAQ log files and command `13` live DAQ streams use **different binary layouts**
 - CM7/host-side DAQ stop during command `13` still relies on a temporary protocol heuristic and should be cleaned up by a future firmware framing update
+- command `99` is the primary bring-up diagnostic; it now includes raw FatFs mount/format results for blank or marginal eMMC parts
 
 ## Hardware and software interplay
 
@@ -42,7 +46,7 @@ The firmware is tightly coupled to the board hardware. The main hardware/softwar
 | Hardware block | Firmware owner | Notes |
 |---|---|---|
 | ADS131M08 ADC | CM4 | Sample clocking, SPI4 DMA reads, DRDY interrupt handling, per-sample packing |
-| eMMC on SDMMC1 | CM4 | FatFs mount, file I/O, DAQ raw log writes |
+| eMMC on SDMMC1 | CM4 | FatFs mount/format, ClockDiv policy, file I/O, DAQ raw log writes |
 | Ethernet PHY / LwIP | CM7 | Host connectivity, TCP link, command transport |
 | Shared SRAM region | CM4 + CM7 | File and DAQ streaming handoff between cores |
 | OpenAMP / RPMsg | CM4 + CM7 | Control plane between the two cores |
@@ -150,10 +154,12 @@ See: [CM7 documentation](CM7/README.md)
 ### Boot sequence
 
 1. CM7 powers up first, configures clocks/cache/MPU, and releases CM4 through HSEM.
-2. CM4 wakes, initializes SPI4, SDMMC1, DAQ context, and mounts the eMMC filesystem.
+2. CM4 wakes, initializes SPI4, SDMMC1, DAQ context, sets SDMMC1 to mount ClockDiv `10`, and mounts/formats the eMMC filesystem.
 3. CM4 brings up the OpenAMP remote endpoint.
 4. CM7 starts FreeRTOS, LwIP, TCP client, and OpenAMP master.
 5. The board is then ready to accept host commands.
+
+After a successful eMMC mount or first-boot format, CM4 switches SDMMC1 back to runtime ClockDiv `8` and then loads persisted DAQ offset calibration from `ocal.cfg` when present.
 
 ### Command path overview
 
@@ -187,7 +193,8 @@ Two binary DAQ formats exist today:
 ### 1. eMMC log file format from command `11`
 
 - selected channels only
-- currently channels `0..5`
+- current host physical-value tooling assumes channels `0..5` (`channel_mask = 0x3F`)
+- firmware can validate an 8-bit channel mask, but widening the mask changes the file stride and host decoder assumptions
 - each channel stored as signed 32-bit little-endian
 - **24 bytes per sample** for current board assumptions
 
@@ -199,6 +206,22 @@ Two binary DAQ formats exist today:
 - **36 bytes per frame**
 
 This distinction is important in both firmware and host tooling.
+
+## Bring-up diagnostics
+
+Command `99` returns the health snapshot used during board bring-up and eMMC troubleshooting.
+
+Important storage fields:
+
+| Field | Meaning |
+|---|---|
+| `remote_mount_status` | CM4 public `EmmcFs_MountOrFormat()` result; `0` means storage is usable |
+| `emmc_mount_stage` | last mount lifecycle stage: link, first mount, mkfs, or post-format mount |
+| `emmc_mount_fresult` | FatFs result from the first `f_mount()` |
+| `emmc_mkfs_fresult` | FatFs result from `f_mkfs()` |
+| `emmc_post_mount_fresult` | FatFs result from the mount after formatting |
+
+A blank eMMC can validly report `remote_mount_status=0`, `emmc_mount_fresult=13`, `emmc_mkfs_fresult=0`, and `emmc_post_mount_fresult=0`. That means the first mount found no filesystem, firmware created one, and the post-format mount succeeded.
 
 ## Recommended reading order
 

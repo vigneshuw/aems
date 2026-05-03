@@ -154,6 +154,10 @@ def parse_fixed_packet(packet: bytes) -> PacketBase:
             struct.unpack(">i", packet[59:63])[0],
             struct.unpack(">I", packet[63:67])[0],
             struct.unpack(">I", packet[67:71])[0],
+            struct.unpack(">I", packet[71:75])[0],
+            struct.unpack(">I", packet[75:79])[0],
+            struct.unpack(">I", packet[79:83])[0],
+            struct.unpack(">I", packet[83:87])[0],
         )
     return PacketBase(command, server_id, epoch_time, status, tcp_connected)
 

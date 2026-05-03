@@ -24,6 +24,7 @@ static uint8_t s_fs_mounted;
 static uint8_t s_work_buffer[EMMC_FS_WORKBUF_LEN];
 static uint8_t s_pattern_chunk[EMMC_FS_PATTERN_CHUNK_LEN];
 static EmmcFsWriteHandle_t s_raw_log_handle;
+static EmmcFsMountDiagnostics_t s_mount_diag;
 
 static void EmmcFs_WriteU32Be(uint8_t *data, uint32_t value)
 {
@@ -232,18 +233,24 @@ EmmcFsStatus_t EmmcFs_MountOrFormat(void)
     EmmcFsStatus_t status;
 
     EmmcFs_Lock();
+    memset(&s_mount_diag, 0, sizeof(s_mount_diag));
 
+    s_mount_diag.stage = EMMC_FS_MOUNT_STAGE_LINK;
     status = EmmcFs_EnsureLinked();
     if (status != EMMC_FS_OK)
     {
+        s_mount_diag.status = (int32_t)status;
         EmmcFs_Unlock();
         return status;
     }
 
+    s_mount_diag.stage = EMMC_FS_MOUNT_STAGE_MOUNT;
     result = f_mount(&s_emmc_fs, s_emmc_path, 1U);
+    s_mount_diag.mount_fresult = (uint32_t)result;
     if (result == FR_OK)
     {
         s_fs_mounted = 1U;
+        s_mount_diag.status = (int32_t)EMMC_FS_OK;
         EmmcFs_Unlock();
         return EMMC_FS_OK;
     }
@@ -251,29 +258,49 @@ EmmcFsStatus_t EmmcFs_MountOrFormat(void)
     if (result != FR_NO_FILESYSTEM)
     {
         s_fs_mounted = 0U;
+        s_mount_diag.status = (int32_t)EMMC_FS_ERR_MOUNT;
         EmmcFs_Unlock();
         return EMMC_FS_ERR_MOUNT;
     }
 
+    s_mount_diag.stage = EMMC_FS_MOUNT_STAGE_MKFS;
     result = f_mkfs(s_emmc_path, FM_ANY, 0U, s_work_buffer, sizeof(s_work_buffer));
+    s_mount_diag.mkfs_fresult = (uint32_t)result;
     if (result != FR_OK)
     {
         s_fs_mounted = 0U;
+        s_mount_diag.status = (int32_t)EMMC_FS_ERR_MKFS;
         EmmcFs_Unlock();
         return EMMC_FS_ERR_MKFS;
     }
 
+    s_mount_diag.stage = EMMC_FS_MOUNT_STAGE_POST_MOUNT;
     result = f_mount(&s_emmc_fs, s_emmc_path, 1U);
+    s_mount_diag.post_mount_fresult = (uint32_t)result;
     if (result != FR_OK)
     {
         s_fs_mounted = 0U;
+        s_mount_diag.status = (int32_t)EMMC_FS_ERR_MKFS;
         EmmcFs_Unlock();
         return EMMC_FS_ERR_MKFS;
     }
 
     s_fs_mounted = 1U;
+    s_mount_diag.status = (int32_t)EMMC_FS_OK;
     EmmcFs_Unlock();
     return EMMC_FS_OK;
+}
+
+void EmmcFs_GetMountDiagnostics(EmmcFsMountDiagnostics_t *diagnostics)
+{
+    if (diagnostics == NULL)
+    {
+        return;
+    }
+
+    EmmcFs_Lock();
+    *diagnostics = s_mount_diag;
+    EmmcFs_Unlock();
 }
 
 EmmcFsStatus_t EmmcFs_WriteConfigMain(uint32_t server_id,

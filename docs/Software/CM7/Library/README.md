@@ -8,7 +8,7 @@ This section documents the CM7-side helper libraries that support the control an
 |---|---|---|
 | `tcpclient` | `CM7/Library/eth` | TCP transport to the host Python server, including fixed replies and streamed transfers |
 | `led` | `CM7/Library/led` | RGB LED helper used for basic board indication |
-| `openamp_fs` | `CM7/Core/Src/openamp_fs.c` | CM7-side OpenAMP master wrapper used by ControllerTask to call CM4 services |
+| `openamp_fs` | `CM7/Core/Src/openamp_fs.c` | CM7-side OpenAMP master wrapper used by ControllerTask to call CM4 services and collect command `99` diagnostics |
 
 ## Relationship to CM7 core code
 

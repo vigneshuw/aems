@@ -19,6 +19,37 @@ from .models import (
     TotalFileCountResponse,
 )
 
+EMMC_MOUNT_STAGE_NAMES = {
+    0: "NONE",
+    1: "LINK",
+    2: "MOUNT",
+    3: "MKFS",
+    4: "POST_MOUNT",
+}
+
+FATFS_FRESULT_NAMES = {
+    0: "FR_OK",
+    1: "FR_DISK_ERR",
+    2: "FR_INT_ERR",
+    3: "FR_NOT_READY",
+    4: "FR_NO_FILE",
+    5: "FR_NO_PATH",
+    6: "FR_INVALID_NAME",
+    7: "FR_DENIED",
+    8: "FR_EXIST",
+    9: "FR_INVALID_OBJECT",
+    10: "FR_WRITE_PROTECTED",
+    11: "FR_INVALID_DRIVE",
+    12: "FR_NOT_ENABLED",
+    13: "FR_NO_FILESYSTEM",
+    14: "FR_MKFS_ABORTED",
+    15: "FR_TIMEOUT",
+    16: "FR_LOCKED",
+    17: "FR_NOT_ENOUGH_CORE",
+    18: "FR_TOO_MANY_OPEN_FILES",
+    19: "FR_INVALID_PARAMETER",
+}
+
 
 class ResponseParser:
     """Convert board responses into stable dictionary payloads for end users.
@@ -96,6 +127,10 @@ class ResponseParser:
         data["reply_value_hex"] = f"0x{response.reply_value:08X}"
         data["shmem_probe_bad_index_hex"] = f"0x{response.shmem_probe_bad_index:08X}"
         data["adc_device_id_hex"] = f"0x{response.adc_device_id:04X}"
+        data["emmc_mount_stage_name"] = EMMC_MOUNT_STAGE_NAMES.get(response.emmc_mount_stage, "UNKNOWN")
+        data["emmc_mount_fresult_name"] = FATFS_FRESULT_NAMES.get(response.emmc_mount_fresult, "UNKNOWN")
+        data["emmc_mkfs_fresult_name"] = FATFS_FRESULT_NAMES.get(response.emmc_mkfs_fresult, "UNKNOWN")
+        data["emmc_post_mount_fresult_name"] = FATFS_FRESULT_NAMES.get(response.emmc_post_mount_fresult, "UNKNOWN")
         return data
 
     @classmethod

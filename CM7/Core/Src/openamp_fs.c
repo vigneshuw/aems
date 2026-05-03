@@ -796,6 +796,26 @@ int32_t OpenAmpFs_GetRemoteMountStatus(void)
   return g_last_response.mount_status;
 }
 
+uint32_t OpenAmpFs_GetRemoteMountDiagStage(void)
+{
+  return g_last_response.arg1;
+}
+
+uint32_t OpenAmpFs_GetRemoteMountDiagMountFresult(void)
+{
+  return g_last_response.arg2;
+}
+
+uint32_t OpenAmpFs_GetRemoteMountDiagMkfsFresult(void)
+{
+  return g_last_response.arg3;
+}
+
+uint32_t OpenAmpFs_GetRemoteMountDiagPostMountFresult(void)
+{
+  return g_last_response.arg4;
+}
+
 uint32_t OpenAmpFs_GetRemoteAdcDeviceId(void)
 {
   return g_remote_adc_device_id;

@@ -65,6 +65,7 @@ uint16_t SYNC_RESET_Pin = ADS_SYNC_RESET_Pin;
 static int32_t g_cm4_emmc_init_status = 0;
 static int32_t g_cm4_emmc_mount_status = 0;
 static int32_t g_cm4_emmc_create_status = 0;
+static EmmcFsMountDiagnostics_t g_cm4_emmc_mount_diag;
 static uint16_t g_cm4_adc_device_id = 0U;
 /* USER CODE END PV */
 
@@ -133,6 +134,8 @@ int main(void)
   DAQ_ContextInit();
   DAQ_EngineInit();
 
+  (void)SDMMC1_SetClockDiv(SDMMC1_EMMC_MOUNT_CLOCK_DIV);
+
   g_cm4_emmc_init_status = (int32_t)EmmcFs_Init();
   if (g_cm4_emmc_init_status != EMMC_FS_OK)
   {
@@ -140,8 +143,10 @@ int main(void)
   }
 
   g_cm4_emmc_mount_status = (int32_t)EmmcFs_MountOrFormat();
+  EmmcFs_GetMountDiagnostics(&g_cm4_emmc_mount_diag);
   if (g_cm4_emmc_mount_status == EMMC_FS_OK)
   {
+    (void)SDMMC1_SetClockDiv(SDMMC1_EMMC_RUNTIME_CLOCK_DIV);
     (void)DAQ_LoadOffsetCalibration();
   }
 
@@ -179,6 +184,26 @@ int32_t CM4_GetEmmcInitStatus(void)
 int32_t CM4_GetEmmcMountStatus(void)
 {
   return g_cm4_emmc_mount_status;
+}
+
+uint32_t CM4_GetEmmcMountDiagStage(void)
+{
+  return g_cm4_emmc_mount_diag.stage;
+}
+
+uint32_t CM4_GetEmmcMountDiagMountFresult(void)
+{
+  return g_cm4_emmc_mount_diag.mount_fresult;
+}
+
+uint32_t CM4_GetEmmcMountDiagMkfsFresult(void)
+{
+  return g_cm4_emmc_mount_diag.mkfs_fresult;
+}
+
+uint32_t CM4_GetEmmcMountDiagPostMountFresult(void)
+{
+  return g_cm4_emmc_mount_diag.post_mount_fresult;
 }
 
 uint16_t CM4_GetAdcDeviceId(void)

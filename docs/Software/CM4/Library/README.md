@@ -7,7 +7,7 @@ This section documents the CM4 libraries that implement the acquisition and stor
 | Library | Source path | Purpose |
 |---|---|---|
 | `ads131m08` | `CM4/Library/ads131m08` | ADS131M08 driver, DAQ engine, and DAQ state machine |
-| `emmc_fs` | `CM4/Library/emmc_fs` | FatFs wrapper, file enumeration, chunk reads, raw log writes |
+| `emmc_fs` | `CM4/Library/emmc_fs` | FatFs wrapper, first-boot format, mount diagnostics, file enumeration, chunk reads, raw log writes |
 | `openamp_fs` | `CM4/Core/Src/openamp_fs.c` | CM4-side OpenAMP remote service that exposes DAQ and filesystem operations |
 
 ## Relationship between the libraries

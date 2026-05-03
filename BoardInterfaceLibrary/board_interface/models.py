@@ -65,6 +65,10 @@ class OpenAmpHeartbeatResponse(PacketBase):
     stream_prefetch_status: int
     stream_prefetch_len: int
     adc_device_id: int
+    emmc_mount_stage: int
+    emmc_mount_fresult: int
+    emmc_mkfs_fresult: int
+    emmc_post_mount_fresult: int
 
 
 @dataclass(slots=True)

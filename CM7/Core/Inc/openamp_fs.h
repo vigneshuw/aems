@@ -52,6 +52,10 @@ uint32_t OpenAmpFs_GetRxCount(void);
 int32_t OpenAmpFs_GetInitStatus(void);
 int32_t OpenAmpFs_GetRemoteInitStatus(void);
 int32_t OpenAmpFs_GetRemoteMountStatus(void);
+uint32_t OpenAmpFs_GetRemoteMountDiagStage(void);
+uint32_t OpenAmpFs_GetRemoteMountDiagMountFresult(void);
+uint32_t OpenAmpFs_GetRemoteMountDiagMkfsFresult(void);
+uint32_t OpenAmpFs_GetRemoteMountDiagPostMountFresult(void);
 uint32_t OpenAmpFs_GetRemoteAdcDeviceId(void);
 
 #ifdef __cplusplus

@@ -237,6 +237,10 @@ def parse_openamp_heartbeat(packet):
     stream_prefetch_status = struct.unpack(">i", packet[59:63])[0]
     stream_prefetch_len = struct.unpack(">I", packet[63:67])[0]
     adc_device_id = struct.unpack(">I", packet[67:71])[0]
+    emmc_mount_stage = struct.unpack(">I", packet[71:75])[0]
+    emmc_mount_fresult = struct.unpack(">I", packet[75:79])[0]
+    emmc_mkfs_fresult = struct.unpack(">I", packet[79:83])[0]
+    emmc_post_mount_fresult = struct.unpack(">I", packet[83:87])[0]
 
     print(
         "RX openamp-heartbeat: "
@@ -258,7 +262,11 @@ def parse_openamp_heartbeat(packet):
         f"stream_open_status={stream_open_status}, "
         f"stream_prefetch_status={stream_prefetch_status}, "
         f"stream_prefetch_len={stream_prefetch_len}, "
-        f"adc_device_id=0x{adc_device_id:04X}"
+        f"adc_device_id=0x{adc_device_id:04X}, "
+        f"emmc_mount_stage={emmc_mount_stage}, "
+        f"emmc_mount_fresult={emmc_mount_fresult}, "
+        f"emmc_mkfs_fresult={emmc_mkfs_fresult}, "
+        f"emmc_post_mount_fresult={emmc_post_mount_fresult}"
     )
 
 
