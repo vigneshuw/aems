@@ -196,6 +196,33 @@ static int32_t EthernetIf_InitPhyWithRetry(void)
   return status;
 }
 
+static int32_t EthernetIf_GetLinkStateWithRecovery(struct netif *netif, lan8742_Object_t *phy)
+{
+  int32_t status;
+
+  if (s_eth_phy_initialized == 0U)
+  {
+    if (EthernetIf_InitPhyWithRetry() != LAN8742_STATUS_OK)
+    {
+      netif_set_link_down(netif);
+      netif_set_down(netif);
+      return LAN8742_STATUS_LINK_DOWN;
+    }
+  }
+
+  status = LAN8742_GetLinkState(phy);
+  if (status < LAN8742_STATUS_OK)
+  {
+    s_eth_phy_initialized = 0U;
+    HAL_ETH_Stop_IT(&heth);
+    netif_set_down(netif);
+    netif_set_link_down(netif);
+    return LAN8742_STATUS_LINK_DOWN;
+  }
+
+  return status;
+}
+
 /* USER CODE END 3 */
 
 /* Private functions ---------------------------------------------------------*/
@@ -851,34 +878,18 @@ void ethernet_link_thread(void const * argument)
 
   struct netif *netif = (struct netif *) argument;
 /* USER CODE BEGIN ETH link init */
+  /*
+   * Keep PHY recovery CubeMX-safe by wrapping the generated link-state call
+   * below. The wrapper retries PHY init after failures and treats MDIO read
+   * errors as link-down events.
+   */
+#define LAN8742_GetLinkState(obj) EthernetIf_GetLinkStateWithRecovery(netif, (obj))
 
 /* USER CODE END ETH link init */
 
   for(;;)
   {
-  linkchanged = 0U;
-  if (s_eth_phy_initialized == 0U)
-  {
-    if (EthernetIf_InitPhyWithRetry() != LAN8742_STATUS_OK)
-    {
-      netif_set_link_down(netif);
-      netif_set_down(netif);
-      osDelay(ETH_PHY_RECOVERY_DELAY_MS);
-      continue;
-    }
-  }
-
   PHYLinkState = LAN8742_GetLinkState(&LAN8742);
-
-  if (PHYLinkState < LAN8742_STATUS_OK)
-  {
-    s_eth_phy_initialized = 0U;
-    HAL_ETH_Stop_IT(&heth);
-    netif_set_down(netif);
-    netif_set_link_down(netif);
-    osDelay(ETH_PHY_RECOVERY_DELAY_MS);
-    continue;
-  }
 
   if(netif_is_link_up(netif) && (PHYLinkState <= LAN8742_STATUS_LINK_DOWN))
   {
@@ -928,6 +939,7 @@ void ethernet_link_thread(void const * argument)
   }
 
 /* USER CODE BEGIN ETH link Thread core code for User BSP */
+#undef LAN8742_GetLinkState
 
 /* USER CODE END ETH link Thread core code for User BSP */
 
