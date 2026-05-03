@@ -50,6 +50,8 @@ FATFS_FRESULT_NAMES = {
     19: "FR_INVALID_PARAMETER",
 }
 
+DAQ_STREAM_FRAME_BYTES = 36
+
 
 class ResponseParser:
     """Convert board responses into stable dictionary payloads for end users.
@@ -151,6 +153,8 @@ class ResponseParser:
         elapsed = float(response.elapsed_seconds or 0.0)
         bytes_received = int(response.bytes_received or 0)
         frames_received = int(response.frames_received or 0)
+        if response.command == 13 and frames_received == 0 and bytes_received > 0:
+            frames_received = bytes_received // DAQ_STREAM_FRAME_BYTES
         return {
             "command": response.command,
             "server_id": response.server_id,
