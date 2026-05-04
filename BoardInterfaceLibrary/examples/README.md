@@ -10,6 +10,12 @@ This directory contains runnable examples for `BoardInterfaceLibrary`. The examp
 
 The host machine runs these scripts as the TCP server. Boards connect into the host as TCP clients.
 
+For a Raspberry Pi that should run continuously as the permanent board server,
+use the daemon and CLI instead of these foreground examples:
+
+- `../docs/raspberry_pi_server.md`
+- `../docs/aemsctl.md`
+
 
 
 ## Response parsing for end users

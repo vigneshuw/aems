@@ -126,7 +126,7 @@ See: [CM7 documentation](CM7/README.md)
 | `CM7/Library/eth` | TCP client used by the host-facing command path |
 | `CM7/Library/led` | RGB LED helper |
 | `Common/Inc` | shared DAQ structures, HSEM IDs, shared-memory definitions |
-| `BoardInterfaceLibrary` | Python host library and examples |
+| `BoardInterfaceLibrary` | Python host library, examples, Raspberry Pi daemon, and CLI |
 
 ## Documentation map
 
@@ -148,6 +148,11 @@ See: [CM7 documentation](CM7/README.md)
 - [CM7 TCP client library](CM7/Library/tcpclient.md)
 - [CM7 LED helper library](CM7/Library/led.md)
 - [CM7 OpenAMP master service](CM7/Library/openamp_master.md)
+
+#### Host / Raspberry Pi
+- [Python host library](../../BoardInterfaceLibrary/README.md)
+- [Raspberry Pi board server](../../BoardInterfaceLibrary/docs/raspberry_pi_server.md)
+- [aemsctl CLI](../../BoardInterfaceLibrary/docs/aemsctl.md)
 
 ## Boot and runtime overview
 

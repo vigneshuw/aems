@@ -1,0 +1,264 @@
+from __future__ import annotations
+
+import json
+import threading
+import uuid
+from pathlib import Path
+from typing import Callable
+
+from ..daq import DAQ_STREAM_FRAME_LEN, convert_daq_stream_bin_to_csv
+from ..response_parser import ResponseParser
+from ..session import BoardSession, StreamHandle
+from .database import AemsDatabase
+
+
+def _safe_board_name(board_ip: str) -> str:
+    return board_ip.replace(".", "_").replace(":", "_")
+
+
+def _metadata_path(metadata_dir: Path, output_path: Path) -> Path:
+    return metadata_dir / f"{output_path.name}.metadata.json"
+
+
+def _build_stream_metrics(result: object, daq_status: object, *, sample_rate_hz: int, channel_mask: int, block_samples: int) -> dict:
+    stream = ResponseParser.parse(result) or {}
+    status = ResponseParser.parse(daq_status) or {}
+    bytes_received = int(stream.get("bytes_received", 0) or 0)
+    elapsed_seconds = float(stream.get("elapsed_seconds", 0.0) or 0.0)
+    frames_received = int(stream.get("frames_received", 0) or 0) or (bytes_received // DAQ_STREAM_FRAME_LEN)
+    samples_captured = int(status.get("samples_captured", 0) or 0)
+    dropped_buffers = int(status.get("dropped_buffers", 0) or 0)
+    return {
+        "requested_sample_rate_hz": sample_rate_hz,
+        "channel_mask": channel_mask,
+        "channel_mask_hex": f"0x{channel_mask:08X}",
+        "block_samples": block_samples,
+        "stream_frame_bytes": DAQ_STREAM_FRAME_LEN,
+        "bytes_received": bytes_received,
+        "bytes_received_mib": round(bytes_received / (1024.0 * 1024.0), 6),
+        "elapsed_seconds": round(elapsed_seconds, 3),
+        "frames_received": frames_received,
+        "stream_frames_per_sec": round(frames_received / elapsed_seconds, 3) if elapsed_seconds > 0 else 0.0,
+        "stream_mib_per_sec": round((bytes_received / (1024.0 * 1024.0)) / elapsed_seconds, 6) if elapsed_seconds > 0 else 0.0,
+        "board_samples_captured": samples_captured,
+        "dropped_buffers": dropped_buffers,
+        "estimated_dropped_frames_min": dropped_buffers * block_samples,
+        "estimated_unreceived_frames_vs_board_captured": max(samples_captured - frames_received, 0),
+        "receive_percent_of_board_captured": round((frames_received / samples_captured) * 100.0, 3) if samples_captured > 0 else 0.0,
+    }
+
+
+class DaqStreamJob:
+    """Background host-side capture job for command 13 streams."""
+
+    def __init__(
+        self,
+        *,
+        job_id: str,
+        board_ip: str,
+        session_getter: Callable[[str], BoardSession],
+        database: AemsDatabase,
+        output_dir: Path,
+        metadata_dir: Path,
+        remote_file: str,
+        output_format: str,
+        duration_s: float | None,
+        sample_rate_hz: int,
+        channel_mask: int,
+        block_samples: int,
+        timeout_s: float,
+    ) -> None:
+        self.job_id = job_id
+        self.board_ip = board_ip
+        self._session_getter = session_getter
+        self._database = database
+        self._output_dir = output_dir
+        self._metadata_dir = metadata_dir
+        self._remote_file = remote_file
+        self._output_format = output_format
+        self._duration_s = duration_s
+        self._sample_rate_hz = sample_rate_hz
+        self._channel_mask = channel_mask
+        self._block_samples = block_samples
+        self._timeout_s = timeout_s
+        self._stop_event = threading.Event()
+        self._done_event = threading.Event()
+        self._thread = threading.Thread(target=self._run, name=f"DaqStreamJob-{board_ip}-{job_id[:8]}", daemon=True)
+
+    def start(self) -> None:
+        self._thread.start()
+
+    def request_stop(self) -> None:
+        self._stop_event.set()
+
+    def wait(self, timeout: float | None = None) -> bool:
+        return self._done_event.wait(timeout)
+
+    @property
+    def is_done(self) -> bool:
+        return self._done_event.is_set()
+
+    def _run(self) -> None:
+        try:
+            self._output_dir.mkdir(parents=True, exist_ok=True)
+            self._metadata_dir.mkdir(parents=True, exist_ok=True)
+            suffix = ".csv" if self._output_format == "csv" else ".bin"
+            final_output = self._output_dir / f"{_safe_board_name(self.board_ip)}_{Path(self._remote_file).stem}_{self.job_id[:8]}{suffix}"
+            stream_target = final_output if self._output_format == "bin" else final_output.with_suffix(final_output.suffix + ".raw.bin")
+            metadata_path = _metadata_path(self._metadata_dir, final_output)
+            self._database.update_job(self.job_id, output_path=final_output, metadata_path=metadata_path)
+
+            session = self._session_getter(self.board_ip)
+            handle: StreamHandle = session.start_daq_stream_async(
+                filename=self._remote_file,
+                sample_rate_hz=self._sample_rate_hz,
+                channel_mask=self._channel_mask,
+                block_samples=self._block_samples,
+                csv_path=None,
+                local_path=stream_target,
+            )
+
+            try:
+                start_ack = session.wait_for_command(13, timeout=2.0)
+            except TimeoutError:
+                # Current firmware may not emit a fixed command-13 ACK before raw stream bytes.
+                start_ack = None
+
+            if self._duration_s is None:
+                self._stop_event.wait()
+            else:
+                self._stop_event.wait(self._duration_s)
+
+            self._database.update_job(self.job_id, status="stopping")
+            try:
+                stop_ack = session.stop_daq(timeout=max(self._timeout_s, 10.0))
+            except Exception as exc:
+                # Keep waiting for the stream handle so metadata captures partial data.
+                stop_ack = {"error": str(exc)}
+
+            result = handle.wait(timeout=max(self._timeout_s, 60.0))
+            try:
+                daq_status = session.get_daq_status(log_status=False, timeout=max(self._timeout_s, 10.0))
+            except Exception as exc:
+                daq_status = {"error": str(exc)}
+
+            frames_written = None
+            if self._output_format == "csv":
+                frames_written = convert_daq_stream_bin_to_csv(stream_target, final_output)
+                stream_target.unlink(missing_ok=True)
+
+            metadata = {
+                "job_id": self.job_id,
+                "board_ip": self.board_ip,
+                "remote_file": self._remote_file,
+                "output_file": str(final_output),
+                "output_format": self._output_format,
+                "duration_seconds": self._duration_s,
+                "requested_daq_config": {
+                    "sample_rate_hz": self._sample_rate_hz,
+                    "channel_mask": self._channel_mask,
+                    "channel_mask_hex": f"0x{self._channel_mask:08X}",
+                    "block_samples": self._block_samples,
+                },
+                "command_13_ack": ResponseParser.parse(start_ack),
+                "command_12_ack": ResponseParser.parse(stop_ack),
+                "command_10_status": ResponseParser.parse(daq_status),
+                "command_13_stream": ResponseParser.parse(result),
+                "frames_written": frames_written,
+                "derived_metrics": _build_stream_metrics(
+                    result,
+                    daq_status,
+                    sample_rate_hz=self._sample_rate_hz,
+                    channel_mask=self._channel_mask,
+                    block_samples=self._block_samples,
+                ),
+            }
+            metadata_path.write_text(json.dumps(metadata, indent=2), encoding="utf-8")
+            self._database.update_job(self.job_id, status="complete", result=metadata, stopped=True)
+        except Exception as exc:
+            self._database.update_job(self.job_id, status="failed", error=str(exc), stopped=True)
+        finally:
+            self._done_event.set()
+
+
+class JobManager:
+    """Tracks long-running jobs started through aemsctl."""
+
+    def __init__(self, *, database: AemsDatabase, session_getter: Callable[[str], BoardSession], capture_dir: Path, metadata_dir: Path) -> None:
+        self._database = database
+        self._session_getter = session_getter
+        self._capture_dir = capture_dir
+        self._metadata_dir = metadata_dir
+        self._lock = threading.RLock()
+        self._jobs: dict[str, DaqStreamJob] = {}
+
+    def start_daq_stream(
+        self,
+        *,
+        board_ip: str,
+        remote_file: str,
+        output_format: str,
+        output_dir: Path | None,
+        duration_s: float | None,
+        sample_rate_hz: int,
+        channel_mask: int,
+        block_samples: int,
+        timeout_s: float,
+    ) -> dict:
+        job_id = uuid.uuid4().hex
+        target_dir = output_dir or self._capture_dir
+        params = {
+            "remote_file": remote_file,
+            "output_format": output_format,
+            "output_dir": str(target_dir),
+            "duration_s": duration_s,
+            "sample_rate_hz": sample_rate_hz,
+            "channel_mask": channel_mask,
+            "block_samples": block_samples,
+        }
+        self._database.create_job(job_id, board_ip, "daq_stream", params)
+        job = DaqStreamJob(
+            job_id=job_id,
+            board_ip=board_ip,
+            session_getter=self._session_getter,
+            database=self._database,
+            output_dir=target_dir,
+            metadata_dir=self._metadata_dir,
+            remote_file=remote_file,
+            output_format=output_format,
+            duration_s=duration_s,
+            sample_rate_hz=sample_rate_hz,
+            channel_mask=channel_mask,
+            block_samples=block_samples,
+            timeout_s=timeout_s,
+        )
+        with self._lock:
+            self._prune_finished_locked()
+            self._jobs[job_id] = job
+        job.start()
+        return {"job_id": job_id, "board_ip": board_ip, "status": "running", "params": params}
+
+    def stop(self, *, job_id: str | None = None, board_ip: str | None = None) -> dict:
+        with self._lock:
+            self._prune_finished_locked()
+            candidates = []
+            for current_id, job in self._jobs.items():
+                if job.is_done:
+                    continue
+                if job_id is not None and current_id != job_id:
+                    continue
+                if board_ip is not None and job.board_ip != board_ip:
+                    continue
+                candidates.append(job)
+        for job in candidates:
+            self._database.update_job(job.job_id, status="stopping")
+            job.request_stop()
+        return {"requested_stop_count": len(candidates), "job_ids": [job.job_id for job in candidates]}
+
+    def list_jobs(self, active: bool | None = None) -> list[dict]:
+        return self._database.list_jobs(active=active)
+
+    def _prune_finished_locked(self) -> None:
+        finished = [job_id for job_id, job in self._jobs.items() if job.is_done]
+        for job_id in finished:
+            self._jobs.pop(job_id, None)

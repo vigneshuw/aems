@@ -19,6 +19,10 @@ Examples are under `examples/`:
 - `examples/multi_board_daq_log_example.py`
 - `examples/README.md`
 
+Raspberry Pi daemon/service docs:
+- `docs/raspberry_pi_server.md`
+- `docs/aemsctl.md`
+
 ## Current capabilities
 
 The library currently supports:
@@ -105,6 +109,18 @@ This is a different format from the eMMC log file. The library keeps these decod
 
 ## Quick example
 
+Install for normal scripting:
+
+```powershell
+pip install .
+```
+
+Install with Raspberry Pi daemon extras:
+
+```bash
+pip install ".[daemon]"
+```
+
 Stream a board file directly to raw binary:
 
 ```powershell
@@ -130,6 +146,33 @@ python .\examples\stream_gui.py --mode daq --board-ip 192.168.0.10 --remote-file
 ```
 
 Use `examples/README.md` for the full command reference and all example flows.
+
+## Raspberry Pi permanent server
+
+For a permanent Raspberry Pi server, install the daemon and use `aemsctl`.
+The daemon owns TCP port `10`; boards connect to it automatically when they are
+plugged into Ethernet.
+
+Install on the Pi:
+
+```bash
+cd BoardInterfaceLibrary
+sudo bash ./deploy/install_raspberry_pi.sh
+```
+
+Useful commands:
+
+```bash
+aemsctl server status
+aemsctl boards --active
+aemsctl board 192.168.0.10 openamp
+aemsctl daq stream start --board all --file daq.bin --format bin --duration 30
+aemsctl daq stream stop
+```
+
+The daemon stores board history and DAQ job metadata in SQLite under
+`/var/lib/aems-server`. See `docs/raspberry_pi_server.md` and
+`docs/aemsctl.md` for the full service and CLI reference.
 
 
 

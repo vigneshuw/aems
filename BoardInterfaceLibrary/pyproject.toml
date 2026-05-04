@@ -11,8 +11,13 @@ requires-python = ">=3.10"
 authors = [{ name = "AEMS Firmware Team" }]
 dependencies = []
 
+[project.optional-dependencies]
+daemon = ["tomli; python_version < '3.11'"]
+
 [project.scripts]
-board-interface-cli = "board_interface.cli:main"
+board-interface-cli = "board_interface.interactive_cli:main"
+aems-boardd = "board_interface.daemon.service:main"
+aemsctl = "board_interface.cli.main:main"
 
 [tool.setuptools]
 package-dir = {"" = "."}

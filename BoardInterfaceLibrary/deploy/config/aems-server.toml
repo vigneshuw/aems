@@ -1,0 +1,12 @@
+host = "0.0.0.0"
+port = 10
+backlog = 16
+
+data_dir = "/var/lib/aems-server"
+capture_dir = "/var/lib/aems-server/captures"
+metadata_dir = "/var/lib/aems-server/metadata"
+database_path = "/var/lib/aems-server/aems.db"
+api_socket = "/run/aems-server/aems-boardd.sock"
+
+accept_timeout_s = 1.0
+poll_interval_s = 2.0

@@ -273,6 +273,24 @@ Common actions:
 - build live monitoring tools on top of the Python session API
 - build higher-level monitoring or acquisition applications
 
+### Raspberry Pi permanent server deployment
+
+Typical users:
+- lab users who want a Pi to always listen for any plugged-in AEMS board
+- automation systems that need shell-level control instead of foreground Python scripts
+
+They use:
+- `BoardInterfaceLibrary` installed with daemon support
+- `aems-boardd` as a systemd service
+- `aemsctl` as the shell control command
+
+Common actions:
+- list active and historical boards
+- start/stop DAQ streams on one board or all boards
+- start/stop eMMC DAQ logs
+- query eMMC files and board status
+- persist capture metadata under `/var/lib/aems-server`
+
 ## Current documentation entry points
 
 - Firmware overview: `docs/Software/README.md`
@@ -280,6 +298,8 @@ Common actions:
 - CM7 firmware docs: `docs/Software/CM7/README.md`
 - Python host library: `BoardInterfaceLibrary/README.md`
 - Python examples: `BoardInterfaceLibrary/examples/README.md`
+- Raspberry Pi server: `BoardInterfaceLibrary/docs/raspberry_pi_server.md`
+- Raspberry Pi CLI: `BoardInterfaceLibrary/docs/aemsctl.md`
 
 ## Practical setup flow
 
