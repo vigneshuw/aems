@@ -115,6 +115,42 @@ int32_t TcpClient_Send(const char *text);
 uint8_t TcpClient_IsConnected(void);
 
 /**
+ * @brief Get whether a TCP file/DAQ stream is currently being sent.
+ * @return `1` while the stream state machine is active, otherwise `0`.
+ */
+uint8_t TcpClient_IsStreamActive(void);
+
+/**
+ * @brief Get the last local TCP source port selected for the board client.
+ * @return Local source port, or `0` if no bind has completed yet.
+ */
+uint16_t TcpClient_GetLocalPort(void);
+
+/**
+ * @brief Get the configured remote server TCP port.
+ * @return Remote TCP server port.
+ */
+uint16_t TcpClient_GetServerPort(void);
+
+/**
+ * @brief Get total TCP connect attempts made since boot.
+ * @return Monotonic attempt counter.
+ */
+uint32_t TcpClient_GetConnectAttempt(void);
+
+/**
+ * @brief Get the last internal connect status code.
+ * @return `0` for last successful connect, negative value for the last failure stage.
+ */
+int32_t TcpClient_GetLastConnectStatus(void);
+
+/**
+ * @brief Get the last socket-level error observed by connect/send logic.
+ * @return Last `errno` / `SO_ERROR` value, or `0` when none was recorded.
+ */
+int32_t TcpClient_GetLastSocketError(void);
+
+/**
  * @brief Request that the TCP client close the current connection and reconnect.
  * @param None.
  * @return None.

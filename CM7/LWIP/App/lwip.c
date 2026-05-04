@@ -28,6 +28,7 @@
 #include "ethernetif.h"
 
 /* USER CODE BEGIN 0 */
+#include "aems_network_config.h"
 
 /* USER CODE END 0 */
 /* Private function prototypes -----------------------------------------------*/
@@ -72,6 +73,9 @@ void MX_LWIP_Init(void)
   GATEWAY_ADDRESS[3] = 0;
 
 /* USER CODE BEGIN IP_ADDRESSES */
+  AEMS_Network_GetBoardIp(IP_ADDRESS);
+  AEMS_Network_GetNetmask(NETMASK_ADDRESS);
+  AEMS_Network_GetGateway(GATEWAY_ADDRESS);
 /* USER CODE END IP_ADDRESSES */
 
   /* Initialize the LwIP stack with RTOS */

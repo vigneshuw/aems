@@ -20,6 +20,9 @@ That split is the core architectural decision in this codebase. The firmware is 
 The current codebase implements the following board-level capabilities:
 
 - CM7 TCP client connection to a host Python server
+- CM7 CubeMX-safe static network config in `CM7/Core/Inc/aems_network_config.h`
+- CM7 UID-derived locally administered MAC address
+- CM7 TCP reconnect hardening: PHY reset/retry, link-stability gating, rotating local source ports, reconnect jitter, TCP keepalive, and app-level idle heartbeat
 - CM7 command parser and response framing
 - CM7 file and DAQ streaming over TCP
 - CM4 OpenAMP remote service for filesystem and DAQ control
@@ -37,7 +40,7 @@ Known current constraints:
 - the host tooling and most workflows currently assume **channel mask `0x3F`**
 - command `11` eMMC DAQ log files and command `13` live DAQ streams use **different binary layouts**
 - CM7/host-side DAQ stop during command `13` still relies on a temporary protocol heuristic and should be cleaned up by a future firmware framing update
-- command `99` is the primary bring-up diagnostic; it now includes raw FatFs mount/format results for blank or marginal eMMC parts
+- command `99` is the primary bring-up diagnostic; it now includes raw FatFs mount/format results plus board IP/MAC/server/TCP reconnect diagnostics
 
 ## Hardware and software interplay
 

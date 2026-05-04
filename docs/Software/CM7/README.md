@@ -47,7 +47,7 @@ CM7 is responsible for:
 |---|---|---|
 | `defaultTask` | high | initializes LwIP and TCP client, then yields |
 | `controllerTask` | normal | command execution and response/stream orchestration |
-| `telemetryTask` | low | currently reserved/lightweight background processing |
+| `telemetryTask` | low | RGB LED status service and idle TCP heartbeat generation |
 
 ### Initialization flow
 
@@ -79,7 +79,7 @@ TCP receive bytes are handed to `ProcessTcpData()`, which converts them into `Co
 | `13` | start DAQ live stream |
 | `97` | get current CM4 ADC offset calibration values |
 | `98` | run CM4 ADC offset calibration and persist the new values |
-| `99` | OpenAMP heartbeat / diagnostic snapshot, including eMMC mount/format diagnostics |
+| `99` | OpenAMP heartbeat / diagnostic snapshot, including eMMC mount/format and network/TCP reconnect diagnostics |
 | `112` | stop and close DAQ log |
 
 ## CM7 to CM4 command path
@@ -127,7 +127,7 @@ CM7 provides two kinds of host-visible streams:
 
 ### Diagnostic heartbeat (`command 99`)
 
-Command `99` is the main cross-core bring-up snapshot. CM7 performs an OpenAMP ping, probes shared memory, then returns a fixed 100-byte TCP response containing:
+Command `99` is the main cross-core bring-up snapshot. CM7 performs an OpenAMP ping, probes shared memory, then returns a fixed 128-byte TCP response containing:
 
 - OpenAMP service creation and RX counters
 - CM7 OpenAMP init status
@@ -137,6 +137,10 @@ Command `99` is the main cross-core bring-up snapshot. CM7 performs an OpenAMP p
 - last file-stream open/prefetch status
 - CM4 ADC device ID
 - CM4 eMMC mount lifecycle diagnostics: stage, first `f_mount()` result, `f_mkfs()` result, and post-format `f_mount()` result
+- board network identity: configured board IP, UID-derived board MAC, configured server IP and server port
+- TCP reconnect diagnostics: current/last local source port, connect-attempt count, last connect stage, and last socket error
+
+Network identity is centralized in `CM7/Core/Inc/aems_network_config.h` so CubeMX regeneration does not overwrite it. `CM7/LWIP/App/lwip.c` overrides generated IP bytes inside `USER CODE BEGIN IP_ADDRESSES`, and `CM7/LWIP/Target/ethernetif.c` overrides the generated MAC inside `USER CODE BEGIN MACADDRESS`.
 
 ## Shared-memory role
 

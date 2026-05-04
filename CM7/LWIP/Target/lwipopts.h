@@ -129,11 +129,22 @@
 /* Enable netconn receive timeouts used by the TCP client. */
 #define LWIP_SO_RCVTIMEO 1
 
+/*
+ * Enable TCP keepalive socket options. The TCP client also sends an app-level
+ * idle heartbeat, but TCP keepalive catches half-open links when the server or
+ * switch disappears without a clean FIN/RST.
+ */
+#define LWIP_TCP_KEEPALIVE 1
+
 /* Reduce the size for RECV_BUFSIZE_DEFAULT */
 #ifdef RECV_BUFSIZE_DEFAULT
 #undef RECV_BUFSIZE_DEFAULT
 #endif
 #define RECV_BUFSIZE_DEFAULT 2048
+
+#define TCP_KEEPIDLE_DEFAULT   10000UL
+#define TCP_KEEPINTVL_DEFAULT  3000UL
+#define TCP_KEEPCNT_DEFAULT    3U
 
 /* USER CODE END 1 */
 

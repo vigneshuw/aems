@@ -129,6 +129,9 @@ class ResponseParser:
         data["reply_value_hex"] = f"0x{response.reply_value:08X}"
         data["shmem_probe_bad_index_hex"] = f"0x{response.shmem_probe_bad_index:08X}"
         data["adc_device_id_hex"] = f"0x{response.adc_device_id:04X}"
+        data["board_ip_address"] = cls._format_ipv4(response.board_ip)
+        data["server_ip_address"] = cls._format_ipv4(response.server_ip)
+        data["board_mac_address"] = cls._format_mac(response.board_mac)
         data["emmc_mount_stage_name"] = EMMC_MOUNT_STAGE_NAMES.get(response.emmc_mount_stage, "UNKNOWN")
         data["emmc_mount_fresult_name"] = FATFS_FRESULT_NAMES.get(response.emmc_mount_fresult, "UNKNOWN")
         data["emmc_mkfs_fresult_name"] = FATFS_FRESULT_NAMES.get(response.emmc_mkfs_fresult, "UNKNOWN")
@@ -188,3 +191,11 @@ class ResponseParser:
         if isinstance(value, (list, tuple)):
             return [cls._make_json_safe(item) for item in value]
         return value
+
+    @staticmethod
+    def _format_ipv4(value: int) -> str:
+        return ".".join(str((value >> shift) & 0xFF) for shift in (24, 16, 8, 0))
+
+    @staticmethod
+    def _format_mac(value: bytes) -> str:
+        return ":".join(f"{byte:02X}" for byte in value[:6])

@@ -69,6 +69,14 @@ class OpenAmpHeartbeatResponse(PacketBase):
     emmc_mount_fresult: int
     emmc_mkfs_fresult: int
     emmc_post_mount_fresult: int
+    board_ip: int
+    server_ip: int
+    tcp_local_port: int
+    tcp_server_port: int
+    tcp_connect_attempt: int
+    tcp_last_connect_status: int
+    tcp_last_socket_error: int
+    board_mac: bytes
 
 
 @dataclass(slots=True)

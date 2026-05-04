@@ -13,13 +13,16 @@
 #include <string.h>
 
 #define TCPCLIENT_CONNECT_TIMEOUT_MS   1000U
-#define TCPCLIENT_RX_BUFFER_LEN        100U
+#define TCPCLIENT_RX_BUFFER_LEN        128U
 #define TCPCLIENT_STREAM_CHUNK_LEN     (16U * 1024U)
 #define TCPCLIENT_LOCAL_PORT_MIN       49152U
 #define TCPCLIENT_LOCAL_PORT_RANGE     12000U
 #define TCPCLIENT_LOCAL_PORT_TRIES     8U
 #define TCPCLIENT_RECONNECT_MIN_MS     700U
 #define TCPCLIENT_RECONNECT_SPAN_MS    1000U
+#define TCPCLIENT_KEEPIDLE_SEC         10
+#define TCPCLIENT_KEEPINTVL_SEC        3
+#define TCPCLIENT_KEEPCNT              3
 
 typedef struct
 {
@@ -54,6 +57,9 @@ typedef struct
     sys_mutex_t tx_mutex;
     volatile uint32_t pending_tx_msgs;
     uint32_t connect_attempt;
+    int32_t last_connect_status;
+    int32_t last_socket_error;
+    uint16_t local_port;
     uint32_t network_ready_since_ms;
     uint8_t network_ready_valid;
     TcpClientStreamState_t stream;
@@ -71,6 +77,12 @@ static void TcpClient_CloseSocket(void)
 
     gTcpClient.connected = 0U;
     gTcpClient.stream.active = 0U;
+}
+
+static int32_t TcpClient_RecordConnectStatus(int32_t status)
+{
+    gTcpClient.last_connect_status = status;
+    return status;
 }
 
 static int32_t TcpClient_SetSocketBlockingMode(int sock, int nonblocking)
@@ -144,16 +156,19 @@ static uint16_t TcpClient_LocalPortForAttempt(uint32_t salt)
 static int32_t TcpClient_BindRotatingLocalPort(void)
 {
     struct sockaddr_in local_addr;
+    uint16_t local_port;
 
     for (uint32_t index = 0U; index < TCPCLIENT_LOCAL_PORT_TRIES; index++)
     {
+        local_port = TcpClient_LocalPortForAttempt(index);
         memset(&local_addr, 0, sizeof(local_addr));
         local_addr.sin_family = AF_INET;
-        local_addr.sin_port = htons(TcpClient_LocalPortForAttempt(index));
+        local_addr.sin_port = htons(local_port);
         local_addr.sin_addr.s_addr = 0U;
 
         if (lwip_bind(gTcpClient.sock, (struct sockaddr *)&local_addr, sizeof(local_addr)) == 0)
         {
+            gTcpClient.local_port = local_port;
             return 0;
         }
     }
@@ -205,6 +220,22 @@ static uint8_t TcpClient_IsNetworkStable(void)
     return 1U;
 }
 
+static void TcpClient_ConfigureKeepalive(void)
+{
+    int optval = 1;
+
+    (void)lwip_setsockopt(gTcpClient.sock, SOL_SOCKET, SO_KEEPALIVE, &optval, (socklen_t)sizeof(optval));
+
+#if LWIP_TCP_KEEPALIVE
+    optval = TCPCLIENT_KEEPIDLE_SEC;
+    (void)lwip_setsockopt(gTcpClient.sock, IPPROTO_TCP, TCP_KEEPIDLE, &optval, (socklen_t)sizeof(optval));
+    optval = TCPCLIENT_KEEPINTVL_SEC;
+    (void)lwip_setsockopt(gTcpClient.sock, IPPROTO_TCP, TCP_KEEPINTVL, &optval, (socklen_t)sizeof(optval));
+    optval = TCPCLIENT_KEEPCNT;
+    (void)lwip_setsockopt(gTcpClient.sock, IPPROTO_TCP, TCP_KEEPCNT, &optval, (socklen_t)sizeof(optval));
+#endif
+}
+
 /*
  * @brief Make a connect to the server once in a non-blocking fashion
  */
@@ -223,10 +254,11 @@ static int32_t TcpClient_ConnectOnce(void)
      */
     if (TcpClient_IsNetworkStable() == 0U)
     {
-        return -1;
+        return TcpClient_RecordConnectStatus(-1);
     }
 
     gTcpClient.connect_attempt++;
+    gTcpClient.last_socket_error = 0;
 
     /*
      * Create a socket Ipv4, fails we get a return code of -2
@@ -234,8 +266,11 @@ static int32_t TcpClient_ConnectOnce(void)
     gTcpClient.sock = lwip_socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     if (gTcpClient.sock < 0)
     {
-        return -2;
+        gTcpClient.last_socket_error = errno;
+        return TcpClient_RecordConnectStatus(-2);
     }
+
+    TcpClient_ConfigureKeepalive();
 
     /*
      * Bind to a rotating ephemeral local port. This prevents a board reset from
@@ -243,8 +278,9 @@ static int32_t TcpClient_ConnectOnce(void)
      */
     if (TcpClient_BindRotatingLocalPort() != 0)
     {
+        gTcpClient.last_socket_error = errno;
         TcpClient_CloseSocket();
-        return -9;
+        return TcpClient_RecordConnectStatus(-9);
     }
 
     /*
@@ -252,8 +288,9 @@ static int32_t TcpClient_ConnectOnce(void)
      */
     if (TcpClient_SetSocketBlockingMode(gTcpClient.sock, 1) != 0)
     {
+        gTcpClient.last_socket_error = errno;
         TcpClient_CloseSocket();
-        return -3;
+        return TcpClient_RecordConnectStatus(-3);
     }
 
     memset(&server_addr, 0, sizeof(server_addr));
@@ -269,11 +306,12 @@ static int32_t TcpClient_ConnectOnce(void)
     {
         if (TcpClient_SetSocketBlockingMode(gTcpClient.sock, 0) != 0)
         {
+            gTcpClient.last_socket_error = errno;
             TcpClient_CloseSocket();
-            return -8;
+            return TcpClient_RecordConnectStatus(-8);
         }
         gTcpClient.connected = 1U;
-        return 0;
+        return TcpClient_RecordConnectStatus(0);
     }
 
     /*
@@ -281,8 +319,9 @@ static int32_t TcpClient_ConnectOnce(void)
      */
     if ((errno != EINPROGRESS) && (errno != EALREADY) && (errno != EWOULDBLOCK))
     {
+        gTcpClient.last_socket_error = errno;
         TcpClient_CloseSocket();
-        return -4;
+        return TcpClient_RecordConnectStatus(-4);
     }
 
     // Make the socket writable
@@ -296,8 +335,9 @@ static int32_t TcpClient_ConnectOnce(void)
     result = lwip_select(gTcpClient.sock + 1, NULL, &write_set, NULL, &timeout);
     if ((result <= 0) || (!FD_ISSET(gTcpClient.sock, &write_set)))
     {
+        gTcpClient.last_socket_error = (result < 0) ? errno : 0;
         TcpClient_CloseSocket();
-        return -5;
+        return TcpClient_RecordConnectStatus(-5);
     }
 
     /*
@@ -309,24 +349,27 @@ static int32_t TcpClient_ConnectOnce(void)
     so_error_len = (socklen_t)sizeof(so_error);
     if (lwip_getsockopt(gTcpClient.sock, SOL_SOCKET, SO_ERROR, &so_error, &so_error_len) < 0)
     {
+        gTcpClient.last_socket_error = errno;
         TcpClient_CloseSocket();
-        return -6;
+        return TcpClient_RecordConnectStatus(-6);
     }
 
+    gTcpClient.last_socket_error = so_error;
     if (so_error != 0)
     {
         TcpClient_CloseSocket();
-        return -7;
+        return TcpClient_RecordConnectStatus(-7);
     }
 
     if (TcpClient_SetSocketBlockingMode(gTcpClient.sock, 0) != 0)
     {
+        gTcpClient.last_socket_error = errno;
         TcpClient_CloseSocket();
-        return -8;
+        return TcpClient_RecordConnectStatus(-8);
     }
 
     gTcpClient.connected = 1U;
-    return 0;
+    return TcpClient_RecordConnectStatus(0);
 }
 
 // Process the Rx from the Server
@@ -555,6 +598,13 @@ static void TcpClient_Task(void *arg)
         if (gTcpClient.reconnect_requested != 0U)
         {
             gTcpClient.reconnect_requested = 0U;
+            TcpClient_CloseSocket();
+            TcpClient_SleepBeforeReconnect();
+            continue;
+        }
+
+        if (TcpClient_IsNetworkStable() == 0U)
+        {
             TcpClient_CloseSocket();
             TcpClient_SleepBeforeReconnect();
             continue;
@@ -798,6 +848,36 @@ int32_t TcpClient_StartStreamPtr(const uint8_t *header,
 uint8_t TcpClient_IsConnected(void)
 {
     return gTcpClient.connected;
+}
+
+uint8_t TcpClient_IsStreamActive(void)
+{
+    return gTcpClient.stream.active;
+}
+
+uint16_t TcpClient_GetLocalPort(void)
+{
+    return gTcpClient.local_port;
+}
+
+uint16_t TcpClient_GetServerPort(void)
+{
+    return gTcpClient.cfg.ServerPort;
+}
+
+uint32_t TcpClient_GetConnectAttempt(void)
+{
+    return gTcpClient.connect_attempt;
+}
+
+int32_t TcpClient_GetLastConnectStatus(void)
+{
+    return gTcpClient.last_connect_status;
+}
+
+int32_t TcpClient_GetLastSocketError(void)
+{
+    return gTcpClient.last_socket_error;
 }
 
 void TcpClient_RequestReconnect(void)

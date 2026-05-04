@@ -202,7 +202,7 @@ CM4 includes mount diagnostics in the default OpenAMP small response fields:
 | `arg3` | `f_mkfs()` FatFs `FRESULT` |
 | `arg4` | post-format-mount FatFs `FRESULT` |
 
-CM7 command `99` copies these into the fixed 100-byte TCP response:
+CM7 command `99` copies these into the fixed 128-byte TCP response:
 
 | TCP offset | Size | Field |
 |---:|---:|---|

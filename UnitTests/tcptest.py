@@ -7,7 +7,7 @@ import csv
 
 HOST = "0.0.0.0"
 PORT = 10
-PACKET_LEN = 100
+PACKET_LEN = 128
 CONFIG_READ_HEADER_LEN = 24
 FILE_STREAM_HEADER_LEN = 18
 SERVER_ID = 1
@@ -241,6 +241,20 @@ def parse_openamp_heartbeat(packet):
     emmc_mount_fresult = struct.unpack(">I", packet[75:79])[0]
     emmc_mkfs_fresult = struct.unpack(">I", packet[79:83])[0]
     emmc_post_mount_fresult = struct.unpack(">I", packet[83:87])[0]
+    board_ip = struct.unpack(">I", packet[87:91])[0]
+    server_ip = struct.unpack(">I", packet[91:95])[0]
+    tcp_local_port = struct.unpack(">I", packet[95:99])[0]
+    tcp_server_port = struct.unpack(">I", packet[99:103])[0]
+    tcp_connect_attempt = struct.unpack(">I", packet[103:107])[0]
+    tcp_last_connect_status = struct.unpack(">i", packet[107:111])[0]
+    tcp_last_socket_error = struct.unpack(">i", packet[111:115])[0]
+    board_mac = packet[115:121]
+
+    def ipv4(value):
+        return ".".join(str((value >> shift) & 0xFF) for shift in (24, 16, 8, 0))
+
+    def mac(value):
+        return ":".join(f"{byte:02X}" for byte in value[:6])
 
     print(
         "RX openamp-heartbeat: "
@@ -266,7 +280,15 @@ def parse_openamp_heartbeat(packet):
         f"emmc_mount_stage={emmc_mount_stage}, "
         f"emmc_mount_fresult={emmc_mount_fresult}, "
         f"emmc_mkfs_fresult={emmc_mkfs_fresult}, "
-        f"emmc_post_mount_fresult={emmc_post_mount_fresult}"
+        f"emmc_post_mount_fresult={emmc_post_mount_fresult}, "
+        f"board_ip={ipv4(board_ip)}, "
+        f"board_mac={mac(board_mac)}, "
+        f"server_ip={ipv4(server_ip)}, "
+        f"tcp_local_port={tcp_local_port}, "
+        f"tcp_server_port={tcp_server_port}, "
+        f"tcp_connect_attempt={tcp_connect_attempt}, "
+        f"tcp_last_connect_status={tcp_last_connect_status}, "
+        f"tcp_last_socket_error={tcp_last_socket_error}"
     )
 
 

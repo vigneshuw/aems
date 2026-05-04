@@ -31,6 +31,7 @@
 #include <string.h>
 #include "led.h"
 #include "tcpclient.h"
+#include "aems_network_config.h"
 #include "openamp_fs.h"
 #include "file_shmem.h"
 /* USER CODE END Includes */
@@ -43,7 +44,7 @@ typedef struct
   uint32_t server_id;
   uint64_t epoch_time;
   uint16_t payload_len;
-  uint8_t payload[85];
+  uint8_t payload[113];
 } ControlMessage_t;
 
 typedef struct
@@ -73,11 +74,12 @@ typedef struct
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-#define TCP_FIXED_RESPONSE_LEN      100U
+#define TCP_FIXED_RESPONSE_LEN      128U
 #define TCP_FILE_STREAM_HEADER_LEN  18U
 #define TCP_FILE_STREAM_CHUNK_LEN   1400U
 #define OPENAMP_FILE_CHUNK_LEN      FILE_SHMEM_DATA_LEN
 #define TCP_TEST_STREAM_TOTAL_SIZE  (1UL * 1024UL * 1024UL)
+#define TCP_IDLE_HEARTBEAT_MS       10000U
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -104,6 +106,7 @@ static volatile uint8_t g_led_daq_log_active;
 static volatile uint8_t g_led_calibration_active;
 static volatile uint8_t g_led_openamp_not_ready;
 static volatile uint32_t g_led_warning_until_ms;
+static uint32_t g_last_idle_heartbeat_ms;
 extern struct netif gnetif;
 extern LED rgbLed;
 /* USER CODE END Variables */
@@ -138,6 +141,7 @@ static void DaqConfigFromPayload(const uint8_t *payload,
                                  uint32_t *sample_count);
 static void LedRaiseRecoverableWarning(uint32_t duration_ms);
 static LED_Status_t Telemetry_SelectLedStatus(void);
+static void Telemetry_SendIdleHeartbeat(void);
 /* USER CODE END FunctionPrototypes */
 
 void StartDefaultTask(void const * argument);
@@ -215,8 +219,13 @@ void StartDefaultTask(void const * argument)
   /* init code for LWIP */
   MX_LWIP_Init();
   /* USER CODE BEGIN StartDefaultTask */
-  IP4_ADDR(&tcpServerIp, 192, 168, 0, 20);
-  TcpClient_BuildConfig(&tcpCfg, &tcpServerIp, 10U, &gnetif, ProcessTcpData);
+  {
+    uint8_t server_ip[4];
+
+    AEMS_Network_GetServerIp(server_ip);
+    IP4_ADDR(&tcpServerIp, server_ip[0], server_ip[1], server_ip[2], server_ip[3]);
+  }
+  TcpClient_BuildConfig(&tcpCfg, &tcpServerIp, AEMS_SERVER_PORT, &gnetif, ProcessTcpData);
   (void)TcpClient_Init(&tcpCfg);
 
   for(;;)
@@ -775,11 +784,17 @@ void ControllerTask(void const * argument)
           uint32_t shmem_probe_bad_index = 0U;
           int32_t ping_status;
           int32_t shmem_probe_status;
+          uint8_t board_ip[4];
+          uint8_t server_ip[4];
+          uint8_t board_mac[6];
 
           request_value = (uint32_t)msg.epoch_time ^ msg.server_id ^ 0x00000063U;
           ping_status = OpenAmpFs_Ping(request_value, &reply_value);
           shmem_probe_status = OpenAmpFs_ProbeSharedMemory(&shmem_probe_len, &shmem_probe_bad_index);
           g_led_openamp_not_ready = ((ping_status == 0) && (shmem_probe_status == 0)) ? 0U : 1U;
+          AEMS_Network_GetBoardIp(board_ip);
+          AEMS_Network_GetServerIp(server_ip);
+          AEMS_Network_GetMac(board_mac);
 
           memset(tx, 0, sizeof(tx));
           tx[0] = msg.command;
@@ -805,6 +820,14 @@ void ControllerTask(void const * argument)
           WriteU32Be(&tx[75], OpenAmpFs_GetRemoteMountDiagMountFresult());
           WriteU32Be(&tx[79], OpenAmpFs_GetRemoteMountDiagMkfsFresult());
           WriteU32Be(&tx[83], OpenAmpFs_GetRemoteMountDiagPostMountFresult());
+          WriteU32Be(&tx[87], AEMS_Network_Ipv4ToU32(board_ip));
+          WriteU32Be(&tx[91], AEMS_Network_Ipv4ToU32(server_ip));
+          WriteU32Be(&tx[95], (uint32_t)TcpClient_GetLocalPort());
+          WriteU32Be(&tx[99], (uint32_t)TcpClient_GetServerPort());
+          WriteU32Be(&tx[103], TcpClient_GetConnectAttempt());
+          WriteU32Be(&tx[107], (uint32_t)TcpClient_GetLastConnectStatus());
+          WriteU32Be(&tx[111], (uint32_t)TcpClient_GetLastSocketError());
+          memcpy(&tx[115], board_mac, sizeof(board_mac));
           (void)TcpClient_SendBuffer(tx, sizeof(tx));
           break;
         }
@@ -872,6 +895,7 @@ void TelemetryTask(void const * argument)
   /* USER CODE BEGIN TelemetryTask */
   for(;;)
   {
+    Telemetry_SendIdleHeartbeat();
     LED_SetStatus(Telemetry_SelectLedStatus());
     LED_Service(&rgbLed);
     osDelay(25);
@@ -886,6 +910,29 @@ void TelemetryTask(void const * argument)
 static void LedRaiseRecoverableWarning(uint32_t duration_ms)
 {
   g_led_warning_until_ms = HAL_GetTick() + duration_ms;
+}
+
+static void Telemetry_SendIdleHeartbeat(void)
+{
+  uint8_t tx[TCP_FIXED_RESPONSE_LEN];
+  uint32_t now_ms;
+
+  if ((TcpClient_IsConnected() == 0U) || (TcpClient_IsStreamActive() != 0U))
+  {
+    return;
+  }
+
+  now_ms = HAL_GetTick();
+  if ((uint32_t)(now_ms - g_last_idle_heartbeat_ms) < TCP_IDLE_HEARTBEAT_MS)
+  {
+    return;
+  }
+
+  g_last_idle_heartbeat_ms = now_ms;
+  memset(tx, 0, sizeof(tx));
+  tx[0] = 0U;
+  tx[14] = 1U;
+  (void)TcpClient_SendBuffer(tx, sizeof(tx));
 }
 
 static LED_Status_t Telemetry_SelectLedStatus(void)

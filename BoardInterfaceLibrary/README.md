@@ -31,6 +31,7 @@ The library currently supports:
 - DAQ logging control on the board eMMC
 - remote file streaming and live DAQ streaming
 - host-side parsing of ACKs/responses into stable dictionaries with `ResponseParser`
+- command `99` parsing for network diagnostics, including board IP, derived MAC address, configured server IP/port, local TCP source port, connect-attempt count, and last connect/socket errors
 - raw binary DAQ capture and offline conversion to parsed CSV
 - live Tkinter-based RMS visualization for DAQ stream data through the example layer
 

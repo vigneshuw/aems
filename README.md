@@ -188,6 +188,17 @@ Start with:
 - `docs/Software/CM7/Library/tcpclient.md`
 - `docs/Software/CM7/Library/openamp_master.md`
 
+Network identity is code-owned in `CM7/Core/Inc/aems_network_config.h`.
+That header is the CubeMX-safe place to set the board static IP, server IP,
+server port, and MAC derivation policy before flashing a board.
+
+Current Ethernet policy:
+- board IP is static and must be unique per board build
+- MAC address is derived from the STM32 unique device ID using a locally administered prefix
+- the board TCP client connects to the host/Raspberry Pi server at `192.168.0.20:10`
+- TCP reconnects use rotating local source ports, per-board jitter, link-stability gating, TCP keepalive, and an app-level idle heartbeat
+- command `99` reports the board IP, derived MAC, server IP/port, current local source port, connect-attempt count, and last connect/socket error
+
 ### If you are building host tools, automation, or multi-board workflows
 
 Start with:

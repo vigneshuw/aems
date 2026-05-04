@@ -17,7 +17,7 @@ from .models import (
     TotalFileCountResponse,
 )
 
-PACKET_LEN = 100
+PACKET_LEN = 128
 CONFIG_READ_HEADER_LEN = 24
 FILE_STREAM_HEADER_LEN = 18
 SERVER_ID = 1
@@ -158,6 +158,14 @@ def parse_fixed_packet(packet: bytes) -> PacketBase:
             struct.unpack(">I", packet[75:79])[0],
             struct.unpack(">I", packet[79:83])[0],
             struct.unpack(">I", packet[83:87])[0],
+            struct.unpack(">I", packet[87:91])[0],
+            struct.unpack(">I", packet[91:95])[0],
+            struct.unpack(">I", packet[95:99])[0],
+            struct.unpack(">I", packet[99:103])[0],
+            struct.unpack(">I", packet[103:107])[0],
+            struct.unpack(">i", packet[107:111])[0],
+            struct.unpack(">i", packet[111:115])[0],
+            packet[115:121],
         )
     return PacketBase(command, server_id, epoch_time, status, tcp_connected)
 

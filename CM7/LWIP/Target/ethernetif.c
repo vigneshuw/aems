@@ -33,6 +33,7 @@
 
 /* Within 'USER CODE' section, code will be kept by default at each generation */
 /* USER CODE BEGIN 0 */
+#include "aems_network_config.h"
 
 /* USER CODE END 0 */
 
@@ -296,6 +297,8 @@ static void low_level_init(struct netif *netif)
   heth.Init.RxBuffLen = 1524;
 
   /* USER CODE BEGIN MACADDRESS */
+  AEMS_Network_GetMac(MACAddr);
+  heth.Init.MACAddr = &MACAddr[0];
 
   /* USER CODE END MACADDRESS */
 

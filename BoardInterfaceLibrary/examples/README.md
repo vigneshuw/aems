@@ -47,7 +47,7 @@ That means:
 The library now uses a temporary host-side heuristic, copied from the behavior proven in `UnitTests/tcptest.py`, to distinguish command `12` ACK traffic from command `13` DAQ stream payload on the same TCP socket.
 
 What that means:
-- while a DAQ stream is active, the host scans the incoming byte stream for something that looks like a fixed 100-byte control packet
+- while a DAQ stream is active, the host scans the incoming byte stream for something that looks like a fixed 128-byte control packet
 - if it finds a plausible command `12` packet, it treats that region as control traffic instead of DAQ payload
 - this is only a temporary compatibility fix so the example flow can stop a DAQ stream and continue collecting metrics
 
@@ -138,7 +138,7 @@ This example covers:
 - file size
 - DAQ status
 - DAQ log status
-- OpenAMP heartbeat
+- OpenAMP/network diagnostic heartbeat
 - optional delete file
 - delete all `.bin` / `.dat`
 
@@ -487,7 +487,7 @@ These examples exercise the current command set in the library:
 - `13` - DAQ stream
 - `97` - get current CM4 ADC offset calibration values
 - `98` - run CM4 ADC offset calibration, save the offsets persistently, and return the new values
-- `99` - OpenAMP heartbeat
+- `99` - OpenAMP heartbeat with eMMC, board IP/MAC, server, and TCP reconnect diagnostics
 - `110` - DAQ log status
 - `112` - stop/close DAQ log
 
