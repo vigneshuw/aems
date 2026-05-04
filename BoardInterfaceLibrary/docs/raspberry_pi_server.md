@@ -15,7 +15,9 @@ flowchart LR
     B1[AEMS board 192.168.0.10] -->|TCP client :10| D[aems-boardd]
     B2[AEMS board 192.168.0.11] -->|TCP client :10| D
     D --> DB[(SQLite board/job registry)]
-    D --> CAP[/captures + metadata/]
+    D --> CAP[/captures + metadata + manifests/]
+    AG[aems-cloud-agent] -->|Unix socket JSON API| D
+    AG <-->|MQTT/shadow| AWS[AWS IoT Core]
     CLI[aemsctl] -->|Unix socket JSON API| D
 ```
 
@@ -27,6 +29,7 @@ Default Raspberry Pi paths:
 - Database: `/var/lib/aems-server/aems.db`
 - Captures: `/var/lib/aems-server/captures`
 - Metadata: `/var/lib/aems-server/metadata`
+- Manifests: `/var/lib/aems-server/manifests`
 - Local API socket: `/run/aems-server/aems-boardd.sock`
 
 ## Install
@@ -68,15 +71,20 @@ the whole process as root.
   and recent responses in SQLite.
 - `aemsctl` never opens TCP port `10`; it talks to `/run/aems-server/aems-boardd.sock`.
 - Long-running DAQ streams run as daemon jobs, not foreground shell processes.
+- Schedules, transfer jobs, and health/shadow snapshots are stored in SQLite.
 
 ## Common Commands
 
 ```bash
 aemsctl server status
+aemsctl health --poll
+aemsctl shadow --poll
 aemsctl boards
 aemsctl boards --active
 aemsctl jobs
 aemsctl jobs --active
+aemsctl schedules
+aemsctl transfers
 ```
 
 Single-board checks:
@@ -108,6 +116,26 @@ aemsctl daq log start --board 192.168.0.10 --file daq.bin --sample-rate 2000 --c
 aemsctl daq log stop --board 192.168.0.10
 ```
 
+Timed eMMC DAQ log:
+
+```bash
+aemsctl daq log run --board all --file "daq_{board_ip}_{date}.bin" --duration 300
+```
+
+Scheduled autonomous DAQ:
+
+```bash
+aemsctl schedule add daily-stream --board all --mode daq_stream --start 02:00 --duration 300 --file-template "daq_{board_ip}_{date}.bin"
+aemsctl schedules
+```
+
+Transfer completed captures:
+
+```bash
+aemsctl transfer start --target local --dest /mnt/usb/aems-upload
+aemsctl transfer start --target s3 --bucket my-aems-data-bucket --prefix site-001/pi-001/
+```
+
 ## Metadata
 
 DAQ stream jobs write a metadata JSON file next to the output file. It includes:
@@ -119,6 +147,14 @@ DAQ stream jobs write a metadata JSON file next to the output file. It includes:
 - command `10` DAQ status
 - throughput metrics
 - dropped-buffer estimates
+
+Transfer jobs create a manifest JSON under `/var/lib/aems-server/manifests`.
+The manifest includes byte counts and SHA-256 hashes for every transferred file.
+It is transferred last so cloud ingestion can treat the manifest as the
+"complete bundle is available" signal.
+
+For AWS IoT Core, S3, device shadow, and cloud-triggered workflows, see
+`cloud_autonomy.md`.
 
 ## Current Board Limitation
 

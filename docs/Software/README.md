@@ -153,6 +153,7 @@ See: [CM7 documentation](CM7/README.md)
 - [Python host library](../../BoardInterfaceLibrary/README.md)
 - [Raspberry Pi board server](../../BoardInterfaceLibrary/docs/raspberry_pi_server.md)
 - [aemsctl CLI](../../BoardInterfaceLibrary/docs/aemsctl.md)
+- [Cloud/autonomous operation](../../BoardInterfaceLibrary/docs/cloud_autonomy.md)
 
 ## Boot and runtime overview
 

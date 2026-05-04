@@ -56,6 +56,80 @@ aemsctl jobs --active
 
 Jobs currently cover DAQ streams started through the daemon.
 
+## Health and Shadow
+
+```bash
+aemsctl health
+aemsctl health --poll
+aemsctl shadow
+aemsctl shadow --poll
+```
+
+`health` returns a daemon/board/job/storage summary. `shadow` returns an AWS IoT
+Device Shadow compatible document with `state.reported`.
+
+Use `--poll` when you want the daemon to query connected boards before returning
+the result. The daemon avoids health polling while it owns an active DAQ stream
+job because the current firmware stream framing cannot safely interleave
+arbitrary status responses into command `13` stream payloads.
+
+## Schedules
+
+```bash
+aemsctl schedules
+aemsctl schedules --enabled
+```
+
+Add a schedule:
+
+```bash
+aemsctl schedule add daily-stream \
+  --board all \
+  --mode daq_stream \
+  --start 02:00 \
+  --duration 300 \
+  --file-template "daq_{board_ip}_{date}.bin" \
+  --format bin
+```
+
+Enable/disable/remove:
+
+```bash
+aemsctl schedule disable daily-stream
+aemsctl schedule enable daily-stream
+aemsctl schedule remove daily-stream
+```
+
+Supported schedule modes:
+
+- `daq_stream`: host-side command `13` stream job
+- `daq_log`: board-side command `11` eMMC log with timed stop/close
+
+## Transfers
+
+```bash
+aemsctl transfers
+aemsctl transfers --active
+```
+
+Copy captures/metadata/manifests to a local destination:
+
+```bash
+aemsctl transfer start --target local --dest /mnt/usb/aems-upload
+```
+
+Upload captures/metadata/manifests to S3:
+
+```bash
+aemsctl transfer start --target s3 --bucket my-aems-data-bucket --prefix site-001/pi-001/
+```
+
+S3 transfer requires the optional cloud dependency and valid AWS credentials:
+
+```bash
+pip install "board-interface[cloud]"
+```
+
 ## Board Commands
 
 ```bash
@@ -124,6 +198,12 @@ Stop:
 
 ```bash
 aemsctl daq log stop --board 192.168.0.10
+```
+
+Run a timed eMMC log as a daemon job:
+
+```bash
+aemsctl daq log run --board all --file "daq_{board_ip}_{date}.bin" --duration 3600
 ```
 
 Status:

@@ -22,6 +22,7 @@ Examples are under `examples/`:
 Raspberry Pi daemon/service docs:
 - `docs/raspberry_pi_server.md`
 - `docs/aemsctl.md`
+- `docs/cloud_autonomy.md`
 
 ## Current capabilities
 
@@ -173,6 +174,10 @@ aemsctl daq stream stop
 The daemon stores board history and DAQ job metadata in SQLite under
 `/var/lib/aems-server`. See `docs/raspberry_pi_server.md` and
 `docs/aemsctl.md` for the full service and CLI reference.
+
+Cloud/autonomous operation is documented in `docs/cloud_autonomy.md`. The daemon
+now supports local schedules, health/shadow JSON, transfer manifests, local/S3
+transfer jobs, and an optional AWS IoT bridge through `aems-cloud-agent`.
 
 
 

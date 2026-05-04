@@ -15,6 +15,7 @@ use the daemon and CLI instead of these foreground examples:
 
 - `../docs/raspberry_pi_server.md`
 - `../docs/aemsctl.md`
+- `../docs/cloud_autonomy.md`
 
 
 

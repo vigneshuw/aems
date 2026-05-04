@@ -1,0 +1,24 @@
+[Unit]
+Description=AEMS AWS IoT cloud bridge
+After=network-online.target aems-boardd.service
+Wants=network-online.target
+Requires=aems-boardd.service
+
+[Service]
+Type=simple
+User=aems
+Group=aems
+EnvironmentFile=-/etc/aems-server/cloud-agent.env
+ExecStart=/opt/aems/venv/bin/aems-cloud-agent \
+  --endpoint ${AEMS_AWS_IOT_ENDPOINT} \
+  --thing-name ${AEMS_AWS_THING_NAME} \
+  --cert ${AEMS_AWS_CERT} \
+  --key ${AEMS_AWS_KEY} \
+  --ca ${AEMS_AWS_CA} \
+  --topic-prefix ${AEMS_AWS_TOPIC_PREFIX}
+Restart=always
+RestartSec=5
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target

@@ -18,7 +18,7 @@ VENV_DIR="${INSTALL_ROOT}/venv"
 getent group aems >/dev/null 2>&1 || groupadd --system aems
 id -u aems >/dev/null 2>&1 || useradd --system --gid aems --home-dir /var/lib/aems-server --shell /usr/sbin/nologin aems
 
-mkdir -p "${INSTALL_ROOT}" /etc/aems-server /var/lib/aems-server/captures /var/lib/aems-server/metadata
+mkdir -p "${INSTALL_ROOT}" /etc/aems-server /var/lib/aems-server/captures /var/lib/aems-server/metadata /var/lib/aems-server/manifests /var/lib/aems-server/transfer_out
 chown -R aems:aems /var/lib/aems-server
 if [[ -n "${SUDO_USER:-}" && "${SUDO_USER}" != "root" ]]; then
   usermod -aG aems "${SUDO_USER}"

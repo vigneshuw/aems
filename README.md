@@ -288,6 +288,9 @@ Common actions:
 - list active and historical boards
 - start/stop DAQ streams on one board or all boards
 - start/stop eMMC DAQ logs
+- run local schedules for daily autonomous DAQ
+- publish health/shadow JSON for cloud monitoring
+- transfer capture bundles and manifests to local storage or S3
 - query eMMC files and board status
 - persist capture metadata under `/var/lib/aems-server`
 
@@ -300,6 +303,7 @@ Common actions:
 - Python examples: `BoardInterfaceLibrary/examples/README.md`
 - Raspberry Pi server: `BoardInterfaceLibrary/docs/raspberry_pi_server.md`
 - Raspberry Pi CLI: `BoardInterfaceLibrary/docs/aemsctl.md`
+- Cloud/autonomous operation: `BoardInterfaceLibrary/docs/cloud_autonomy.md`
 
 ## Practical setup flow
 

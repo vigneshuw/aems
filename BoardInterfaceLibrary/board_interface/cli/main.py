@@ -42,6 +42,12 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--socket", default=DEFAULT_SOCKET, help="Daemon Unix socket path")
     sub = parser.add_subparsers(dest="group", required=True)
 
+    health = sub.add_parser("health", help="Show daemon/board health summary")
+    health.add_argument("--poll", action="store_true", help="Poll boards before returning health")
+
+    shadow = sub.add_parser("shadow", help="Print AWS IoT shadow-compatible reported state")
+    shadow.add_argument("--poll", action="store_true", help="Poll boards before returning shadow state")
+
     server = sub.add_parser("server", help="Server daemon commands")
     server_sub = server.add_subparsers(dest="command", required=True)
     server_sub.add_parser("status", help="Show daemon status")
@@ -51,6 +57,40 @@ def build_parser() -> argparse.ArgumentParser:
 
     jobs = sub.add_parser("jobs", help="List DAQ jobs")
     jobs.add_argument("--active", action="store_true", help="Show only running/stopping jobs")
+
+    transfers = sub.add_parser("transfers", help="List transfer jobs")
+    transfers.add_argument("--active", action="store_true", help="Show only running transfers")
+
+    transfer = sub.add_parser("transfer", help="Start local or cloud transfer jobs")
+    transfer_sub = transfer.add_subparsers(dest="command", required=True)
+    p = transfer_sub.add_parser("start")
+    p.add_argument("--target", choices=["local", "s3"], default="local")
+    p.add_argument("--dest", default=None, help="Local destination folder for --target local")
+    p.add_argument("--bucket", default=None, help="S3 bucket for --target s3")
+    p.add_argument("--prefix", default=None, help="S3 key prefix or local logical prefix")
+
+    schedules = sub.add_parser("schedules", help="List schedules")
+    schedules.add_argument("--enabled", action="store_true", help="Show only enabled schedules")
+
+    schedule = sub.add_parser("schedule", help="Manage autonomous schedules")
+    schedule_sub = schedule.add_subparsers(dest="command", required=True)
+    p = schedule_sub.add_parser("add")
+    p.add_argument("name")
+    p.add_argument("--board", default="all")
+    p.add_argument("--mode", choices=["daq_stream", "daq_log"], default="daq_stream")
+    p.add_argument("--start", required=True, dest="start_time", help="Local time HH:MM")
+    p.add_argument("--duration", required=True, type=float, help="Run duration in seconds")
+    p.add_argument("--file-template", default="daq_{board_ip}_{date}.bin")
+    p.add_argument("--format", choices=["bin", "csv"], default="bin", help="Host stream output format")
+    p.add_argument("--sample-rate", type=int, default=2000)
+    p.add_argument("--channel-mask", type=_parse_int, default=0x3F)
+    p.add_argument("--block-samples", type=int, default=128)
+    p = schedule_sub.add_parser("remove")
+    p.add_argument("name")
+    p = schedule_sub.add_parser("enable")
+    p.add_argument("name")
+    p = schedule_sub.add_parser("disable")
+    p.add_argument("name")
 
     board = sub.add_parser("board", help="Single-board commands")
     board.add_argument("ip", help="Board IP address")
@@ -106,6 +146,14 @@ def build_parser() -> argparse.ArgumentParser:
     p = log_sub.add_parser("stop")
     p.add_argument("--board", default="all", help="Board IP or all")
     p.add_argument("--timeout", type=float, default=10.0)
+    p = log_sub.add_parser("run")
+    p.add_argument("--board", default="all", help="Board IP or all")
+    p.add_argument("--file", default="daq_{board_ip}_{date}.bin")
+    p.add_argument("--duration", required=True, type=float)
+    p.add_argument("--sample-rate", type=int, default=2000)
+    p.add_argument("--channel-mask", type=_parse_int, default=0x3F)
+    p.add_argument("--block-samples", type=int, default=128)
+    p.add_argument("--timeout", type=float, default=30.0)
 
     cal = sub.add_parser("calibration", help="Offset calibration commands")
     cal_sub = cal.add_subparsers(dest="command", required=True)
@@ -124,12 +172,48 @@ def main() -> None:
 
     if args.group == "server" and args.command == "status":
         action = "server.status"
+    elif args.group == "health":
+        action = "health.get"
+        params = {"poll": args.poll}
+    elif args.group == "shadow":
+        action = "health.shadow"
+        params = {"poll": args.poll}
     elif args.group == "boards":
         action = "boards.list"
         params = {"active": True if args.active else None}
     elif args.group == "jobs":
         action = "jobs.list"
         params = {"active": True if args.active else None}
+    elif args.group == "transfers":
+        action = "transfers.list"
+        params = {"active": True if args.active else None}
+    elif args.group == "transfer":
+        action = "transfer.start"
+        params = {"target": args.target, "dest": args.dest, "bucket": args.bucket, "prefix": args.prefix}
+    elif args.group == "schedules":
+        action = "schedules.list"
+        params = {"enabled": True if args.enabled else None}
+    elif args.group == "schedule":
+        if args.command == "add":
+            action = "schedule.add"
+            params = {
+                "name": args.name,
+                "board": args.board,
+                "mode": args.mode,
+                "start_time": args.start_time,
+                "duration": args.duration,
+                "file_template": args.file_template,
+                "format": args.format,
+                "sample_rate": args.sample_rate,
+                "channel_mask": args.channel_mask,
+                "block_samples": args.block_samples,
+            }
+        elif args.command == "remove":
+            action = "schedule.remove"
+            params = {"name": args.name}
+        else:
+            action = "schedule.enable"
+            params = {"name": args.name, "enabled": args.command == "enable"}
     elif args.group == "board":
         action = {"heartbeat": "board.heartbeat", "openamp": "board.openamp", "status": "board.status"}[args.command]
         params = {"board": args.ip}
@@ -170,9 +254,20 @@ def main() -> None:
                 "stream_samples": args.stream_samples,
                 "timeout": args.timeout,
             }
-        else:
+        elif args.log_command == "stop":
             action = "daq.log.stop"
             params = {"board": args.board, "timeout": args.timeout}
+        else:
+            action = "daq.log.run"
+            params = {
+                "board": args.board,
+                "file": args.file,
+                "duration": args.duration,
+                "sample_rate": args.sample_rate,
+                "channel_mask": args.channel_mask,
+                "block_samples": args.block_samples,
+                "timeout": args.timeout,
+            }
     elif args.group == "calibration":
         action = "calibration.get" if args.command == "get" else "calibration.run"
         params = {"board": args.board}
