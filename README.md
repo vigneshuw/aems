@@ -294,6 +294,7 @@ They use:
 - `BoardInterfaceLibrary` installed with daemon support
 - `aems-boardd` as a systemd service
 - `aemsctl` as the shell control command
+- optional `aems-cloud-agent` for AWS IoT Core command/shadow integration
 
 Common actions:
 - list active and historical boards
@@ -304,6 +305,62 @@ Common actions:
 - transfer capture bundles and manifests to local storage or S3
 - query eMMC files and board status
 - persist capture metadata under `/var/lib/aems-server`
+
+Install on the Raspberry Pi from `BoardInterfaceLibrary`:
+
+```bash
+sudo bash ./deploy/install_raspberry_pi.sh
+```
+
+That installer creates the `aems` service user/group, installs the package into
+`/opt/aems/venv`, installs `aems-boardd.service`, installs the optional
+`aems-cloud-agent.service` unit file, and starts the board daemon. The cloud
+agent is intentionally not enabled until AWS IoT credentials are configured.
+
+For cloud support, install the optional dependencies into the same venv:
+
+```bash
+cd BoardInterfaceLibrary
+sudo /opt/aems/venv/bin/pip install ".[cloud]"
+```
+
+Then configure `/etc/aems-server/cloud-agent.env`, place AWS IoT certificates
+under `/etc/aems-server/certs`, and enable the cloud service:
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable aems-cloud-agent
+sudo systemctl start aems-cloud-agent
+```
+
+Use these checks after install:
+
+```bash
+aemsctl server status
+aemsctl boards --active
+sudo systemctl status aems-boardd --no-pager
+sudo systemctl status aems-cloud-agent --no-pager
+```
+
+Cloud control uses JSON MQTT messages. `aems-cloud-agent` subscribes to
+`aems/<thing-name>/commands/#`, forwards supported commands to the local daemon,
+publishes responses to `aems/<thing-name>/responses`, and publishes health/shadow
+state to `$aws/things/<thing-name>/shadow/update`. Example cloud command:
+
+```json
+{
+  "command": "daq.stream.start",
+  "params": {
+    "board": "all",
+    "file": "daq_cloud.bin",
+    "format": "bin",
+    "duration": 300,
+    "sample_rate": 2000,
+    "channel_mask": 63,
+    "block_samples": 128
+  }
+}
+```
 
 ## Current documentation entry points
 

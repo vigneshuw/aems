@@ -9,6 +9,33 @@ Default socket:
 /run/aems-server/aems-boardd.sock
 ```
 
+## Installation
+
+`aemsctl` is installed by the Raspberry Pi installer:
+
+```bash
+sudo bash ./deploy/install_raspberry_pi.sh
+```
+
+The executable is installed in:
+
+```text
+/opt/aems/venv/bin/aemsctl
+```
+
+The installer normally makes it available on the shell path. If not, call it
+directly:
+
+```bash
+/opt/aems/venv/bin/aemsctl server status
+```
+
+`aemsctl` requires the daemon to be running:
+
+```bash
+sudo systemctl status aems-boardd --no-pager
+```
+
 Override when needed:
 
 ```bash
@@ -124,10 +151,11 @@ Upload captures/metadata/manifests to S3:
 aemsctl transfer start --target s3 --bucket my-aems-data-bucket --prefix site-001/pi-001/
 ```
 
-S3 transfer requires the optional cloud dependency and valid AWS credentials:
+S3 transfer requires the optional cloud dependency and valid AWS credentials.
+Run this from the `BoardInterfaceLibrary` directory:
 
 ```bash
-pip install "board-interface[cloud]"
+sudo /opt/aems/venv/bin/pip install ".[cloud]"
 ```
 
 ## Board Commands

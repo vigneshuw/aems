@@ -109,19 +109,84 @@ Total:
 
 This is a different format from the eMMC log file. The library keeps these decode paths separate so command `11` files are not misinterpreted as command `13` stream frames.
 
-## Quick example
+## Installation Modes
 
-Install for normal scripting:
+### Normal laptop / desktop library install
+
+Use this mode on Windows, macOS, Linux, or a Raspberry Pi when you want to write
+your own Python scripts and directly import `board_interface`.
 
 ```powershell
 pip install .
 ```
 
-Install with Raspberry Pi daemon extras:
+This installs:
+
+- `board_interface` importable Python package
+- `board-interface-cli` legacy interactive CLI
+- `aemsctl`, `aems-boardd`, and `aems-cloud-agent` console entry points
+
+Only `board_interface` and examples are normally used in this mode. The daemon
+entry points are useful mainly on the Raspberry Pi permanent server.
+
+### Raspberry Pi daemon install
+
+Use this mode when the Pi should permanently listen on TCP port `10` and accept
+any AEMS board that connects over Ethernet.
+
+From the `BoardInterfaceLibrary` directory on the Pi:
 
 ```bash
-pip install ".[daemon]"
+sudo bash ./deploy/install_raspberry_pi.sh
 ```
+
+The installer:
+
+- creates the `aems` system user and group
+- adds the invoking sudo user to group `aems` when possible
+- creates `/etc/aems-server`
+- creates `/etc/aems-server/certs`
+- creates `/var/lib/aems-server/{captures,metadata,manifests,transfer_out}`
+- installs this package into `/opt/aems/venv`
+- installs `/etc/aems-server/config.toml`
+- installs `aems-boardd.service`
+- installs, but does not enable, `aems-cloud-agent.service`
+- enables and restarts `aems-boardd`
+
+Check daemon and CLI:
+
+```bash
+sudo systemctl status aems-boardd --no-pager
+aemsctl server status
+aemsctl boards --active
+```
+
+If `aemsctl` reports socket permission errors, log out and back in so the `aems`
+group membership refreshes.
+
+### Optional cloud dependencies
+
+The base daemon does not require AWS packages. Install cloud extras only when
+you need S3 transfer or AWS IoT Core integration:
+
+Run this from the `BoardInterfaceLibrary` directory:
+
+```bash
+sudo /opt/aems/venv/bin/pip install ".[cloud]"
+```
+
+This installs:
+
+- `boto3` for S3 upload jobs
+- `awsiotsdk` for `aems-cloud-agent`
+
+You can also install all extras into a local environment:
+
+```bash
+pip install ".[daemon,cloud]"
+```
+
+## Quick example
 
 Stream a board file directly to raw binary:
 
@@ -179,6 +244,88 @@ The daemon stores board history and DAQ job metadata in SQLite under
 Cloud/autonomous operation is documented in `docs/cloud_autonomy.md`. The daemon
 now supports local schedules, health/shadow JSON, transfer manifests, local/S3
 transfer jobs, and an optional AWS IoT bridge through `aems-cloud-agent`.
+
+## Cloud Agent Summary
+
+`aems-cloud-agent` is optional. It does not own board TCP connections; it talks
+to the local daemon through `/run/aems-server/aems-boardd.sock`.
+
+It does four things:
+
+- subscribes to `aems/<thing-name>/commands/#`
+- forwards supported cloud commands to `aems-boardd`
+- publishes command responses to `aems/<thing-name>/responses`
+- publishes the daemon shadow document to `$aws/things/<thing-name>/shadow/update`
+
+Minimum cloud setup on the Pi:
+
+```bash
+sudo /opt/aems/venv/bin/pip install ".[cloud]"
+sudo install -d -o aems -g aems -m 0750 /etc/aems-server/certs
+sudo cp <device-cert.pem.crt> /etc/aems-server/certs/device.pem.crt
+sudo cp <private-key.pem.key> /etc/aems-server/certs/private.pem.key
+sudo cp <AmazonRootCA1.pem> /etc/aems-server/certs/AmazonRootCA1.pem
+sudo chown -R aems:aems /etc/aems-server/certs
+sudo chmod 0640 /etc/aems-server/certs/*
+```
+
+Create `/etc/aems-server/cloud-agent.env`:
+
+```bash
+AEMS_AWS_IOT_ENDPOINT=xxxxxxxxxxxxxx-ats.iot.us-east-1.amazonaws.com
+AEMS_AWS_THING_NAME=aems-site-001-pi-001
+AEMS_AWS_CERT=/etc/aems-server/certs/device.pem.crt
+AEMS_AWS_KEY=/etc/aems-server/certs/private.pem.key
+AEMS_AWS_CA=/etc/aems-server/certs/AmazonRootCA1.pem
+AEMS_AWS_TOPIC_PREFIX=aems/aems-site-001-pi-001
+```
+
+Enable and inspect:
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable aems-cloud-agent
+sudo systemctl start aems-cloud-agent
+sudo systemctl status aems-cloud-agent --no-pager
+journalctl -u aems-cloud-agent -f
+```
+
+Cloud command payloads are JSON. Publish them to
+`aems/<thing-name>/commands/<request-id>`:
+
+```json
+{
+  "command": "daq.stream.start",
+  "params": {
+    "board": "all",
+    "file": "daq_cloud.bin",
+    "format": "bin",
+    "duration": 300,
+    "sample_rate": 2000,
+    "channel_mask": 63,
+    "block_samples": 128
+  }
+}
+```
+
+Useful cloud commands mirror the local daemon API:
+
+- `health.get` / `health.shadow`
+- `boards.list`, `jobs.list`, `transfers.list`
+- `daq.stream.start` / `daq.stream.stop`
+- `daq.log.start` / `daq.log.stop` / `daq.log.run`
+- `transfer.start`
+- `schedule.add` / `schedule.remove` / `schedule.enable`
+
+Responses are published to `aems/<thing-name>/responses`. The device shadow is
+published to `$aws/things/<thing-name>/shadow/update` every 30 seconds by
+default. Use `docs/cloud_autonomy.md` for the full AWS setup and command
+reference.
+
+The AWS IoT policy must allow MQTT connect, subscribe/receive on the command
+topic, publish on the response topic, and publish to the named shadow update
+topic. S3 uploads require AWS credentials available to the `aems` user and
+`s3:PutObject` permission on the configured bucket/prefix.
 
 
 

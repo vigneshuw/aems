@@ -44,12 +44,23 @@ The installer:
 
 - creates the `aems` system user
 - creates the `aems` group and adds the sudo user to it when possible
+- creates `/etc/aems-server/certs`
 - creates `/var/lib/aems-server`
 - installs the package into `/opt/aems/venv`
 - installs `/etc/aems-server/config.toml`
 - installs and enables `aems-boardd.service`
+- installs, but does not enable, `aems-cloud-agent.service`
 
 Log out and back in after install if `aemsctl` reports socket permission errors.
+
+The installer deliberately keeps cloud support disabled until AWS IoT
+certificates and environment variables exist. To add cloud support later:
+
+```bash
+cd BoardInterfaceLibrary
+sudo /opt/aems/venv/bin/pip install ".[cloud]"
+sudo systemctl daemon-reload
+```
 
 ## Service Control
 
@@ -63,6 +74,18 @@ TCP port `10` is privileged on Linux. The systemd unit grants only
 `CAP_NET_BIND_SERVICE`, so the Python daemon can bind port `10` without running
 the whole process as root.
 
+Optional cloud agent service:
+
+```bash
+sudo systemctl enable aems-cloud-agent
+sudo systemctl start aems-cloud-agent
+sudo systemctl status aems-cloud-agent --no-pager
+sudo journalctl -u aems-cloud-agent -f
+```
+
+Do not enable the cloud agent until `/etc/aems-server/cloud-agent.env` and the
+AWS IoT certificate files are configured. See `cloud_autonomy.md`.
+
 ## Runtime Model
 
 - `aems-boardd` owns TCP port `10`.
@@ -72,6 +95,8 @@ the whole process as root.
 - `aemsctl` never opens TCP port `10`; it talks to `/run/aems-server/aems-boardd.sock`.
 - Long-running DAQ streams run as daemon jobs, not foreground shell processes.
 - Schedules, transfer jobs, and health/shadow snapshots are stored in SQLite.
+- `aems-cloud-agent` is optional and only talks to `aems-boardd` through the
+  local Unix socket; it does not own board TCP sockets.
 
 ## Common Commands
 
@@ -155,6 +180,27 @@ It is transferred last so cloud ingestion can treat the manifest as the
 
 For AWS IoT Core, S3, device shadow, and cloud-triggered workflows, see
 `cloud_autonomy.md`.
+
+## Install Modes Summary
+
+| Use case | Command |
+|---|---|
+| Python scripting only | `pip install .` |
+| Raspberry Pi permanent daemon | `sudo bash ./deploy/install_raspberry_pi.sh` |
+| Add S3 / AWS IoT dependencies to Pi venv | `sudo /opt/aems/venv/bin/pip install ".[cloud]"` |
+| Reinstall all extras into current environment | `pip install ".[daemon,cloud]"` |
+
+Run the `pip install .[...]` commands from the `BoardInterfaceLibrary` directory
+so `pip` can read this package's `pyproject.toml`.
+
+After updating the package on an already-installed Pi, restart the daemon:
+
+```bash
+sudo systemctl restart aems-boardd
+```
+
+If the update changed board protocol framing, flash matching firmware before
+using the daemon with real boards.
 
 ## Current Board Limitation
 

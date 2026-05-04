@@ -246,14 +246,15 @@ The LED is intended as the first field diagnostic. An end user should be able to
 | 2 | Red slow blink | eMMC/storage error | CM4 mount status is nonzero after command `99` diagnostics are available |
 | 3 | Yellow blink | CM4/OpenAMP not ready | OpenAMP init failed or latest heartbeat/probe showed CM4 service not healthy |
 | 4 | Yellow solid | Offset calibration active | command `98` is running |
-| 5 | Cyan pulse | DAQ logging to eMMC | command `11` succeeded and logging is active |
-| 6 | Green fast blink | Live DAQ streaming | command `13` stream is active |
-| 7 | Cyan fast blink | File stream active | command `8` stream is active |
-| 8 | Orange blink | Recoverable warning | command/stream failure, dropped samples reported by command `10`/`110`, or retry condition |
-| 9 | Green solid | TCP connected and idle | board is connected to host and no higher-priority activity/error is active |
-| 10 | Blue solid | Ethernet link up, TCP not connected | PHY/link is up but Python host server is not connected |
-| 11 | Blue slow blink | Ethernet/PHY initialization or no link | PHY reset/link bring-up, cable/switch missing, or link not stable |
-| 12 | White solid | Booting | LED initialized before runtime status is known |
+| 5 | Purple slow blink | eMMC formatting | blank eMMC was detected and filesystem creation is in progress |
+| 6 | Cyan pulse | DAQ logging to eMMC | command `11` succeeded and logging is active |
+| 7 | Green fast blink | Live DAQ streaming | command `13` stream is active |
+| 8 | Cyan fast blink | File stream active | command `8` stream is active |
+| 9 | Orange blink | Recoverable warning | command/stream failure, dropped samples reported by command `10`/`110`, or retry condition |
+| 10 | Green solid | TCP connected and idle | board is connected to host and no higher-priority activity/error is active |
+| 11 | Blue solid | Ethernet link up, TCP not connected | PHY/link is up but Python host server is not connected |
+| 12 | Blue slow blink | Ethernet/PHY initialization or no link | PHY reset/link bring-up, cable/switch missing, or link not stable |
+| 13 | White solid | Booting | LED initialized before runtime status is known |
 
 ### How to Interpret the LED
 

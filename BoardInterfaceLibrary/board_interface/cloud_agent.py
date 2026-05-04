@@ -70,7 +70,7 @@ def main() -> None:
         from awscrt import mqtt  # type: ignore[import-not-found]
         from awsiot import mqtt_connection_builder  # type: ignore[import-not-found]
     except ImportError as exc:
-        raise SystemExit("AWS IoT support requires awsiotsdk; install board-interface[cloud]") from exc
+        raise SystemExit("AWS IoT support requires awsiotsdk; install .[cloud] into the active environment") from exc
 
     topic_prefix = (args.topic_prefix or f"aems/{args.thing_name}").strip("/")
     command_topic = f"{topic_prefix}/commands/#"

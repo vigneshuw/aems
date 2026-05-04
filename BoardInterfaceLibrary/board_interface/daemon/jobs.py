@@ -407,7 +407,7 @@ class TransferJob:
         try:
             import boto3  # type: ignore[import-not-found]
         except ImportError as exc:
-            raise RuntimeError("boto3 is required for S3 transfer; install board-interface[cloud]") from exc
+            raise RuntimeError("boto3 is required for S3 transfer; install .[cloud] into the active environment") from exc
         s3 = boto3.client("s3")
         uploaded = 0
         bytes_uploaded = 0
