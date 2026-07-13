@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "board-interface"
+version = "0.1.0"
+description = "Python interface library for the AEMS board TCP protocol"
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [{ name = "AEMS Firmware Team" }]
+dependencies = []
+
+[project.optional-dependencies]
+daemon = ["tomli; python_version < '3.11'"]
+cloud = ["boto3>=1.34", "awsiotsdk>=1.22"]
+
+[project.scripts]
+board-interface-cli = "board_interface.interactive_cli:main"
+aems-boardd = "board_interface.daemon.service:main"
+aemsctl = "board_interface.cli.main:main"
+aems-cloud-agent = "board_interface.cloud_agent:main"
+
+[tool.setuptools]
+package-dir = {"" = "."}
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["board_interface*"]

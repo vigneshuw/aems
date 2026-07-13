@@ -1,0 +1,38 @@
+# STM32CubeIDE build folders
+CM4/Debug/
+CM4/Release/
+CM7/Debug/
+CM7/Release/
+
+# Common build artifacts
+*.o
+*.d
+*.su
+*.elf
+*.map
+*.list
+*.hex
+*.bin
+
+######
+# Python files
+######
+# Build artifacts
+build/
+dist/
+*.egg-info/
+
+# Python compiled files
+__pycache__/
+*.py[cod]
+*$py.class
+
+######
+# Other Generic
+######
+captures/
+.vscode/
+
+*.dat
+*.bin
+*.csv

@@ -1,0 +1,26 @@
+host = "0.0.0.0"
+port = 10
+backlog = 16
+
+data_dir = "/var/lib/aems-server"
+capture_dir = "/var/lib/aems-server/captures"
+metadata_dir = "/var/lib/aems-server/metadata"
+manifest_dir = "/var/lib/aems-server/manifests"
+database_path = "/var/lib/aems-server/aems.db"
+api_socket = "/run/aems-server/aems-boardd.sock"
+
+site_id = "site-001"
+pi_id = "pi-001"
+
+accept_timeout_s = 1.0
+poll_interval_s = 2.0
+health_poll_interval_s = 30.0
+schedule_poll_interval_s = 15.0
+transfer_retry_limit = 3
+
+# Optional AWS values. The daemon can use these for S3 transfers. The optional
+# aems-cloud-agent also needs AWS IoT endpoint/cert/key/CA arguments at launch.
+aws_region = "us-east-1"
+aws_iot_endpoint = ""
+aws_s3_bucket = ""
+aws_s3_prefix = "aems/site-001/pi-001/"
