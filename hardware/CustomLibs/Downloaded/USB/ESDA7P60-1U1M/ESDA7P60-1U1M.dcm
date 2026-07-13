@@ -1,0 +1,9 @@
+EESchema-DOCLIB  Version 2.0
+#
+$CMP ESDA7P60-1U1M
+D STMicroelectronics ESDA7P60-1U1M Uni-Directional TVS Diode, 700W peak, 2-Pin QFN1610
+K
+F https://www.st.com/resource/en/datasheet/esda7p60-1u1m.pdf
+$ENDCMP
+#
+#End Doc Library

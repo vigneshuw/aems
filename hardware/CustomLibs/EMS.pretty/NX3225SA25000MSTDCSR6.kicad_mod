@@ -1,0 +1,236 @@
+(footprint "NX3225SA25000MSTDCSR6"
+	(version 20240108)
+	(generator "pcbnew")
+	(generator_version "8.0")
+	(layer "F.Cu")
+	(descr "NX3225SA-25.000M-STD-CSR-6-2")
+	(tags "Crystal or Oscillator")
+	(property "Reference" "Y**"
+		(at -2 -3.5 0)
+		(layer "F.SilkS")
+		(uuid "2a8a24cf-779a-4d3f-b92a-e6a99abedf13")
+		(effects
+			(font
+				(size 1.27 1.27)
+				(thickness 0.254)
+			)
+		)
+	)
+	(property "Value" "NX3225SA25000MSTDCSR6"
+		(at -0.2 0.25 0)
+		(layer "F.SilkS")
+		(hide yes)
+		(uuid "927d5e1d-35d1-46ab-9fc3-1cc013c3efcd")
+		(effects
+			(font
+				(size 1.27 1.27)
+				(thickness 0.254)
+			)
+		)
+	)
+	(property "Footprint" ""
+		(at 0 0 0)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "d2cc30cf-d8f5-40cd-a0bb-1dcb13374b91")
+		(effects
+			(font
+				(size 1.27 1.27)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property "Datasheet" ""
+		(at 0 0 0)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "59d3a529-2e2c-4dda-bce2-6f14c0f8fddd")
+		(effects
+			(font
+				(size 1.27 1.27)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property "Description" ""
+		(at 0 0 0)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "b3ca1f5e-c0dc-4205-803c-997f91123a0d")
+		(effects
+			(font
+				(size 1.27 1.27)
+				(thickness 0.15)
+			)
+		)
+	)
+	(attr smd)
+	(fp_line
+		(start -2.2 1.8)
+		(end -2.2 1.8)
+		(stroke
+			(width 0.2)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "ff3061ab-15fb-4811-b34f-c335026f5b0b")
+	)
+	(fp_line
+		(start -2 1.8)
+		(end -2 1.8)
+		(stroke
+			(width 0.2)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "f442f606-49b7-430b-a838-23fb519a9c34")
+	)
+	(fp_arc
+		(start -2.2 1.8)
+		(mid -2.1 1.7)
+		(end -2 1.8)
+		(stroke
+			(width 0.2)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "4122db54-fdd3-4981-bb7c-e621e242ac54")
+	)
+	(fp_arc
+		(start -2 1.8)
+		(mid -2.1 1.9)
+		(end -2.2 1.8)
+		(stroke
+			(width 0.2)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "5b5ec7dd-e236-48b8-874d-9cb7b42f4c46")
+	)
+	(fp_line
+		(start -3.2 -2.4)
+		(end 2.8 -2.4)
+		(stroke
+			(width 0.1)
+			(type solid)
+		)
+		(layer "F.CrtYd")
+		(uuid "f01e0879-e90f-482c-b3ab-e18217fbfeb6")
+	)
+	(fp_line
+		(start -3.2 2.9)
+		(end -3.2 -2.4)
+		(stroke
+			(width 0.1)
+			(type solid)
+		)
+		(layer "F.CrtYd")
+		(uuid "d0456407-bbf6-4b10-930c-04479bb79217")
+	)
+	(fp_line
+		(start 2.8 -2.4)
+		(end 2.8 2.9)
+		(stroke
+			(width 0.1)
+			(type solid)
+		)
+		(layer "F.CrtYd")
+		(uuid "67e3c383-3900-4d7a-80a8-55bd7fa293b9")
+	)
+	(fp_line
+		(start 2.8 2.9)
+		(end -3.2 2.9)
+		(stroke
+			(width 0.1)
+			(type solid)
+		)
+		(layer "F.CrtYd")
+		(uuid "d8387800-ccb5-4f25-a3f3-4ecc457c39cc")
+	)
+	(fp_line
+		(start -1.6 -1.25)
+		(end 1.6 -1.25)
+		(stroke
+			(width 0.2)
+			(type solid)
+		)
+		(layer "F.Fab")
+		(uuid "c79fdb58-3d81-4ace-ba6e-3f6ac321f511")
+	)
+	(fp_line
+		(start -1.6 1.25)
+		(end -1.6 -1.25)
+		(stroke
+			(width 0.2)
+			(type solid)
+		)
+		(layer "F.Fab")
+		(uuid "44506d6e-c2df-47d0-b12f-363483ddb893")
+	)
+	(fp_line
+		(start 1.6 -1.25)
+		(end 1.6 1.25)
+		(stroke
+			(width 0.2)
+			(type solid)
+		)
+		(layer "F.Fab")
+		(uuid "c3c2b0ea-be16-44b7-9337-605d951fa225")
+	)
+	(fp_line
+		(start 1.6 1.25)
+		(end -1.6 1.25)
+		(stroke
+			(width 0.2)
+			(type solid)
+		)
+		(layer "F.Fab")
+		(uuid "b2dc8db9-b306-4a62-8cc0-0b1ef9387187")
+	)
+	(fp_text user "${REFERENCE}"
+		(at -0.2 0.25 0)
+		(layer "F.Fab")
+		(uuid "df7fbc35-0b3e-4cbd-a9c4-5e756595d5b5")
+		(effects
+			(font
+				(size 1.27 1.27)
+				(thickness 0.254)
+			)
+		)
+	)
+	(pad "1" smd rect
+		(at -1.1 0.8 90)
+		(size 1.2 1.4)
+		(layers "F.Cu" "F.Paste" "F.Mask")
+		(uuid "f1b63655-5501-401b-b6d1-e3a66953316a")
+	)
+	(pad "2" smd rect
+		(at 1.1 0.8 90)
+		(size 1.2 1.4)
+		(layers "F.Cu" "F.Paste" "F.Mask")
+		(uuid "0de987eb-ebaa-4ccd-af5a-0d2c1dd80622")
+	)
+	(pad "3" smd rect
+		(at 1.1 -0.8 90)
+		(size 1.2 1.4)
+		(layers "F.Cu" "F.Paste" "F.Mask")
+		(uuid "a71359d6-f3b4-4414-9f47-21e832d015d9")
+	)
+	(pad "4" smd rect
+		(at -1.1 -0.8 90)
+		(size 1.2 1.4)
+		(layers "F.Cu" "F.Paste" "F.Mask")
+		(uuid "06d91c0f-754c-46bd-a137-e685ea8f3593")
+	)
+	(model "${KIPRJMOD}/CustomLibs/Downloaded/ETHERNET/NX3225SA-25.000M-STD-CSR-6/NX3225SA-25.000M-STD-CSR-6.stp"
+		(offset
+			(xyz 0 0 0)
+		)
+		(scale
+			(xyz 1 1 1)
+		)
+		(rotate
+			(xyz 0 0 0)
+		)
+	)
+)

@@ -1,0 +1,9 @@
+EESchema-DOCLIB  Version 2.0
+#
+$CMP LAN8740AI-EN-TR
+D Ethernet ICs Small Footprint MII/RMII 10/100 Energy Efficient Ethernet Transceiver
+K
+F https://datasheet.datasheetarchive.com/originals/distributors/DKDS-15/280025.pdf
+$ENDCMP
+#
+#End Doc Library

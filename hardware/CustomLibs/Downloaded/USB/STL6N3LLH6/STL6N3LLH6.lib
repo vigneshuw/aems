@@ -1,0 +1,29 @@
+EESchema-LIBRARY Version 2.3
+#encoding utf-8
+#SamacSys ECAD Model STL6N3LLH6
+#/424868/1450772/2.50/8/4/MOSFET (N-Channel)
+DEF STL6N3LLH6 Q 0 30 Y Y 1 F N
+F0 "Q" 850 300 50 H V L CNN
+F1 "STL6N3LLH6" 850 200 50 H V L CNN
+F2 "POWERFLAT-2X2" 850 100 50 H I L CNN
+F3 "https://www.st.com/resource/en/datasheet/stl6n3llh6.pdf" 850 0 50 H I L CNN
+F4 "STMicroelectronics STL6N3LLH6 N-channel MOSFET Transistor, 6 A, 30 V, 6-Pin PowerFLAT" 850 -100 50 H I L CNN "Description"
+F5 "" 850 -200 50 H I L CNN "Height"
+F6 "511-STL6N3LLH6" 850 -300 50 H I L CNN "Mouser Part Number"
+F7 "https://www.mouser.co.uk/ProductDetail/STMicroelectronics/STL6N3LLH6?qs=symtzNQNgQLOqUYDqyK2eQ%3D%3D" 850 -400 50 H I L CNN "Mouser Price/Stock"
+F8 "STMicroelectronics" 850 -500 50 H I L CNN "Manufacturer_Name"
+F9 "STL6N3LLH6" 850 -600 50 H I L CNN "Manufacturer_Part_Number"
+DRAW
+X D_1 1 0 0 200 R 50 50 0 0 P
+X D_2 2 0 -100 200 R 50 50 0 0 P
+X G 3 0 -200 200 R 50 50 0 0 P
+X S_1 4 0 -300 200 R 50 50 0 0 P
+X D_3 5 1000 0 200 L 50 50 0 0 P
+X D_4 6 1000 -100 200 L 50 50 0 0 P
+X D_5 7 1000 -200 200 L 50 50 0 0 P
+X S_2 8 1000 -300 200 L 50 50 0 0 P
+P 5 0 1 6 200 100 800 100 800 -400 200 -400 200 100 N
+ENDDRAW
+ENDDEF
+#
+#End Library

@@ -1,0 +1,34 @@
+EESchema-LIBRARY Version 2.3
+#encoding utf-8
+#SamacSys ECAD Model TCPP01-M12
+#/4686076/1450772/2.50/13/3/Integrated Circuit
+DEF TCPP01-M12 IC 0 30 Y Y 1 F N
+F0 "IC" 950 600 50 H V L CNN
+F1 "TCPP01-M12" 950 500 50 H V L CNN
+F2 "QFN50P300X300X100-13N-D" 950 400 50 H I L CNN
+F3 "https://www.st.com/resource/en/datasheet/tcpp01-m12.pdf" 950 300 50 H I L CNN
+F4 "USB type-C port protection" 950 200 50 H I L CNN "Description"
+F5 "1" 950 100 50 H I L CNN "Height"
+F6 "511-TCPP01-M12" 950 0 50 H I L CNN "Mouser Part Number"
+F7 "https://www.mouser.co.uk/ProductDetail/STMicroelectronics/TCPP01-M12?qs=%252B6g0mu59x7KCafIwapwG2A%3D%3D" 950 -100 50 H I L CNN "Mouser Price/Stock"
+F8 "STMicroelectronics" 950 -200 50 H I L CNN "Manufacturer_Name"
+F9 "TCPP01-M12" 950 -300 50 H I L CNN "Manufacturer_Part_Number"
+DRAW
+X CC2 1 0 0 200 R 50 50 0 0 P
+X GND 2 0 -100 200 R 50 50 0 0 P
+X CC1 3 0 -200 200 R 50 50 0 0 P
+X SOURCE 4 400 -1100 200 U 50 50 0 0 P
+X GATE 5 500 -1100 200 U 50 50 0 0 P
+X VBUS_CTRL 6 600 -1100 200 U 50 50 0 0 P
+X CC2C 9 1100 0 200 L 50 50 0 0 P
+X IN_GD 8 1100 -100 200 L 50 50 0 0 P
+X CC1C 7 1100 -200 200 L 50 50 0 0 P
+X EP 13 400 600 200 D 50 50 0 0 P
+X VCC 12 500 600 200 D 50 50 0 0 P
+X FLT/ 11 600 600 200 D 50 50 0 0 P
+X DB/ 10 700 600 200 D 50 50 0 0 P
+P 5 0 1 6 200 400 900 400 900 -900 200 -900 200 400 N
+ENDDRAW
+ENDDEF
+#
+#End Library

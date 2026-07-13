@@ -1,0 +1,9 @@
+EESchema-DOCLIB  Version 2.0
+#
+$CMP STEF05SGR
+D Electronic Fuse Regulator - 3.6A 10-DFN (3x3)
+K
+F https://www.st.com/resource/en/datasheet/stef05s.pdf
+$ENDCMP
+#
+#End Doc Library

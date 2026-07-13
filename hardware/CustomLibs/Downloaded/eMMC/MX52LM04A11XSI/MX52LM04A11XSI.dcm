@@ -1,0 +1,9 @@
+EESchema-DOCLIB  Version 2.0
+#
+$CMP MX52LM04A11XSI
+D FLASH - NAND (MLC) Memory IC 32Gbit eMMC_5.1 200 MHz 153-LFBGA (11.5x13)
+K
+F https://www.macronix.com/Lists/Datasheet/Attachments/9162/MX52LM04A11,%203V,%204GB,%20v1.7.pdf
+$ENDCMP
+#
+#End Doc Library

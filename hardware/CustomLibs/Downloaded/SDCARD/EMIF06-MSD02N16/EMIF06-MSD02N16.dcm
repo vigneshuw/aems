@@ -1,0 +1,9 @@
+EESchema-DOCLIB  Version 2.0
+#
+$CMP EMIF06-MSD02N16
+D 6-Line EMI filter&ESD for SD card uQFN16 STMicroelectronics EMIF06-MSD02N16, EMI Filter & ESD Protector
+K
+F http://www.st.com/content/ccc/resource/technical/document/datasheet/a7/86/d3/98/2c/7f/4b/d2/CD00217829.pdf/files/CD00217829.pdf/jcr:content/translations/en.CD00217829.pdf
+$ENDCMP
+#
+#End Doc Library

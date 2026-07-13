@@ -1,0 +1,9 @@
+EESchema-DOCLIB  Version 2.0
+#
+$CMP ST1PS02CQTR
+D Switching Voltage Regulators 400mA Nano-Quiescent Synchronous step-down converter digital volt Power Good AUX
+K
+F https://www.st.com/en/power-management/st1ps02.html
+$ENDCMP
+#
+#End Doc Library

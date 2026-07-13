@@ -1,0 +1,9 @@
+EESchema-DOCLIB  Version 2.0
+#
+$CMP STL6N3LLH6
+D STMicroelectronics STL6N3LLH6 N-channel MOSFET Transistor, 6 A, 30 V, 6-Pin PowerFLAT
+K
+F https://www.st.com/resource/en/datasheet/stl6n3llh6.pdf
+$ENDCMP
+#
+#End Doc Library

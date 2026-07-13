@@ -1,0 +1,212 @@
+(footprint "BAT30KFILM"
+	(version 20240108)
+	(generator "pcbnew")
+	(generator_version "8.0")
+	(layer "F.Cu")
+	(descr "SOD-523")
+	(tags "Diode")
+	(property "Reference" "D**"
+		(at 0 0 0)
+		(layer "F.SilkS")
+		(uuid "ac04f0b8-e4c9-4195-b676-891951e259a9")
+		(effects
+			(font
+				(size 1.27 1.27)
+				(thickness 0.254)
+			)
+		)
+	)
+	(property "Value" "SODFL1608X70N"
+		(at 0 0 0)
+		(layer "F.SilkS")
+		(hide yes)
+		(uuid "b7d348f6-9fbe-4c79-8161-1883f3a1cfb6")
+		(effects
+			(font
+				(size 1.27 1.27)
+				(thickness 0.254)
+			)
+		)
+	)
+	(property "Footprint" ""
+		(at 0 0 0)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "bf52850e-b95c-403a-81a9-2b40bbf52125")
+		(effects
+			(font
+				(size 1.27 1.27)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property "Datasheet" ""
+		(at 0 0 0)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "3aab7678-31a9-49a2-8484-532ce64ef60f")
+		(effects
+			(font
+				(size 1.27 1.27)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property "Description" ""
+		(at 0 0 0)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "182f595b-8609-40e8-8ece-960d972f124a")
+		(effects
+			(font
+				(size 1.27 1.27)
+				(thickness 0.15)
+			)
+		)
+	)
+	(attr smd)
+	(fp_line
+		(start -1.075 -0.4)
+		(end 0.6 -0.4)
+		(stroke
+			(width 0.2)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "21b7f6ca-3dc7-493a-b8eb-f3c19801b10a")
+	)
+	(fp_line
+		(start -0.6 0.4)
+		(end 0.6 0.4)
+		(stroke
+			(width 0.2)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "cf23c4d6-cd77-42f2-ad14-fef192f1bb2a")
+	)
+	(fp_line
+		(start -1.225 -0.6)
+		(end 1.225 -0.6)
+		(stroke
+			(width 0.05)
+			(type solid)
+		)
+		(layer "F.CrtYd")
+		(uuid "9acdb66e-1a98-4cbe-96f2-b197adfe6457")
+	)
+	(fp_line
+		(start -1.225 0.6)
+		(end -1.225 -0.6)
+		(stroke
+			(width 0.05)
+			(type solid)
+		)
+		(layer "F.CrtYd")
+		(uuid "a869be8f-7a14-41d7-85b8-1e1b3fd3f250")
+	)
+	(fp_line
+		(start 1.225 -0.6)
+		(end 1.225 0.6)
+		(stroke
+			(width 0.05)
+			(type solid)
+		)
+		(layer "F.CrtYd")
+		(uuid "76bc3414-6030-4711-bba0-35f9668d9c02")
+	)
+	(fp_line
+		(start 1.225 0.6)
+		(end -1.225 0.6)
+		(stroke
+			(width 0.05)
+			(type solid)
+		)
+		(layer "F.CrtYd")
+		(uuid "adfba05c-c492-4ac9-9515-5ae9e425a528")
+	)
+	(fp_line
+		(start -0.6 -0.4)
+		(end 0.6 -0.4)
+		(stroke
+			(width 0.1)
+			(type solid)
+		)
+		(layer "F.Fab")
+		(uuid "9c67e4fd-d733-4790-a527-5d167edfd39b")
+	)
+	(fp_line
+		(start -0.6 -0.05)
+		(end -0.25 -0.4)
+		(stroke
+			(width 0.1)
+			(type solid)
+		)
+		(layer "F.Fab")
+		(uuid "ab3e81a5-4f71-4f53-970a-fcdd74da0265")
+	)
+	(fp_line
+		(start -0.6 0.4)
+		(end -0.6 -0.4)
+		(stroke
+			(width 0.1)
+			(type solid)
+		)
+		(layer "F.Fab")
+		(uuid "4b2b9314-94b3-4b03-937e-d0807d5a7df6")
+	)
+	(fp_line
+		(start 0.6 -0.4)
+		(end 0.6 0.4)
+		(stroke
+			(width 0.1)
+			(type solid)
+		)
+		(layer "F.Fab")
+		(uuid "ae9fee86-ecef-4149-ac8f-1d0eb6c31a77")
+	)
+	(fp_line
+		(start 0.6 0.4)
+		(end -0.6 0.4)
+		(stroke
+			(width 0.1)
+			(type solid)
+		)
+		(layer "F.Fab")
+		(uuid "ee88d8fd-1371-428c-91ee-fe910ab699df")
+	)
+	(fp_text user "${REFERENCE}"
+		(at 0 0 0)
+		(layer "F.Fab")
+		(uuid "dff81672-79ba-49f7-b0ab-6983b32d4376")
+		(effects
+			(font
+				(size 1.27 1.27)
+				(thickness 0.254)
+			)
+		)
+	)
+	(pad "1" smd rect
+		(at -0.725 0 90)
+		(size 0.42 0.7)
+		(layers "F.Cu" "F.Paste" "F.Mask")
+		(uuid "8f1cff51-282a-4302-af1b-96e5d95baf21")
+	)
+	(pad "2" smd rect
+		(at 0.725 0 90)
+		(size 0.42 0.7)
+		(layers "F.Cu" "F.Paste" "F.Mask")
+		(uuid "aa0e587c-71a5-4917-ae16-94659fbc3195")
+	)
+	(model "${KIPRJMOD}/CustomLibs/Downloaded/USB/BAT30KFILM/BAT30KFILM.stp"
+		(offset
+			(xyz 0 0 0)
+		)
+		(scale
+			(xyz 1 1 1)
+		)
+		(rotate
+			(xyz 0 0 0)
+		)
+	)
+)

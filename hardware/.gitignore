@@ -1,0 +1,9 @@
+# Files
+.DS_Store
+
+
+
+# Directories
+*-backups/
+ManufacturerComments/
+Archived/

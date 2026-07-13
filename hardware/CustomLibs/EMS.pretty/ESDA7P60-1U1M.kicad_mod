@@ -1,0 +1,244 @@
+(footprint "ESDA7P60-1U1M"
+	(version 20240108)
+	(generator "pcbnew")
+	(generator_version "8.0")
+	(layer "F.Cu")
+	(descr "1610")
+	(tags "Diode Clamping")
+	(property "Reference" "D**"
+		(at -0.275 0 0)
+		(layer "F.SilkS")
+		(uuid "d09add5f-0f61-44c2-8556-bd198c1cae4e")
+		(effects
+			(font
+				(size 1.27 1.27)
+				(thickness 0.254)
+			)
+		)
+	)
+	(property "Value" "ESDA7P601U1M"
+		(at -0.275 0 0)
+		(layer "F.SilkS")
+		(hide yes)
+		(uuid "4765d3c5-bb31-48fe-90e8-1f7774bbf0b1")
+		(effects
+			(font
+				(size 1.27 1.27)
+				(thickness 0.254)
+			)
+		)
+	)
+	(property "Footprint" ""
+		(at 0 0 0)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "b6d89086-770f-4738-abf6-72652544d4f9")
+		(effects
+			(font
+				(size 1.27 1.27)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property "Datasheet" ""
+		(at 0 0 0)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "c6908d09-9b50-447d-9179-feaee8b32477")
+		(effects
+			(font
+				(size 1.27 1.27)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property "Description" ""
+		(at 0 0 0)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "871c5f16-385b-4f76-9fcf-85c656a40b46")
+		(effects
+			(font
+				(size 1.27 1.27)
+				(thickness 0.15)
+			)
+		)
+	)
+	(attr smd)
+	(fp_line
+		(start -1.4 -0.1)
+		(end -1.4 -0.1)
+		(stroke
+			(width 0.1)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "a09759b9-dfb9-47d6-ab71-cb806126e8f4")
+	)
+	(fp_line
+		(start -1.4 0)
+		(end -1.4 0)
+		(stroke
+			(width 0.1)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "f072672f-f2a0-49e6-8cad-276ee480b055")
+	)
+	(fp_line
+		(start -0.1 -0.5)
+		(end 0.1 -0.5)
+		(stroke
+			(width 0.1)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "0603afaf-1f71-4b20-94c4-49c2149822be")
+	)
+	(fp_line
+		(start -0.1 0.5)
+		(end 0.1 0.5)
+		(stroke
+			(width 0.1)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "525687fb-5880-4145-a3dc-1dedb28ec0f8")
+	)
+	(fp_arc
+		(start -1.4 -0.1)
+		(mid -1.35 -0.05)
+		(end -1.4 0)
+		(stroke
+			(width 0.1)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "dc4799e2-cf86-42bf-a422-be89ef97f296")
+	)
+	(fp_arc
+		(start -1.4 0)
+		(mid -1.45 -0.05)
+		(end -1.4 -0.1)
+		(stroke
+			(width 0.1)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "ffce767c-8d29-4c99-a0d4-8a1ae419eb52")
+	)
+	(fp_line
+		(start -2.45 -1.5)
+		(end 1.9 -1.5)
+		(stroke
+			(width 0.1)
+			(type solid)
+		)
+		(layer "F.CrtYd")
+		(uuid "98b929cf-952b-4e9d-a24a-713978529e57")
+	)
+	(fp_line
+		(start -2.45 1.5)
+		(end -2.45 -1.5)
+		(stroke
+			(width 0.1)
+			(type solid)
+		)
+		(layer "F.CrtYd")
+		(uuid "0aed88b6-e6f8-49e6-a832-8dfb6f8f62cf")
+	)
+	(fp_line
+		(start 1.9 -1.5)
+		(end 1.9 1.5)
+		(stroke
+			(width 0.1)
+			(type solid)
+		)
+		(layer "F.CrtYd")
+		(uuid "5188e7f2-1621-4909-b8b4-8bbea1ec6279")
+	)
+	(fp_line
+		(start 1.9 1.5)
+		(end -2.45 1.5)
+		(stroke
+			(width 0.1)
+			(type solid)
+		)
+		(layer "F.CrtYd")
+		(uuid "069100e4-9752-4035-8c8c-ae28d5b6aaa6")
+	)
+	(fp_line
+		(start -0.8 -0.5)
+		(end 0.8 -0.5)
+		(stroke
+			(width 0.2)
+			(type solid)
+		)
+		(layer "F.Fab")
+		(uuid "80676dd5-5dcf-43a7-b1f2-9d5aee4fab42")
+	)
+	(fp_line
+		(start -0.8 0.5)
+		(end -0.8 -0.5)
+		(stroke
+			(width 0.2)
+			(type solid)
+		)
+		(layer "F.Fab")
+		(uuid "39595f27-1c68-4bbc-b1a6-08cf2357758e")
+	)
+	(fp_line
+		(start 0.8 -0.5)
+		(end 0.8 0.5)
+		(stroke
+			(width 0.2)
+			(type solid)
+		)
+		(layer "F.Fab")
+		(uuid "51a7fa2f-dcb3-497c-ab82-daca0c216350")
+	)
+	(fp_line
+		(start 0.8 0.5)
+		(end -0.8 0.5)
+		(stroke
+			(width 0.2)
+			(type solid)
+		)
+		(layer "F.Fab")
+		(uuid "daa3b85f-ab4b-4831-83b9-4fb761e1b300")
+	)
+	(fp_text user "${REFERENCE}"
+		(at -0.275 0 0)
+		(layer "F.Fab")
+		(uuid "c9a93398-cdc4-4c37-b01d-fbc346fe0d48")
+		(effects
+			(font
+				(size 1.27 1.27)
+				(thickness 0.254)
+			)
+		)
+	)
+	(pad "1" smd rect
+		(at -0.625 0)
+		(size 0.55 0.8)
+		(layers "F.Cu" "F.Paste" "F.Mask")
+		(uuid "f0d89153-7f85-4776-834e-202f4c3f7308")
+	)
+	(pad "2" smd rect
+		(at 0.625 0)
+		(size 0.55 0.8)
+		(layers "F.Cu" "F.Paste" "F.Mask")
+		(uuid "2b32f750-b582-497b-b0b8-b083ed988a7a")
+	)
+	(model "${KIPRJMOD}/CustomLibs/Downloaded/USB/ESDA7P60-1U1M/ESDA7P60-1U1M.stp"
+		(offset
+			(xyz 0 0 0.5699999843)
+		)
+		(scale
+			(xyz 1 1 1)
+		)
+		(rotate
+			(xyz 90 0 0)
+		)
+	)
+)

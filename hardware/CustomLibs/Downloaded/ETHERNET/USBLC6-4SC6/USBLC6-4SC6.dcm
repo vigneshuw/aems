@@ -1,0 +1,9 @@
+EESchema-DOCLIB  Version 2.0
+#
+$CMP USBLC6-4SC6
+D 4 data-line protection  Protects VBUS  Very low capacitance: 3 pF typ.  Peak pulse power (8/20 s): 130 W typ.  SOT23-6L package  RoHS compliant
+K
+F https://www.mouser.co.za/datasheet/2/389/usblc6_4-1852747.pdf
+$ENDCMP
+#
+#End Doc Library

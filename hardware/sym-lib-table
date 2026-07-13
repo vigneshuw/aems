@@ -1,0 +1,5 @@
+(sym_lib_table
+  (version 7)
+  (lib (name "EMS")(type "KiCad")(uri "${KIPRJMOD}/CustomLibs/EMS.kicad_sym")(options "")(descr ""))
+  (lib (name "AMS-CM")(type "KiCad")(uri "/Users/vigneshselvaraj/ResearchWork/PCBProjects/AcousticMonitoringSystem/Custom Libs/AMS-CM.kicad_sym")(options "")(descr "Schematics used for the development of the Energy Monitoring System"))
+)

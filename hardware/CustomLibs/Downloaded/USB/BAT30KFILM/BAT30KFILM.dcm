@@ -1,0 +1,9 @@
+EESchema-DOCLIB  Version 2.0
+#
+$CMP BAT30KFILM
+D STMicroelectronics BAT30KFILM, SMT Schottky Diode, 30V 300mA, 2-Pin SOD-523
+K
+F http://www.st.com/content/ccc/resource/technical/document/datasheet/b5/44/50/dc/a4/84/48/70/CD00126118.pdf/files/CD00126118.pdf/jcr:content/translations/en.CD00126118.pdf
+$ENDCMP
+#
+#End Doc Library

@@ -1,0 +1,29 @@
+EESchema-LIBRARY Version 2.3
+#encoding utf-8
+#SamacSys ECAD Model STEF05SGR
+#/2440270/1450772/2.50/8/2/Integrated Circuit
+DEF STEF05SGR IC 0 30 Y Y 1 F N
+F0 "IC" 1350 300 50 H V L CNN
+F1 "STEF05SGR" 1350 200 50 H V L CNN
+F2 "SOT65P280X100-8N" 1350 100 50 H I L CNN
+F3 "https://www.st.com/resource/en/datasheet/stef05s.pdf" 1350 0 50 H I L CNN
+F4 "Electronic Fuse Regulator - 3.6A 10-DFN (3x3)" 1350 -100 50 H I L CNN "Description"
+F5 "1" 1350 -200 50 H I L CNN "Height"
+F6 "511-STEF05SGR" 1350 -300 50 H I L CNN "Mouser Part Number"
+F7 "https://www.mouser.co.uk/ProductDetail/STMicroelectronics/STEF05SGR?qs=%252B6g0mu59x7KvRRED919Zdw%3D%3D" 1350 -400 50 H I L CNN "Mouser Price/Stock"
+F8 "STMicroelectronics" 1350 -500 50 H I L CNN "Manufacturer_Name"
+F9 "STEF05SGR" 1350 -600 50 H I L CNN "Manufacturer_Part_Number"
+DRAW
+X I_LIM 1 0 0 200 R 50 50 0 0 P
+X EN/FAULT 2 0 -100 200 R 50 50 0 0 P
+X DV/DT 3 0 -200 200 R 50 50 0 0 P
+X GND 4 0 -300 200 R 50 50 0 0 P
+X SOURCE_1 5 1500 0 200 L 50 50 0 0 P
+X SOURCE_2 6 1500 -100 200 L 50 50 0 0 P
+X VCC_1 7 1500 -200 200 L 50 50 0 0 P
+X VCC_2 8 1500 -300 200 L 50 50 0 0 P
+P 5 0 1 6 200 100 1300 100 1300 -400 200 -400 200 100 N
+ENDDRAW
+ENDDEF
+#
+#End Library

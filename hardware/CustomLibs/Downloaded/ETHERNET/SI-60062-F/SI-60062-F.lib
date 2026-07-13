@@ -1,0 +1,35 @@
+EESchema-LIBRARY Version 2.3
+#encoding utf-8
+#SamacSys ECAD Model SI-60062-F
+#/233158/1450772/2.50/14/4/Connector
+DEF SI-60062-F J 0 30 Y Y 1 F N
+F0 "J" 950 300 50 H V L CNN
+F1 "SI-60062-F" 950 200 50 H V L CNN
+F2 "SI60062F" 950 100 50 H I L CNN
+F3 "https://componentsearchengine.com/Datasheets/1/SI-60062-F.pdf" 950 0 50 H I L CNN
+F4 "Bel-Stewart Female RJ45 Modular Jack, STP, Straight, Through Hole Mount, MagJack" 950 -100 50 H I L CNN "Description"
+F5 "13.84" 950 -200 50 H I L CNN "Height"
+F6 "530-SI-60062-F" 950 -300 50 H I L CNN "Mouser Part Number"
+F7 "" 950 -400 50 H I L CNN "Mouser Price/Stock"
+F8 "BelFuse" 950 -500 50 H I L CNN "Manufacturer_Name"
+F9 "SI-60062-F" 950 -600 50 H I L CNN "Manufacturer_Part_Number"
+DRAW
+X TD+ 1 0 0 200 R 50 50 0 0 P
+X TCT 2 0 -100 200 R 50 50 0 0 P
+X TD- 3 0 -200 200 R 50 50 0 0 P
+X RD+ 4 0 -300 200 R 50 50 0 0 P
+X RCT 5 0 -400 200 R 50 50 0 0 P
+X RD- 6 0 -500 200 R 50 50 0 0 P
+X 7 7 0 -600 200 R 50 50 0 0 P
+X 8 8 1100 0 200 L 50 50 0 0 P
+X 9 9 1100 -100 200 L 50 50 0 0 P
+X 10 10 1100 -200 200 L 50 50 0 0 P
+X YEL_+ 11 1100 -300 200 L 50 50 0 0 P
+X YEL_- 12 1100 -400 200 L 50 50 0 0 P
+X GRN_+ 13 1100 -500 200 L 50 50 0 0 P
+X GRN_- 14 1100 -600 200 L 50 50 0 0 P
+P 5 0 1 6 200 100 900 100 900 -700 200 -700 200 100 N
+ENDDRAW
+ENDDEF
+#
+#End Library
