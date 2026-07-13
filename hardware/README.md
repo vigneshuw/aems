@@ -23,14 +23,13 @@ Key design features:
 - **Impedance-controlled, multilayer PCB** (100 Ω differential / 50 Ω single-ended Ethernet,
   90 Ω USB) — see the impedance and stackup exports in [`DesignSummary/`](DesignSummary/).
 - **MOV-based surge protection** on the measurement inputs.
-- **PoE-capable Ethernet** and **on-board eMMC** for autonomous, network-independent logging.
+- **Ethernet** and **on-board eMMC** for autonomous, network-independent logging.
 
-The current firmware/host workflows use a **6-channel acquisition mask (`0x3F`)** — three voltage
-and three current channels.
+The current firmware/host workflows use a **6-channel acquisition mask (`0x3F`)** — three voltage and three current channels.
 
 > **Input voltage topology:** the present design is validated for its rated direct-measurement
 > input topology. Measuring higher line-to-line service voltages (e.g. 480 V L-L) exceeds the
-> on-board MOV continuous ratings and requires an **external potential transformer**. This is
+> on-board MOV continuous ratings and requires an updated **MOV surge protector (upto a certain voltage level)** or **external potential transformer**. This is
 > consistent with the modular design intent and is tracked under
 > [`FutureUpdates/`](FutureUpdates/).
 
@@ -65,7 +64,7 @@ The design is hierarchical. The main functional sheets are:
 | `adc` | ADS131M08 analog front end and signal conditioning |
 | `uC` / `uCMain` | STM32H745 microcontroller and support |
 | `ethernet` | Ethernet PHY (LAN8742) and magnetics |
-| `poe` | Power-over-Ethernet input |
+| `poe` | Ethernet input (No PoE setup currently) |
 | `vr` | Voltage regulation / power rails |
 | `emmc` | eMMC storage |
 | `sd_card` | SD card interface |
@@ -87,7 +86,7 @@ The design is hierarchical. The main functional sheets are:
 ## Manufacturing
 
 Ready-to-fabricate outputs (generated for PCBWay) are in
-[`Manufacturing/PCBWay/`](Manufacturing/PCBWay/):
+[`Manufacturing/PCBWay/`](Manufacturing/PCBWay/) or you generated your own from the KiCAD project:
 
 - Gerbers (`F_Cu`, `B_Cu`, `In1..In6_Cu`, mask, paste, silkscreen, edge cuts)
 - Drill files (`PTH`, `NPTH`)
@@ -114,8 +113,7 @@ and re-export the BOM/placement.
 ## Future updates
 
 Planned hardware revisions are tracked in [`FutureUpdates/Planned/`](FutureUpdates/Planned/),
-including improved analog front-end **isolation** and an external potential-transformer path for
-higher line-to-line voltages.
+including improved analog front-end **isolation** and higher line-to-line voltages.
 
 ---
 

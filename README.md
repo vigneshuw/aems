@@ -36,7 +36,7 @@ AEMS is organized into three layers, each of which lives in this repository:
 
 | Layer | Location | Role |
 |---|---|---|
-| **Hardware** | [`hardware/`](hardware/) | Custom AEMS v2 DAQ board — KiCad design, ADS131M08 analog front end, isolated power, surge protection, impedance-controlled PCB. |
+| **Hardware** | [`hardware/`](hardware/) | Custom AEMS v2 DAQ board — KiCad design, ADS131M08 analog front end, surge protection, impedance-controlled PCB. |
 | **Firmware** | [`firmware/`](firmware/) | STM32H745 dual-core firmware. **CM4** owns deterministic acquisition + eMMC storage; **CM7** owns Ethernet/TCP + host command/control over OpenAMP. |
 | **Host software** | [`firmware/BoardInterfaceLibrary/`](firmware/BoardInterfaceLibrary/) | Python `board_interface` library, examples, Raspberry Pi daemon (`aemsctl`), and an optional AWS IoT cloud agent. |
 
@@ -49,8 +49,6 @@ Machine mains ──▶ AEMS board (ADS131M08 front end)
                         │
                 Host (PC / Raspberry Pi)
              board_interface  ·  aemsctl daemon
-                        │
-                 optional AWS IoT cloud
 ```
 
 Data flows from the analog front end through the ADS131M08 acquisition path on CM4, is logged
@@ -72,7 +70,7 @@ aems/
 │   └── FutureUpdates/            Planned revisions (e.g. front-end isolation)
 │
 └── firmware/                     STM32H745 dual-core firmware + host tooling
-    ├── CM4/                      Cortex-M4: DAQ engine, ADS131M08, eMMC/FatFs, OpenAMP remote
+    ├── CM4/                      Cortex-M4: DAQ, ADS131M08, eMMC/FatFs, OpenAMP
     ├── CM7/                      Cortex-M7: Ethernet/TCP, FreeRTOS, OpenAMP master
     ├── Common/                   Shared cross-core headers/data structures
     ├── BoardInterfaceLibrary/    Python host library, CLI, Raspberry Pi daemon, cloud agent
@@ -100,15 +98,12 @@ The AEMS v2 board is built around:
 - **STM32H745** dual-core (Cortex-M7 + Cortex-M4) microcontroller.
 - **Isolated power rails** and impedance-controlled routing for Ethernet and USB.
 - **MOV-based surge protection** on the measurement inputs.
-- **On-board eMMC** storage for autonomous logging, plus Ethernet (PoE-capable) connectivity.
+- **On-board eMMC** storage for logging, plus Ethernet connectivity.
 
-The current firmware and host workflows target a **6-channel acquisition mask (`0x3F`)** — three
-voltage and three current channels. See [`hardware/README.md`](hardware/README.md) for the board
-description, bill of materials, and manufacturing notes.
+The current firmware and host workflows target a **6-channel acquisition mask (`0x3F`)** — three voltage and three current channels. See [`hardware/README.md`](hardware/README.md) for the board description, bill of materials, and manufacturing notes.
 
 > **Note on voltage range:** the present hardware is validated for direct measurement at the
-> board's rated input topology. Higher line-to-line service voltages (e.g. 480 V L-L) require an
-> external potential transformer, consistent with the modular design; see
+> board's rated input topology. Higher line-to-line service voltages (e.g. 480 V L-L) require updating the MOV-based surge protector or an external potential transformer, consistent with the modular design; see
 > [`hardware/FutureUpdates/`](hardware/FutureUpdates/).
 
 ---
@@ -182,5 +177,5 @@ contact the authors before redistribution.
 
 ## Contact
 
-Lead developer: **Vignesh Selvaraj** — `vselvaraj@wisc.edu`
+Lead developer: **Vignesh Selvaraj** — `vselvaraj@wisc.edu`, 
 Department of Mechanical Engineering, University of Wisconsin–Madison.
