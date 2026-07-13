@@ -1,0 +1,45 @@
+AEMS — Licensing (PLACEHOLDER — NOT YET FINALIZED)
+==================================================
+
+The Autonomous Energy Monitoring System (AEMS) is intended for release as open
+hardware and open-source software. The specific license terms are still being
+finalized and WILL be committed here before/at publication.
+
+Planned licensing split
+------------------------
+
+AEMS is a mixed hardware + software + documentation project, so different parts
+are expected to carry different licenses:
+
+  * Hardware design files (hardware/)      -> open-hardware license   [TODO]
+  * Firmware and host software (firmware/) -> open-source software    [TODO]
+  * Documentation and figures              -> documentation license   [TODO]
+
+Each SPDX identifier and full license text will be added here, and per-directory
+LICENSE files will be placed where appropriate, once the choice is confirmed.
+
+Third-party components
+----------------------
+
+Vendor and third-party components retain their own licenses, including but not
+limited to:
+
+  * STMicroelectronics STM32H7xx HAL / CMSIS / BSP drivers
+  * FreeRTOS
+  * OpenAMP / libmetal
+  * FatFs
+  * BlueNRG-2
+  * Third-party KiCad symbol/footprint libraries under hardware/CustomLibs/Downloaded/
+
+See the LICENSE / license headers distributed with those components (e.g. under
+firmware/Drivers/ and firmware/Middlewares/). Nothing in this file overrides the
+terms of any third-party component.
+
+Interim terms
+-------------
+
+Until the final license(s) are committed, please contact the authors before
+redistributing or reusing the AEMS design files or software.
+
+Contact: Sangkee Min <sangkee.min@wisc.edu>; Vignesh Selvaraj <vselvaraj@wisc.edu>
+Department of Mechanical Engineering, University of Wisconsin–Madison.

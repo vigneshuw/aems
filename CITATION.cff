@@ -1,0 +1,62 @@
+cff-version: 1.2.0
+message: "If you use AEMS (hardware, firmware, or software), please cite the paper below and, optionally, the archived software release."
+title: "AEMS — Autonomous Energy Monitoring System"
+abstract: >-
+  An open-source, low-cost, modular platform for high-resolution energy monitoring of
+  manufacturing equipment. AEMS acquires three-phase voltage and current through an isolated
+  front end and a 24-bit, simultaneously sampling ADS131M08 ADC, managed by an STM32H745
+  dual-core architecture that separates deterministic acquisition and on-board logging from host
+  communication and control. It is supported by a host, edge-gateway, and optional cloud (AWS
+  IoT) software stack for autonomous, long-duration acquisition in Industry 4.0 environments.
+type: software
+authors:
+  - family-names: Selvaraj
+    given-names: Vignesh
+    affiliation: "Department of Mechanical Engineering, University of Wisconsin–Madison"
+    email: vselvaraj@wisc.edu
+  - family-names: Nagaraj
+    given-names: Aditya
+    affiliation: "Department of Mechanical Engineering, University of Wisconsin–Madison"
+    email: adityanagaraj@outlook.com
+  - family-names: Zhang
+    given-names: Shengyuan
+    affiliation: "Department of Mechanical Engineering, University of Wisconsin–Madison"
+    email: szhang886@wisc.edu
+  - family-names: Sadeghian
+    given-names: Sina
+  - family-names: Min
+    given-names: Sangkee
+    affiliation: "Department of Mechanical Engineering, University of Wisconsin–Madison"
+    email: sangkee.min@wisc.edu
+repository-code: "https://github.com/vigneshuw/aems"
+url: "https://github.com/vigneshuw/aems"
+keywords:
+  - energy monitoring
+  - open-source hardware
+  - condition monitoring
+  - Industry 4.0
+  - data acquisition
+  - manufacturing
+  - IIoT
+# license: TODO  # set SPDX identifier(s) once the open-hardware/software license is finalized
+# version: v1.0.0        # set on tagged release
+# date-released: 2026-00-00
+# doi: 10.5281/zenodo.XXXXXXX  # add Zenodo archive DOI on release
+preferred-citation:
+  type: article
+  title: "An Open-Source, Autonomous Platform for High-Resolution Energy Monitoring in Manufacturing"
+  authors:
+    - family-names: Selvaraj
+      given-names: Vignesh
+    - family-names: Nagaraj
+      given-names: Aditya
+    - family-names: Zhang
+      given-names: Shengyuan
+    - family-names: Sadeghian
+      given-names: Sina
+    - family-names: Min
+      given-names: Sangkee
+  year: 2026
+  notes: "Preprint (arXiv). Target journal: IJPEM-ST."
+  # arxiv / journal / doi to be added
+  # doi: TODO
