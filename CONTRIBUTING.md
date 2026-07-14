@@ -29,7 +29,6 @@ Please keep changes scoped to one subtree per pull request where possible.
 - Firmware is built and flashed from **STM32CubeIDE**; network identity is code-owned in
   `firmware/CM7/Core/Inc/aems_network_config.h`.
 - Hardware requires **KiCad 7+**; libraries are project-local via `sym-lib-table` / `fp-lib-table`.
-- Please don't commit IDE/user-local artifacts or Office lock files (e.g. `~$*.docx`).
 
 ## Pull requests
 
@@ -47,5 +46,4 @@ license(s). If you have concerns, please raise them before submitting.
 
 ## Contact
 
-Corresponding author: **Sangkee Min** — `sangkee.min@wisc.edu`
-Lead developer: **Vignesh Selvaraj** — `vselvaraj@wisc.edu`
+Lead developer: **Vignesh Selvaraj** — `vselvaraj@wisc.edu` or `vignesh-selvaraj@outlook.com`

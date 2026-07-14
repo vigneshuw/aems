@@ -1,45 +1,63 @@
-AEMS — Licensing (PLACEHOLDER — NOT YET FINALIZED)
-==================================================
+AEMS — Autonomous Energy Monitoring System
+Licensing
+==========================================
 
-The Autonomous Energy Monitoring System (AEMS) is intended for release as open
-hardware and open-source software. The specific license terms are still being
-finalized and WILL be committed here before/at publication.
+Copyright (c) 2026 Vignesh Selvaraj, Aditya Nagaraj, Shengyuan Zhang,
+Sina Sadeghian, and Sangkee Min
+Department of Mechanical Engineering, University of Wisconsin–Madison.
 
-Planned licensing split
-------------------------
+AEMS is a mixed hardware + software + documentation project. Because these are
+legally different kinds of work, different parts of this repository are released
+under different licenses, as follows.
 
-AEMS is a mixed hardware + software + documentation project, so different parts
-are expected to carry different licenses:
+  * Hardware design files  ->  CERN-OHL-P-2.0   (permissive open hardware)
+      Applies to: hardware/ (KiCad schematics and PCB, custom libraries, BOM,
+      manufacturing/fabrication outputs, and other hardware design source).
+      Full text: LICENSES/CERN-OHL-P-2.0.txt   (see also hardware/LICENSE)
 
-  * Hardware design files (hardware/)      -> open-hardware license   [TODO]
-  * Firmware and host software (firmware/) -> open-source software    [TODO]
-  * Documentation and figures              -> documentation license   [TODO]
+  * Firmware and host software  ->  MIT
+      Applies to: the original source code in firmware/ and the Python
+      BoardInterfaceLibrary authored by the AEMS project (excluding vendor and
+      third-party components listed below).
+      Full text: LICENSES/MIT.txt   (see also firmware/LICENSE)
 
-Each SPDX identifier and full license text will be added here, and per-directory
-LICENSE files will be placed where appropriate, once the choice is confirmed.
+  * Documentation and figures  ->  CC-BY-4.0
+      Applies to: README files, the docs/ directories, design summaries, and
+      other written documentation and figures authored by the AEMS project.
+      Full text: LICENSES/CC-BY-4.0.txt
+
+SPDX license expression for the repository as a whole:
+
+    CERN-OHL-P-2.0 AND MIT AND CC-BY-4.0
+
+Full, unmodified copies of each license are stored in the LICENSES/ directory,
+named by SPDX identifier (following the REUSE specification, https://reuse.software).
+
 
 Third-party components
 ----------------------
 
-Vendor and third-party components retain their own licenses, including but not
-limited to:
+Vendor and third-party components are NOT covered by the licenses above and
+retain their own licenses, including but not limited to:
 
   * STMicroelectronics STM32H7xx HAL / CMSIS / BSP drivers
-  * FreeRTOS
+      (firmware/Drivers/ — see the LICENSE.txt files there)
+  * FreeRTOS  (firmware/Middlewares/Third_Party/FreeRTOS/)
   * OpenAMP / libmetal
   * FatFs
-  * BlueNRG-2
-  * Third-party KiCad symbol/footprint libraries under hardware/CustomLibs/Downloaded/
+  * BlueNRG-2  (firmware/Middlewares/ST/BlueNRG-2/)
+  * Third-party KiCad symbol/footprint libraries under
+    hardware/CustomLibs/Downloaded/
 
-See the LICENSE / license headers distributed with those components (e.g. under
-firmware/Drivers/ and firmware/Middlewares/). Nothing in this file overrides the
-terms of any third-party component.
+Nothing in this file overrides or modifies the terms of any third-party
+component. Where a file carries its own license or copyright notice, that notice
+governs that file.
 
-Interim terms
--------------
 
-Until the final license(s) are committed, please contact the authors before
-redistributing or reusing the AEMS design files or software.
+Attribution / how to cite
+--------------------------
 
-Contact: Sangkee Min <sangkee.min@wisc.edu>; Vignesh Selvaraj <vselvaraj@wisc.edu>
-Department of Mechanical Engineering, University of Wisconsin–Madison.
+If you use AEMS in academic work, please cite the accompanying paper and, where
+appropriate, this repository. See CITATION.cff and the README.
+
+Contact: Vignesh Selvaraj <vselvaraj@wisc.edu> or <vignesh-selvaraj@outlook.com>

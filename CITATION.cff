@@ -38,7 +38,10 @@ keywords:
   - data acquisition
   - manufacturing
   - IIoT
-# license: TODO  # set SPDX identifier(s) once the open-hardware/software license is finalized
+license:
+  - CERN-OHL-P-2.0   # hardware design files (hardware/)
+  - MIT              # firmware and host software (firmware/)
+  - CC-BY-4.0        # documentation and figures
 # version: v1.0.0        # set on tagged release
 # date-released: 2026-00-00
 # doi: 10.5281/zenodo.XXXXXXX  # add Zenodo archive DOI on release

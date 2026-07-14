@@ -168,14 +168,21 @@ release: **DOI: _to be added_**.
 
 ## License
 
-AEMS is intended for release as open hardware and open-source software. **License terms are
-being finalized** — see [`LICENSE`](LICENSE) for the current status and the intended
-hardware / software / documentation split. Until the final licenses are committed, please
-contact the authors before redistribution.
+AEMS is released as open hardware and open-source software under a per-material split (full
+texts in [`LICENSES/`](LICENSES/), following the [REUSE](https://reuse.software) convention):
+
+| Material | License | Applies to |
+|---|---|---|
+| Hardware design files | [`CERN-OHL-P-2.0`](LICENSES/CERN-OHL-P-2.0.txt) | [`hardware/`](hardware/) — schematics, PCB, libraries, BOM, fabrication outputs |
+| Firmware & host software | [`MIT`](LICENSES/MIT.txt) | original code in [`firmware/`](firmware/) and the Python `BoardInterfaceLibrary` |
+| Documentation & figures | [`CC-BY-4.0`](LICENSES/CC-BY-4.0.txt) | READMEs, `docs/`, design summaries |
+
+SPDX expression for the repository: `CERN-OHL-P-2.0 AND MIT AND CC-BY-4.0`. Vendor and
+third-party components (ST HAL/CMSIS, FreeRTOS, OpenAMP, FatFs, BlueNRG-2, downloaded KiCad
+libraries) retain their own licenses. See [`LICENSE`](LICENSE) for the full overview.
 
 ---
 
 ## Contact
 
-Lead developer: **Vignesh Selvaraj** — `vselvaraj@wisc.edu`, 
-Department of Mechanical Engineering, University of Wisconsin–Madison.
+Lead developer: **Vignesh Selvaraj** — `vselvaraj@wisc.edu`, `vignesh-selvaraj@outlook.com`

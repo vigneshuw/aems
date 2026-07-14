@@ -1,0 +1,27 @@
+AEMS Firmware & Host Software — License
+=======================================
+
+Copyright (c) 2026 Vignesh Selvaraj, Aditya Nagaraj, Shengyuan Zhang,
+Sina Sadeghian, and Sangkee Min
+Department of Mechanical Engineering, University of Wisconsin–Madison.
+
+The original firmware and host software authored by the AEMS project in this
+directory — including the CM4/CM7 application code and the Python
+BoardInterfaceLibrary — is licensed under the MIT License.
+
+SPDX-License-Identifier: MIT
+
+The full license text is at ../LICENSES/MIT.txt
+
+Third-party and vendor components are NOT licensed under MIT and retain their
+own licenses, including but not limited to:
+
+  * STMicroelectronics STM32H7xx HAL / CMSIS / BSP drivers (Drivers/)
+  * FreeRTOS (Middlewares/Third_Party/FreeRTOS/)
+  * OpenAMP / libmetal
+  * FatFs
+  * BlueNRG-2 (Middlewares/ST/BlueNRG-2/)
+
+Where a source file carries its own license or copyright header, that notice
+governs that file. Project documentation (the docs/ directory and README files)
+is licensed under CC-BY-4.0; see the top-level LICENSE for the full overview.

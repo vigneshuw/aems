@@ -1,0 +1,22 @@
+AEMS Hardware — License
+=======================
+
+Copyright (c) 2026 Vignesh Selvaraj, Aditya Nagaraj, Shengyuan Zhang,
+Sina Sadeghian, and Sangkee Min
+Department of Mechanical Engineering, University of Wisconsin–Madison.
+
+The hardware design source in this directory — the KiCad schematics and PCB
+layout, custom symbol/footprint libraries, bill of materials, LTSpice
+simulations, design summaries, and manufacturing/fabrication outputs — is
+licensed under the:
+
+    CERN Open Hardware Licence Version 2 - Permissive (CERN-OHL-P-2.0)
+
+SPDX-License-Identifier: CERN-OHL-P-2.0
+
+The full, unmodified license text is at ../LICENSES/CERN-OHL-P-2.0.txt
+
+Third-party KiCad symbol/footprint libraries under
+CustomLibs/Downloaded/ retain their own licenses and are not covered by
+CERN-OHL-P-2.0. See the top-level LICENSE for the full repository licensing
+overview.
