@@ -1,0 +1,23 @@
+{
+  "title": "AEMS: Autonomous Energy Monitoring System",
+  "upload_type": "software",
+  "description": "Open-source hardware, firmware, and host software for the Autonomous Energy Monitoring System (AEMS): a low-cost, modular platform for high-resolution energy monitoring of manufacturing equipment. Includes the AEMS v2 board design (KiCad), STM32H745 dual-core firmware, and a Python host stack with Raspberry Pi daemon and optional AWS IoT cloud agent. Licensing: hardware under CERN-OHL-P-2.0, firmware and software under MIT, documentation under CC-BY-4.0.",
+  "creators": [
+    { "name": "Selvaraj, Vignesh", "affiliation": "University of Wisconsin-Madison", "orcid": "0000-0002-4890-7264" },
+    { "name": "Nagaraj, Aditya", "affiliation": "University of Wisconsin-Madison", "orcid": "0000-0002-9542-0803" },
+    { "name": "Zhang, Shengyuan", "affiliation": "University of Wisconsin-Madison" },
+    { "name": "Sadeghian, Sina", "affiliation": "University of Wisconsin-Madison" },
+    { "name": "Min, Sangkee", "affiliation": "University of Wisconsin-Madison", "orcid": "0000-0002-3550-3711" }
+  ],
+  "access_right": "open",
+  "license": "other-open",
+  "keywords": [
+    "energy monitoring",
+    "open-source hardware",
+    "condition monitoring",
+    "Industry 4.0",
+    "data acquisition",
+    "manufacturing",
+    "IIoT"
+  ]
+}
