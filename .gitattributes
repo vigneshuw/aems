@@ -1,0 +1,90 @@
+# Normalize line endings across platforms.
+# Text files are stored with LF in the repo AND checked out with LF,
+# so Windows editors/KiCad re-saving cannot introduce CRLF <-> LF churn.
+* text=auto eol=lf
+
+# ---------------------------------------------------------------------------
+# KiCad design source (S-expression text formats)
+# ---------------------------------------------------------------------------
+*.kicad_sch    text eol=lf
+*.kicad_pcb    text eol=lf
+*.kicad_pro    text eol=lf
+*.kicad_prl    text eol=lf
+*.kicad_sym    text eol=lf
+*.kicad_mod    text eol=lf
+*.kicad_dru    text eol=lf
+*.kicad_wks    text eol=lf
+fp-lib-table   text eol=lf
+sym-lib-table  text eol=lf
+fp-info-cache  text eol=lf
+
+# Legacy KiCad libraries
+*.lib          text eol=lf
+*.dcm          text eol=lf
+*.mod          text eol=lf
+*.net          text eol=lf
+
+# ---------------------------------------------------------------------------
+# Fabrication / manufacturing outputs (text)
+# ---------------------------------------------------------------------------
+*.gbr          text eol=lf
+*.gbrjob       text eol=lf
+*.drl          text eol=lf
+*.pos          text eol=lf
+*.ipc          text eol=lf
+
+# LTSpice simulation decks (text)
+*.asc          text eol=lf
+*.cir          text eol=lf
+
+# ---------------------------------------------------------------------------
+# Firmware / host source and configs (text)
+# ---------------------------------------------------------------------------
+*.c            text eol=lf
+*.h            text eol=lf
+*.cpp          text eol=lf
+*.hpp          text eol=lf
+*.s            text eol=lf
+*.ld           text eol=lf
+*.py           text eol=lf
+*.ioc          text eol=lf
+*.md           text eol=lf
+*.txt          text eol=lf
+*.toml         text eol=lf
+*.cfg          text eol=lf
+*.ini          text eol=lf
+*.json         text eol=lf
+*.csv          text eol=lf
+*.html         text eol=lf
+*.sh           text eol=lf
+*.service      text eol=lf
+
+# Shell scripts must stay LF regardless of platform
+*.sh           text eol=lf
+
+# ---------------------------------------------------------------------------
+# Binary assets — never normalize or diff
+# ---------------------------------------------------------------------------
+*.stp          binary
+*.step         binary
+*.wrl          binary
+*.pdf          binary
+*.png          binary
+*.jpg          binary
+*.jpeg         binary
+*.gif          binary
+*.bmp          binary
+*.ico          binary
+*.svg          binary
+*.zip          binary
+*.gz           binary
+*.7z           binary
+*.bin          binary
+*.elf          binary
+*.hex          binary
+*.o            binary
+*.a            binary
+*.bak          binary
+*.docx         binary
+*.xlsx         binary
+*.pptx         binary
