@@ -41,7 +41,7 @@ The current firmware/host workflows use a **6-channel acquisition mask (`0x3F`)*
 
 Temporarily, due to a design issue, the board needs to be powered on as shown in the figure below. This design issue will be fixed in the next hardware version. 
 
-
+![Board Power Supply](./Resources/board_ps.png)
 
 
 
