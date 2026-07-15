@@ -33,6 +33,18 @@ The current firmware/host workflows use a **6-channel acquisition mask (`0x3F`)*
 > consistent with the modular design intent and is tracked under
 > [`FutureUpdates/`](FutureUpdates/).
 
+![Overview of the AEMS hardware](./Resources/board_labels.png)
+
+---
+
+## Board Power-Up
+
+Temporarily, due to a design issue, the board needs to be powered on as shown in the figure below. This design issue will be fixed in the next hardware version. 
+
+
+
+
+
 ---
 
 ## Project structure
