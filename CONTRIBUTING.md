@@ -33,10 +33,9 @@ Please keep changes scoped to one subtree per pull request where possible.
 ## Pull requests
 
 1. Fork and branch from the default branch.
-2. Keep commits focused and describe *why*, not just *what*.
-3. For firmware, confirm the board still builds and passes a basic bench connectivity check
+2. For firmware, confirm the board still builds and passes a basic bench connectivity check
    (`firmware/UnitTests/tcptest.py` or a `board_interface` example).
-4. Update the relevant README/docs alongside code or design changes.
+3. Update the relevant README/docs alongside code or design changes.
 
 ## License of contributions
 
@@ -46,4 +45,4 @@ license(s). If you have concerns, please raise them before submitting.
 
 ## Contact
 
-Lead developer: **Vignesh Selvaraj** — `vselvaraj@wisc.edu` or `vignesh-selvaraj@outlook.com`
+**Vignesh Selvaraj** — `vselvaraj@wisc.edu` or `vignesh-selvaraj@outlook.com`

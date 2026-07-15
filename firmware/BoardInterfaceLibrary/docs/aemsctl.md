@@ -197,6 +197,89 @@ Start every connected board:
 aemsctl daq stream start --board all --file daq.bin --format csv --duration 30
 ```
 
+### Where Stream Files Are Saved
+
+`daq stream start` is a host-side live stream capture. The board streams command
+`13` DAQ frames over TCP, and `aems-boardd` writes the received data on the
+Raspberry Pi. It does not save this command `13` stream to the board eMMC.
+
+Default output directory:
+
+```text
+/var/lib/aems-server/captures
+```
+
+Default metadata directory:
+
+```text
+/var/lib/aems-server/metadata
+```
+
+These paths come from `/etc/aems-server/config.toml`:
+
+```toml
+capture_dir = "/var/lib/aems-server/captures"
+metadata_dir = "/var/lib/aems-server/metadata"
+```
+
+You can confirm the active paths with:
+
+```bash
+aemsctl server status
+```
+
+For this command:
+
+```bash
+aemsctl daq stream start --board all --file daq.bin --format csv --duration 30
+```
+
+the daemon creates one independent DAQ stream job per currently active board.
+Each board gets its own output file. The filename pattern is:
+
+```text
+<board_ip_with_underscores>_<remote_file_stem>_<job_id_prefix>.<format>
+```
+
+Example for two boards:
+
+```text
+/var/lib/aems-server/captures/192_168_0_10_daq_a1b2c3d4.csv
+/var/lib/aems-server/captures/192_168_0_11_daq_e5f6a7b8.csv
+```
+
+The matching metadata files are saved separately:
+
+```text
+/var/lib/aems-server/metadata/192_168_0_10_daq_a1b2c3d4.csv.metadata.json
+/var/lib/aems-server/metadata/192_168_0_11_daq_e5f6a7b8.csv.metadata.json
+```
+
+For `--format csv`, the daemon first receives the raw command `13` stream into a
+temporary raw binary file, converts it to physical-value CSV when the stream
+stops, then deletes the temporary raw file. The final CSV contains parsed
+physical values from the live stream. The metadata JSON records:
+
+- job ID and board IP
+- requested sample rate, channel mask, and block size
+- output file path and output format
+- command `13` stream summary
+- command `12` stop ACK
+- command `10` DAQ status after the stream stops
+- received bytes, frames, throughput, dropped buffers, and loss estimates
+
+For `--format bin`, the daemon keeps the raw command `13` stream bytes directly
+as the final `.bin` file and writes the same metadata JSON next to it in the
+metadata directory.
+
+Use `--output-dir` to override only the capture output directory for this run:
+
+```bash
+aemsctl daq stream start --board all --file daq.bin --format csv --duration 30 --output-dir /mnt/usb/aems-captures
+```
+
+Metadata still goes to the configured daemon metadata directory.
+
 Stop jobs:
 
 ```bash

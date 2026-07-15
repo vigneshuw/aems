@@ -6,7 +6,6 @@ This repository accompanies the paper (preprint):
 
 > **An Open-Source, Autonomous Platform for High-Resolution Energy Monitoring in Manufacturing**
 > Vignesh Selvaraj, Aditya Nagaraj, Shengyuan Zhang, Sina Sadeghian, Sangkee Min
-> Department of Mechanical Engineering, University of Wisconsin–Madison.
 
 If you use this hardware, firmware, or software in your work, please see
 [Citation](#citation) and [`CITATION.cff`](CITATION.cff).
@@ -156,7 +155,7 @@ release. Machine-readable metadata is in [`CITATION.cff`](CITATION.cff).
              Sadeghian, Sina and Min, Sangkee},
   year    = {2026},
   note    = {Preprint. Department of Mechanical Engineering,
-             University of Wisconsin--Madison}
+             University of Wisconsin-Madison}
   % arXiv id / journal / doi to be added
 }
 ```
@@ -185,4 +184,4 @@ libraries) retain their own licenses. See [`LICENSE`](LICENSE) for the full over
 
 ## Contact
 
-Lead developer: **Vignesh Selvaraj** — `vselvaraj@wisc.edu`, `vignesh-selvaraj@outlook.com`
+**Vignesh Selvaraj** — `vselvaraj@wisc.edu`, `vignesh-selvaraj@outlook.com`
