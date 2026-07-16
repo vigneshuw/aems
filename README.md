@@ -160,8 +160,24 @@ release. Machine-readable metadata is in [`CITATION.cff`](CITATION.cff).
 }
 ```
 
-A citable, versioned archive of this repository (e.g. via Zenodo) will be linked here on
-release: **DOI: _to be added_**.
+The software itself is archived on Zenodo. Please cite the concept DOI (resolves to the
+latest release):
+
+**DOI: [10.5281/zenodo.21383443](https://doi.org/10.5281/zenodo.21383443)**
+
+```bibtex
+@software{selvaraj_aems_software,
+  author    = {Selvaraj, Vignesh and Nagaraj, Aditya and Zhang, Shengyuan and
+               Sadeghian, Sina and Min, Sangkee},
+  title     = {AEMS: Autonomous Energy Monitoring System},
+  year      = {2026},
+  publisher = {Zenodo},
+  doi       = {10.5281/zenodo.21383443},
+  url       = {https://github.com/vigneshuw/aems}
+}
+```
+
+The version validated in the paper is v1.0.2 (DOI: [10.5281/zenodo.21383444](https://doi.org/10.5281/zenodo.21383444)).
 
 ---
 

@@ -45,9 +45,7 @@ license:
   - CERN-OHL-P-2.0
   - MIT
   - CC-BY-4.0
-# version: v1.0.1        # set on tagged release
-# date-released: 2026-00-00
-# doi: 10.5281/zenodo.XXXXXXX  # add Zenodo archive DOI on release
+doi: 10.5281/zenodo.21383443   # concept DOI (all versions; resolves to latest)
 preferred-citation:
   type: article
   title: "An Open-Source, Autonomous Platform for High-Resolution Energy Monitoring in Manufacturing"
